@@ -609,6 +609,22 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         }
 
         @Override
+        public J visitVariableDeclarations(J.VariableDeclarations multiVariable, PrintOutputCapture<P> p) {
+            beforeSyntax(multiVariable, Space.Location.VARIABLE_DECLARATIONS_PREFIX, p);
+            for (J.Modifier m : multiVariable.getModifiers()) {
+                visitModifier(m, p);
+            }
+            visit(multiVariable.getTypeExpression(), p);
+            if (multiVariable.getVarargs() != null) {
+                visitSpace(multiVariable.getVarargs(), Space.Location.VARARGS, p);
+                p.append("*");
+            }
+            visitRightPadded(multiVariable.getPadding().getVariables(), JRightPadded.Location.NAMED_VARIABLE, ",", p);
+            afterSyntax(multiVariable, p);
+            return multiVariable;
+        }
+
+        @Override
         public J visitNewClass(J.NewClass newClass, PrintOutputCapture<P> p) {
             beforeSyntax(newClass, Space.Location.NEW_CLASS_PREFIX, p);
             visit(newClass.getClazz(), p);

@@ -83,9 +83,24 @@ public class ClassDeclarationTest implements RewriteTest {
                     puts "Big box area is : #{@area}"
                  end
               end
-              
+                            
               box = BigBox.new(10, 20)
               box.printArea()
+              """
+          )
+        );
+    }
+
+    @Test
+    void classMethods() {
+        rewriteRun(
+          ruby(
+            """
+              class Point
+                  attr_reader :x, :y # Define accessor methods for our instance variables
+                  def Point.sum(*points)
+                  end
+              end
               """
           )
         );

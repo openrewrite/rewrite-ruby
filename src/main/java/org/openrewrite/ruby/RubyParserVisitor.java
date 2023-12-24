@@ -36,10 +36,7 @@ import org.openrewrite.ruby.tree.Ruby;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.StreamSupport;
@@ -298,7 +295,31 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 emptyList()
         );
 
-        JContainer<Statement> args = convertArgs("(", node.getArgsNode(), ")");
+        JContainer<J> args = convertArgs("(", node.getArgsNode(), ")");
+        args = JContainer.withElements(args, ListUtils.map(args.getElements(), arg -> {
+            if (arg instanceof J.Identifier) {
+                return new J.VariableDeclarations(
+                        randomId(),
+                        arg.getPrefix(),
+                        Markers.EMPTY,
+                        emptyList(),
+                        emptyList(),
+                        null,
+                        null,
+                        emptyList(),
+                        singletonList(padRight(new J.VariableDeclarations.NamedVariable(
+                                randomId(),
+                                EMPTY,
+                                Markers.EMPTY,
+                                arg.withPrefix(EMPTY),
+                                emptyList(),
+                                null,
+                                null
+                        ), EMPTY))
+                );
+            }
+            return arg;
+        }));
 
         J body = convert(node.getBodyNode());
         if (!(body instanceof J.Block)) {
@@ -311,16 +332,17 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         }
 
         J.Block bodyBlock = (J.Block) body;
-        bodyBlock = bodyBlock.withStatements(ListUtils.mapLast(bodyBlock.getStatements(), statement -> statement instanceof J.Return ?
+        bodyBlock = bodyBlock.getPadding().withStatements(ListUtils.mapLast(bodyBlock.getPadding().getStatements(), statement -> statement.getElement() instanceof J.Return ?
                 statement :
-                new J.Return(
+                statement.withElement(new J.Return(
                         randomId(),
-                        statement.getPrefix(),
+                        statement.getElement().getPrefix(),
                         Markers.EMPTY.add(new ImplicitReturn(randomId())),
-                        statement.withPrefix(EMPTY)
-                )
+                        statement.getElement().withPrefix(EMPTY)
+                ))
         ));
 
+        //noinspection unchecked
         return new J.MethodDeclaration(
                 randomId(),
                 prefix,
@@ -330,7 +352,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 null,
                 null,
                 name,
-                args,
+                (JContainer<Statement>) (JContainer<?>) args,
                 null,
                 bodyBlock,
                 null,
@@ -1159,6 +1181,29 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitRestArgNode(RestArgNode node) {
+        return new J.VariableDeclarations(
+                randomId(),
+                whitespace(),
+                Markers.EMPTY,
+                emptyList(),
+                emptyList(),
+                null,
+                sourceBefore("*"),
+                emptyList(),
+                singletonList(padRight(new J.VariableDeclarations.NamedVariable(
+                        randomId(),
+                        EMPTY,
+                        Markers.EMPTY,
+                        getIdentifier(node.getName()),
+                        emptyList(),
+                        null,
+                        null
+                ), EMPTY))
+        );
+    }
+
+    @Override
     public Ruby.CompilationUnit visitRootNode(RootNode node) {
         List<JRightPadded<Statement>> body = node.getBodyNode() instanceof BlockNode ?
                 convertBlockStatements(Arrays.asList(((BlockNode) node.getBodyNode()).children()),
@@ -1253,7 +1298,12 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 }
             }
         } else if (argsNode instanceof ArgsNode) {
-            args = Arrays.asList(((ArgsNode) argsNode).getArgs());
+            ArgsNode argsArgsNode = (ArgsNode) argsNode;
+            args = new ArrayList<>(argsArgsNode.getArgs().length);
+            Collections.addAll(args, argsArgsNode.getArgs());
+            if (argsArgsNode.getRestArgNode() != null) {
+                args.add(argsArgsNode.getRestArgNode());
+            }
         } else {
             throw new UnsupportedOperationException("Unexpected args node type " + argsNode.getClass().getSimpleName());
         }
