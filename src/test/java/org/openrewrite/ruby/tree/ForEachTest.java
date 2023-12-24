@@ -36,7 +36,6 @@ public class ForEachTest implements RewriteTest {
         );
     }
 
-    @Disabled
     @Test
     void each() {
         rewriteRun(

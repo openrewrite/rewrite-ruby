@@ -33,8 +33,6 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
 
-import static java.util.Objects.requireNonNull;
-
 public interface Ruby extends J {
 
     @Override
@@ -57,29 +55,59 @@ public interface Ruby extends J {
         return Space.EMPTY;
     }
 
-    @Value
-    @With
+    @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
     @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
-    class CompilationUnit implements Ruby, SourceFile {
+    @RequiredArgsConstructor
+    @AllArgsConstructor(access = AccessLevel.PRIVATE)
+    final class CompilationUnit implements Ruby, SourceFile {
+        @Nullable
+        @NonFinal
+        transient WeakReference<Padding> padding;
+
+        @Getter
+        @With
         @EqualsAndHashCode.Include
         UUID id;
 
+        @Getter
+        @With
         Space prefix;
+
+        @Getter
+        @With
         Markers markers;
+
+        @Getter
+        @With
         Path sourcePath;
 
+        @Getter
+        @With
         @Nullable
         FileAttributes fileAttributes;
 
+        @Getter
+        @With
         Charset charset;
+
+        @Getter
+        @With
         boolean charsetBomMarked;
 
+        @Getter
+        @With
         @Nullable
         Checksum checksum;
 
-        J body;
+        List<JRightPadded<Statement>> statements;
 
-        Space eof;
+        public List<Statement> getStatements() {
+            return JRightPadded.getElements(statements);
+        }
+
+        public Ruby.CompilationUnit withStatements(List<Statement> statements) {
+            return getPadding().withStatements(JRightPadded.withElements(this.statements, statements));
+        }
 
         @Override
         public <P> J acceptRuby(RubyVisitor<P> v, P p) {
@@ -89,6 +117,35 @@ public interface Ruby extends J {
         @Override
         public <P> TreeVisitor<?, PrintOutputCapture<P>> printer(Cursor cursor) {
             return new RubyPrinter<>();
+        }
+
+        public Padding getPadding() {
+            Padding p;
+            if (this.padding == null) {
+                p = new Padding(this);
+                this.padding = new WeakReference<>(p);
+            } else {
+                p = this.padding.get();
+                if (p == null || p.t != this) {
+                    p = new Padding(this);
+                    this.padding = new WeakReference<>(p);
+                }
+            }
+            return p;
+        }
+
+        @RequiredArgsConstructor
+        public static class Padding {
+            private final Ruby.CompilationUnit t;
+
+            public List<JRightPadded<Statement>> getStatements() {
+                return t.statements;
+            }
+
+            public Ruby.CompilationUnit withStatements(List<JRightPadded<Statement>> statements) {
+                return t.statements == statements ? t : new Ruby.CompilationUnit(t.id, t.prefix, t.markers,
+                        t.sourcePath, t.fileAttributes, t.charset, t.charsetBomMarked, t.checksum, statements);
+            }
         }
     }
 
@@ -173,23 +230,123 @@ public interface Ruby extends J {
     @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
     @RequiredArgsConstructor
     @AllArgsConstructor(access = AccessLevel.PRIVATE)
-    @Data
-    final class Binary implements Ruby, Expression, TypedTree {
-
+    final class Block implements Ruby, Expression {
         @Nullable
         @NonFinal
         transient WeakReference<Padding> padding;
 
+        @Getter
         @With
         @EqualsAndHashCode.Include
         UUID id;
 
+        @Getter
         @With
         Space prefix;
 
+        @Getter
         @With
         Markers markers;
 
+        /**
+         * Inline blocks are delimited by { }.
+         * Multiline blocks are delimited by do ... end.
+         */
+        @Getter
+        @With
+        boolean inline;
+
+        @Nullable
+        JContainer<J> parameters;
+
+        @Nullable
+        public List<J> getParameters() {
+            return parameters == null ? null : parameters.getElements();
+        }
+
+        public Ruby.Block withParameters(@Nullable List<J> parameters) {
+            return getPadding().withParameters(JContainer.withElementsNullable(this.parameters, parameters));
+        }
+
+        @Getter
+        @With
+        J.Block body;
+
+        @Override
+        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
+            return v.visitBlock(this, p);
+        }
+
+        @Transient
+        @Override
+        public CoordinateBuilder.Expression getCoordinates() {
+            return new CoordinateBuilder.Expression(this);
+        }
+
+        @Override
+        public @Nullable JavaType getType() {
+            return null;
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public Ruby.Block withType(@Nullable JavaType type) {
+            return this;
+        }
+
+        public Padding getPadding() {
+            Padding p;
+            if (this.padding == null) {
+                p = new Padding(this);
+                this.padding = new WeakReference<>(p);
+            } else {
+                p = this.padding.get();
+                if (p == null || p.t != this) {
+                    p = new Padding(this);
+                    this.padding = new WeakReference<>(p);
+                }
+            }
+            return p;
+        }
+
+        @RequiredArgsConstructor
+        public static class Padding {
+            private final Ruby.Block t;
+
+            @Nullable
+            public JContainer<J> getParameters() {
+                return t.parameters;
+            }
+
+            public Ruby.Block withParameters(@Nullable JContainer<J> parameters) {
+                return t.parameters == parameters ? t : new Ruby.Block(t.id, t.prefix, t.markers, t.inline, parameters, t.body);
+            }
+        }
+    }
+
+    @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
+    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+    @RequiredArgsConstructor
+    @AllArgsConstructor(access = AccessLevel.PRIVATE)
+    final class Binary implements Ruby, Expression, TypedTree {
+        @Nullable
+        @NonFinal
+        transient WeakReference<Padding> padding;
+
+        @Getter
+        @With
+        @EqualsAndHashCode.Include
+        UUID id;
+
+        @Getter
+        @With
+        Space prefix;
+
+        @Getter
+        @With
+        Markers markers;
+
+        @Getter
         @With
         Expression left;
 
@@ -203,9 +360,11 @@ public interface Ruby extends J {
             return getPadding().withOperator(this.operator.withElement(operator));
         }
 
+        @Getter
         @With
         Expression right;
 
+        @Getter
         @With
         @Nullable
         JavaType type;
@@ -258,12 +417,16 @@ public interface Ruby extends J {
         }
     }
 
+    @ToString
     @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
     @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
-    @Data
+    @Getter
+    @AllArgsConstructor
     @With
-    final class DelimitedString implements Ruby, Statement, Expression {
+    class DelimitedString implements Ruby, Statement, Expression {
+        @EqualsAndHashCode.Include
         UUID id;
+
         Space prefix;
         Markers markers;
         String delimiter;
@@ -284,12 +447,13 @@ public interface Ruby extends J {
             return new CoordinateBuilder.Statement(this);
         }
 
-        @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
-        @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
-        @Data
+        @lombok.Value
         @With
-        public static final class Value implements Ruby {
+        @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+        public static class Value implements Ruby {
+            @EqualsAndHashCode.Include
             UUID id;
+
             Markers markers;
             J tree;
             Space after;
@@ -327,31 +491,20 @@ public interface Ruby extends J {
      * Has no state or behavior of its own aside from the Expression it wraps.
      */
     @SuppressWarnings("unchecked")
-    @ToString
     @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
+    @Value
+    @With
     @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
-    @AllArgsConstructor
-    final class ExpressionStatement implements Ruby, Expression, Statement {
-
-        @With
-        @Getter
+    class ExpressionStatement implements Ruby, Expression, Statement {
+        @EqualsAndHashCode.Include
         UUID id;
 
-        @With
-        @Getter
         Expression expression;
-
-        // For backwards compatibility with older ASTs before there was an id field
-        @SuppressWarnings("unused")
-        public ExpressionStatement(Expression expression) {
-            this.id = Tree.randomId();
-            this.expression = expression;
-        }
 
         @Override
         public <P> J acceptRuby(RubyVisitor<P> v, P p) {
             J j = v.visit(getExpression(), p);
-            if(j instanceof ExpressionStatement) {
+            if (j instanceof ExpressionStatement) {
                 return j;
             } else if (j instanceof Expression) {
                 return withExpression((Expression) j);
@@ -473,12 +626,13 @@ public interface Ruby extends J {
         }
     }
 
-    @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
-    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
-    @Data
+    @Value
     @With
-    final class Expansion implements Ruby, Expression {
+    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+    class Expansion implements Ruby, Expression {
+        @EqualsAndHashCode.Include
         UUID id;
+
         Space prefix;
         Markers markers;
         TypedTree tree;
@@ -683,18 +837,14 @@ public interface Ruby extends J {
         }
     }
 
-    @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
+    @Value
+    @With
     @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
-    @Data
-    final class Redo implements Ruby, Statement {
-        @With
+    class Redo implements Ruby, Statement {
         @EqualsAndHashCode.Include
         UUID id;
 
-        @With
         Space prefix;
-
-        @With
         Markers markers;
 
         @Override

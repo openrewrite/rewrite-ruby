@@ -20,15 +20,37 @@ import org.openrewrite.test.RewriteTest;
 
 import static org.openrewrite.ruby.Assertions.ruby;
 
-public class MethodDeclarationTest implements RewriteTest {
+/**
+ * Method and class blocks are not Ruby blocks ({@link Ruby.Block}),
+ * but instead map to {@link org.openrewrite.java.tree.J.Block}.
+ */
+public class RubyBlockTest implements RewriteTest {
 
+    /**
+     * While the Ruby compiler treats multiple statements at the root note as a {@link org.jruby.ast.BlockNode},
+     * we simply store the statements in a statement list on {@link org.openrewrite.ruby.tree.Ruby.CompilationUnit}.
+     * Otherwise, this just doesn't match the syntax we expect of blocks as they can occur elsewhere.
+     */
     @Test
-    void noArgs() {
+    void topLevelBlock() {
         rewriteRun(
           ruby(
             """
-              def test
-                 i = 42
+              a = 42
+              b = 42
+              """
+          )
+        );
+    }
+
+    @Test
+    void multiline() {
+        rewriteRun(
+          ruby(
+            """
+              5.times do |i|
+                puts i
+                puts i
               end
               """
           )
@@ -36,53 +58,25 @@ public class MethodDeclarationTest implements RewriteTest {
     }
 
     @Test
-    void singleArg() {
+    void inline() {
         rewriteRun(
           ruby(
             """
-              def test(a1 = "Ruby")
-                  puts "The programming language is #{a1}"
-              end
+              5.times { |i| puts i }
               """
           )
         );
     }
 
     @Test
-    void twoArgs() {
+    void blockArgument() {
         rewriteRun(
           ruby(
             """
-              def test(a1 = "Ruby", a2 = "Perl")
-                  puts "The programming language is #{a1}"
+              def wrap_in_h1
+                  "<h1>#{yield}</h1>"
               end
-              """
-          )
-        );
-    }
-
-    @Test
-    void argNoInitializer() {
-        rewriteRun(
-          ruby(
-            """
-              def sum(a1, a2)
-                  a1 + a2
-              end
-              """
-          )
-        );
-    }
-
-    @Test
-    void multipleBlockStatements() {
-        rewriteRun(
-          ruby(
-            """
-              def sum(a1, a2)
-                  s = a1 + a2
-                  s
-              end
+              wrap_in_h1 { "Here's my heading" }
               """
           )
         );
