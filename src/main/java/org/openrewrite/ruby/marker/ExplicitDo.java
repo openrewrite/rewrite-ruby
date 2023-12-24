@@ -15,6 +15,7 @@
  */
 package org.openrewrite.ruby.marker;
 
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 import lombok.With;
 import org.openrewrite.marker.Marker;

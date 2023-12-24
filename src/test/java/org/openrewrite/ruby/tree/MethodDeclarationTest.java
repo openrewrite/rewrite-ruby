@@ -23,12 +23,25 @@ import static org.openrewrite.ruby.Assertions.ruby;
 public class MethodDeclarationTest implements RewriteTest {
 
     @Test
+    void defaultArguments() {
+        rewriteRun(
+          ruby(
+            """
+              def sum(a = 1, b = 2)
+                  a + b
+              end
+              """
+          )
+        );
+    }
+
+    @Test
     void noArgs() {
         rewriteRun(
           ruby(
             """
               def test
-                 i = 42
+                  i = 42
               end
               """
           )

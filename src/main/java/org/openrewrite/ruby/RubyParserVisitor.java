@@ -26,6 +26,7 @@ import org.openrewrite.FileAttributes;
 import org.openrewrite.internal.EncodingDetectingInputStream;
 import org.openrewrite.internal.ListUtils;
 import org.openrewrite.internal.lang.Nullable;
+import org.openrewrite.java.marker.ImplicitReturn;
 import org.openrewrite.java.marker.OmitParentheses;
 import org.openrewrite.java.tree.*;
 import org.openrewrite.marker.Markers;
@@ -309,6 +310,17 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     sourceBefore("end"));
         }
 
+        J.Block bodyBlock = (J.Block) body;
+        bodyBlock = bodyBlock.withStatements(ListUtils.mapLast(bodyBlock.getStatements(), statement -> statement instanceof J.Return ?
+                statement :
+                new J.Return(
+                        randomId(),
+                        statement.getPrefix(),
+                        Markers.EMPTY.add(new ImplicitReturn(randomId())),
+                        statement.withPrefix(EMPTY)
+                )
+        ));
+
         return new J.MethodDeclaration(
                 randomId(),
                 prefix,
@@ -320,7 +332,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 name,
                 args,
                 null,
-                (J.Block) body,
+                bodyBlock,
                 null,
                 null
         );
@@ -1013,6 +1025,18 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 randomId(),
                 sourceBefore("redo"),
                 Markers.EMPTY
+        );
+    }
+
+    @Override
+    public J visitReturnNode(ReturnNode node) {
+        Space prefix = sourceBefore("return");
+        Expression returnValue = convert(node.getValueNode());
+        return new J.Return(
+                randomId(),
+                prefix,
+                Markers.EMPTY,
+                returnValue
         );
     }
 

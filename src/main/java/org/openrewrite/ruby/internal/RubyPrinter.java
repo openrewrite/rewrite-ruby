@@ -21,6 +21,7 @@ import org.openrewrite.Tree;
 import org.openrewrite.internal.ListUtils;
 import org.openrewrite.internal.lang.Nullable;
 import org.openrewrite.java.JavaPrinter;
+import org.openrewrite.java.marker.ImplicitReturn;
 import org.openrewrite.java.marker.OmitParentheses;
 import org.openrewrite.java.marker.TrailingComma;
 import org.openrewrite.java.tree.*;
@@ -68,8 +69,13 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     @Override
     public J visitArray(Ruby.Array array, PrintOutputCapture<P> p) {
         beforeSyntax(array, RubySpace.Location.LIST_LITERAL, p);
-        visitContainer("[", array.getPadding().getElements(), RubyContainer.Location.LIST_LITERAL_ELEMENTS,
-                ",", "]", p);
+        if (array.getPadding().getElements().getMarkers().findFirst(OmitParentheses.class).isPresent()) {
+            visitContainer("", array.getPadding().getElements(), RubyContainer.Location.LIST_LITERAL_ELEMENTS,
+                    ",", "", p);
+        } else {
+            visitContainer("[", array.getPadding().getElements(), RubyContainer.Location.LIST_LITERAL_ELEMENTS,
+                    ",", "]", p);
+        }
         afterSyntax(array, p);
         return array;
     }
@@ -615,6 +621,17 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
             }
             afterSyntax(newClass, p);
             return newClass;
+        }
+
+        @Override
+        public J visitReturn(J.Return aReturn, PrintOutputCapture<P> p) {
+            beforeSyntax(aReturn, Space.Location.RETURN_PREFIX, p);
+            if (!aReturn.getMarkers().findFirst(ImplicitReturn.class).isPresent()) {
+                p.append("return");
+            }
+            visit(aReturn.getExpression(), p);
+            afterSyntax(aReturn, p);
+            return aReturn;
         }
 
         @Override
