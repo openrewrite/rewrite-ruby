@@ -564,10 +564,11 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     private J.If ifModifier(IfNode node) {
         Statement thenElem = convert(node.getThenBody());
         JRightPadded<Statement> then = padRight(thenElem, sourceBefore("if"));
+        Space ifConditionPrefix = whitespace();
         Expression ifConditionExpr = convert(node.getCondition());
         J.ControlParentheses<Expression> ifCondition = new J.ControlParentheses<>(
                 randomId(),
-                ifConditionExpr.getPrefix(),
+                ifConditionPrefix,
                 Markers.EMPTY,
                 padRight(ifConditionExpr, EMPTY)
         );
@@ -582,6 +583,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     private J.If ifStatement(IfNode node) {
+        skip("if");
         Space ifConditionPrefix = whitespace();
         Expression ifConditionExpr = convert(node.getCondition());
         boolean explicitThen = Pattern.compile("\\s+then").matcher(source).find(cursor);

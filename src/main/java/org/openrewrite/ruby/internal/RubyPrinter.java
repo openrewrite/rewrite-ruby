@@ -539,14 +539,23 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         @Override
         public J visitIf(J.If iff, PrintOutputCapture<P> p) {
             beforeSyntax(iff, Space.Location.IF_PREFIX, p);
-            p.append("if");
-            visit(iff.getIfCondition(), p);
-            visitStatement(iff.getPadding().getThenPart(), JRightPadded.Location.IF_THEN, p);
-            if (iff.getElsePart() == null) {
-                p.append("end");
+
+            if (iff.getMarkers().findFirst(IfModifier.class).isPresent()) {
+                visitStatement(iff.getPadding().getThenPart(), JRightPadded.Location.IF_THEN, p);
+                p.append("if");
+                visit(iff.getIfCondition(), p);
+                return iff;
             } else {
-                visit(iff.getElsePart(), p);
+                p.append("if");
+                visit(iff.getIfCondition(), p);
+                visitStatement(iff.getPadding().getThenPart(), JRightPadded.Location.IF_THEN, p);
+                if (iff.getElsePart() == null) {
+                    p.append("end");
+                } else {
+                    visit(iff.getElsePart(), p);
+                }
             }
+
             afterSyntax(iff, p);
             return iff;
         }
