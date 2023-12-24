@@ -224,7 +224,6 @@ public interface Ruby extends J {
         public enum Type {
             Comparison,
             Exponentiation,
-            OnesComplement,
             RangeExclusive,
             RangeInclusive,
             Within,

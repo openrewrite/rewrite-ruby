@@ -36,7 +36,7 @@ public class BinaryTest implements RewriteTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"<<", ">>", "&", "|", "^", "~"})
+    @ValueSource(strings = {"<<", ">>", "&", "|", "^"})
     void bitwise(String op) {
         rewriteRun(
           ruby(

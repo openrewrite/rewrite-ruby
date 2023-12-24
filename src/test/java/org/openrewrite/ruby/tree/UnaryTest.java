@@ -24,7 +24,7 @@ import static org.openrewrite.ruby.Assertions.ruby;
 public class UnaryTest implements RewriteTest {
 
     @ParameterizedTest
-    @ValueSource(strings = {"!", "not"})
+    @ValueSource(strings = {"!", "not", "~"})
     void logical(String op) {
         rewriteRun(
           ruby(

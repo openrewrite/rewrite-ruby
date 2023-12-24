@@ -575,7 +575,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         return new J.If(
                 randomId(),
                 EMPTY,
-                Markers.build(singletonList(new IfModifier(randomId()))),
+                Markers.EMPTY.add(new IfModifier(randomId())),
                 ifCondition,
                 then,
                 null
@@ -788,7 +788,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 type = J.Binary.Type.BitXor;
                 break;
             case "~":
-                rubyType = Ruby.Binary.Type.OnesComplement;
+                unaryType = J.Unary.Type.Complement;
                 break;
             case "==":
                 type = J.Binary.Type.Equal;
