@@ -24,8 +24,19 @@ import static org.openrewrite.ruby.Assertions.ruby;
 
 public class AssignmentTest implements RewriteTest {
 
+    @Test
+    void localAssignment() {
+        rewriteRun(
+          ruby(
+            """
+              a = 1
+              """
+          )
+        );
+    }
+
     @ParameterizedTest
-    @ValueSource(strings = {"=", "+=", "-=", "*=", "/=", "%=", "**="})
+    @ValueSource(strings = {"+=", "-=", "*=", "/=", "%=", "**="})
     void assignmentOperators(String op) {
         rewriteRun(
           ruby(
@@ -54,6 +65,17 @@ public class AssignmentTest implements RewriteTest {
           ruby(
             """
               a, b, c = 1, 2, 3
+              """
+          )
+        );
+    }
+
+    @Test
+    void assignMultiplication() {
+        rewriteRun(
+          ruby(
+            """
+              a = 1 * 2
               """
           )
         );

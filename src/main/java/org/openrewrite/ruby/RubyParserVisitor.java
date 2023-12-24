@@ -631,42 +631,57 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     private Expression visitAsgnNode(AssignableNode node, RubySymbol name) {
         if (node.getValueNode() instanceof OperatorCallNode) {
-            // J.AssignmentOp
+            Space variablePrefix = whitespace();
+            J.Identifier variable = getIdentifier(sourceBefore(name.asJavaString()), name.asJavaString());
+            Space opPrefix = whitespace();
             OperatorCallNode assignOp = (OperatorCallNode) node.getValueNode();
-            Expression variable = convert(assignOp.getReceiverNode());
-            String op = assignOp.getName().asJavaString() + "=";
-            J.AssignmentOperation.Type type;
-            switch (op) {
-                case "+=":
-                    type = J.AssignmentOperation.Type.Addition;
-                    break;
-                case "-=":
-                    type = J.AssignmentOperation.Type.Subtraction;
-                    break;
-                case "*=":
-                    type = J.AssignmentOperation.Type.Multiplication;
-                    break;
-                case "/=":
-                    type = J.AssignmentOperation.Type.Division;
-                    break;
-                case "%=":
-                    type = J.AssignmentOperation.Type.Modulo;
-                    break;
-                case "**=":
-                    type = J.AssignmentOperation.Type.Exponentiation;
-                    break;
-                default:
-                    throw new UnsupportedOperationException("Unknown assignment operator " + op);
+
+            if (source.charAt(cursor) == '=') {
+                skip("=");
+                return new J.Assignment(
+                        randomId(),
+                        variablePrefix,
+                        Markers.EMPTY,
+                        variable,
+                        padLeft(opPrefix, visitOperatorCallNode(assignOp)),
+                        null
+                );
+            } else {
+                String op = assignOp.getName().asJavaString();
+                J.AssignmentOperation.Type type;
+                switch (op) {
+                    case "+":
+                        type = J.AssignmentOperation.Type.Addition;
+                        break;
+                    case "-":
+                        type = J.AssignmentOperation.Type.Subtraction;
+                        break;
+                    case "*":
+                        type = J.AssignmentOperation.Type.Multiplication;
+                        break;
+                    case "/":
+                        type = J.AssignmentOperation.Type.Division;
+                        break;
+                    case "%":
+                        type = J.AssignmentOperation.Type.Modulo;
+                        break;
+                    case "**":
+                        type = J.AssignmentOperation.Type.Exponentiation;
+                        break;
+                    default:
+                        throw new UnsupportedOperationException("Unsupported assignment operator " + op);
+                }
+                skip(op + "=");
+                return new J.AssignmentOperation(
+                        randomId(),
+                        variablePrefix,
+                        Markers.EMPTY,
+                        variable,
+                        padLeft(opPrefix, type),
+                        convert(((ListNode) assignOp.getArgsNode()).get(0)),
+                        null
+                );
             }
-            return new J.AssignmentOperation(
-                    randomId(),
-                    variable.getPrefix(),
-                    Markers.EMPTY,
-                    variable.withPrefix(EMPTY),
-                    padLeft(sourceBefore(op), type),
-                    convert(((ListNode) assignOp.getArgsNode()).get(0)),
-                    null
-            );
         } else {
             Space prefix = sourceBefore(name.asJavaString());
             J.Identifier variable = getIdentifier(EMPTY, name.asJavaString());
@@ -747,7 +762,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
-    public J visitOperatorCallNode(OperatorCallNode node) {
+    public Expression visitOperatorCallNode(OperatorCallNode node) {
         String op = node.getName().asJavaString();
         Markers markers = Markers.EMPTY;
         J.Binary.Type type = null;
