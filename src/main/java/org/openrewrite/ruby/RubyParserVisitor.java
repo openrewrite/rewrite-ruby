@@ -53,8 +53,10 @@ import static org.openrewrite.java.tree.Space.format;
 
 public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     private final Path sourcePath;
+
     @Nullable
     private final FileAttributes fileAttributes;
+
     private final String source;
     private final Charset charset;
     private final boolean charsetBomMarked;
@@ -1077,7 +1079,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         List<JRightPadded<Statement>> body = node.getBodyNode() instanceof BlockNode ?
                 convertBlockStatements(Arrays.asList(((BlockNode) node.getBodyNode()).children()),
                         n -> whitespace()) :
-                singletonList(padRight(convert(node.getBodyNode()), whitespace()));
+                convertBlockStatements(singletonList(node.getBodyNode()), n -> whitespace());
         return new Ruby.CompilationUnit(
                 randomId(),
                 Space.EMPTY,
@@ -1113,9 +1115,10 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 prefix,
                 Markers.EMPTY,
                 value,
-                String.format("%s%s%s", delimiter, value, delimiter),
+                String.format("%s%s%s", delimiter, value,
+                        delimiter.equals("?") ? "" : delimiter),
                 null,
-                JavaType.Primitive.String
+                delimiter.equals("?") ? JavaType.Primitive.Char : JavaType.Primitive.String
         );
         if (!inDString) {
             skip(delimiter);

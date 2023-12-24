@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 the original author or authors.
+ * Copyright 2020 the original author or authors.
  * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,24 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.openrewrite.ruby.tree;
+@NonNullApi
+@NonNullFields
+package org.openrewrite.ruby.migrate;
 
-import org.junit.jupiter.api.Test;
-import org.openrewrite.test.RewriteTest;
-
-import static org.openrewrite.ruby.Assertions.ruby;
-
-public class LambdaTest implements RewriteTest {
-
-    @Test
-    void passBlock() {
-        rewriteRun(
-          ruby(
-            """
-              printer = lambda {|&b| puts b.call }
-              printer.call { "hi" }
-              """
-          )
-        );
-    }
-}
+import org.openrewrite.internal.lang.NonNullApi;
+import org.openrewrite.internal.lang.NonNullFields;

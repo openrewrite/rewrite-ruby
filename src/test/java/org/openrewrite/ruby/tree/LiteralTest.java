@@ -20,15 +20,14 @@ import org.openrewrite.test.RewriteTest;
 
 import static org.openrewrite.ruby.Assertions.ruby;
 
-public class LambdaTest implements RewriteTest {
+public class LiteralTest implements RewriteTest {
 
     @Test
-    void passBlock() {
+    void characterLiteral() {
         rewriteRun(
           ruby(
             """
-              printer = lambda {|&b| puts b.call }
-              printer.call { "hi" }
+              ?A
               """
           )
         );

@@ -56,9 +56,8 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         Ruby.CompilationUnit c = compilationUnit;
         c = c.withPrefix(visitSpace(c.getPrefix(), Space.Location.COMPILATION_UNIT_PREFIX, p));
         c = c.withMarkers(visitMarkers(c.getMarkers(), p));
-        for (JRightPadded<Statement> statement : c.getPadding().getStatements()) {
-            visitRightPadded(statement, RubyRightPadded.Location.COMPILATION_UNIT_STATEMENT_SUFFIX, p);
-        }
+        c = c.getPadding().withStatements(ListUtils.map(c.getPadding().getStatements(), statement ->
+                visitRightPadded(statement, RubyRightPadded.Location.COMPILATION_UNIT_STATEMENT_SUFFIX, p)));
         return c;
     }
 

@@ -13,23 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.openrewrite.ruby.tree;
+package org.openrewrite.ruby.migrate;
 
 import org.junit.jupiter.api.Test;
+import org.openrewrite.test.RecipeSpec;
 import org.openrewrite.test.RewriteTest;
 
 import static org.openrewrite.ruby.Assertions.ruby;
 
-public class LambdaTest implements RewriteTest {
+public class CharacterLiteralToStringTest implements RewriteTest {
+
+    @Override
+    public void defaults(RecipeSpec spec) {
+        spec.recipe(new CharacterLiteralToString());
+    }
 
     @Test
-    void passBlock() {
+    void convertToString() {
         rewriteRun(
           ruby(
-            """
-              printer = lambda {|&b| puts b.call }
-              printer.call { "hi" }
-              """
+            "?A",
+            "'A'"
           )
         );
     }

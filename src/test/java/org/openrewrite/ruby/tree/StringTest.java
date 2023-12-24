@@ -15,6 +15,7 @@
  */
 package org.openrewrite.ruby.tree;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -86,6 +87,38 @@ public class StringTest implements RewriteTest {
           ruby(
             """
               /my name is #{myname}/o
+              """
+          )
+        );
+    }
+
+    @Disabled
+    @ParameterizedTest
+    @ValueSource(strings = {"<<", "<<-"})
+    void hereDocuments(String startDelim) {
+        rewriteRun(
+          ruby(
+            """
+              document = %HERE
+              This is a string literal.
+              It has two lines and abruptly ends...
+              HERE
+              """.formatted(startDelim)
+          )
+        );
+    }
+
+    @Disabled
+    @Test
+    void overlappingHereDocuments() {
+        rewriteRun(
+          ruby(
+            """
+              greeting = <<HERE + <<THERE + "World"
+              Hello
+              HERE
+              There
+              THERE
               """
           )
         );
