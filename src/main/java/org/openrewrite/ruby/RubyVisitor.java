@@ -39,7 +39,7 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         return visitSpace(space, Space.Location.LANGUAGE_EXTENSION, p);
     }
 
-    public <J2 extends J> JContainer<J2> visitContainer(JContainer<J2> container,
+    public <J2 extends J> JContainer<J2> visitContainer(@Nullable JContainer<J2> container,
                                                         RubyContainer.Location loc, P p) {
         return super.visitContainer(container, JContainer.Location.LANGUAGE_EXTENSION, p);
     }
@@ -97,6 +97,12 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         Ruby.Block b = block;
         b = b.withPrefix(visitSpace(b.getPrefix(), RubySpace.Location.BLOCK_PREFIX, p));
         b = b.withMarkers(visitMarkers(b.getMarkers(), p));
+        Expression temp = (Expression) visitExpression(b, p);
+        if (!(temp instanceof Ruby.Block)) {
+            return temp;
+        } else {
+            b = (Ruby.Block) temp;
+        }
         b = b.getPadding().withParameters(visitContainer(b.getPadding().getParameters(),
                 RubyContainer.Location.BLOCK_PARAMETERS, p));
         b = b.withBody((J.Block) visit(b.getBody(), p));
@@ -130,6 +136,12 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         Ruby.Expansion e = expansion;
         e = e.withPrefix(visitSpace(e.getPrefix(), RubySpace.Location.EXPANSION_PREFIX, p));
         e = e.withMarkers(visitMarkers(e.getMarkers(), p));
+        Expression temp = (Expression) visitExpression(e, p);
+        if (!(temp instanceof Ruby.Expansion)) {
+            return temp;
+        } else {
+            e = (Ruby.Expansion) temp;
+        }
         e = e.withTree((TypedTree) visit(e.getTree(), p));
         return e;
     }
@@ -194,6 +206,21 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
             r = (Ruby.Redo) temp;
         }
         return r;
+    }
+
+    public J visitSubArrayIndex(Ruby.SubArrayIndex subArrayIndex, P p) {
+        Ruby.SubArrayIndex s = subArrayIndex;
+        s = s.withPrefix(visitSpace(s.getPrefix(), RubySpace.Location.SUB_ARRAY_INDEX_PREFIX, p));
+        s = s.withMarkers(visitMarkers(s.getMarkers(), p));
+        Expression temp = (Expression) visitExpression(s, p);
+        if (!(temp instanceof Ruby.SubArrayIndex)) {
+            return temp;
+        } else {
+            s = (Ruby.SubArrayIndex) temp;
+        }
+        s = s.withStartIndex((Expression) visitNonNull(s.getStartIndex(), p));
+        s = s.withLength((Expression) visitNonNull(s.getLength(), p));
+        return s;
     }
 
     public J visitYield(Ruby.Yield yield, P p) {

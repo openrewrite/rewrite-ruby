@@ -160,6 +160,10 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitCallNode(CallNode node) {
+        if (node.getName().asJavaString().equals("[]")) {
+            return convertArrayAccess(node);
+        }
+
         Space prefix = whitespace();
         J receiver = convert(node.getReceiverNode());
         Space beforeDot = sourceBefore(".");
@@ -188,6 +192,36 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     null
             );
         }
+    }
+
+    private J.ArrayAccess convertArrayAccess(CallNode node) {
+        Space prefix = whitespace();
+        Expression receiver = convert(node.getReceiverNode());
+        JContainer<J> args = convertArgs("[", node.getArgsNode(), "]");
+        List<J> argElems = args.getElements();
+        if (argElems.size() == 2) {
+            argElems = singletonList(new Ruby.SubArrayIndex(
+                    randomId(),
+                    argElems.get(0).getPrefix(),
+                    Markers.EMPTY,
+                    padRight(argElems.get(0).withPrefix(EMPTY), args.getPadding().getElements().get(0).getAfter()),
+                    (Expression) args.getElements().get(1)
+            ));
+        }
+
+        return new J.ArrayAccess(
+                randomId(),
+                prefix,
+                Markers.EMPTY,
+                receiver,
+                new J.ArrayDimension(
+                        randomId(),
+                        args.getBefore(),
+                        Markers.EMPTY,
+                        padRight((Expression) argElems.get(0), args.getLastSpace())
+                ),
+                null
+        );
     }
 
     private List<JRightPadded<Statement>> convertBlockStatements(List<? extends Node> trees,
@@ -814,16 +848,27 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     @Override
     public Expression visitOperatorCallNode(OperatorCallNode node) {
         String op = node.getName().asJavaString();
+        if (op.endsWith("@")) {
+            op = op.substring(0, op.length() - 1);
+        }
         Markers markers = Markers.EMPTY;
         J.Binary.Type type = null;
         J.Unary.Type unaryType = null;
         Ruby.Binary.Type rubyType = null;
         switch (op) {
             case "+":
-                type = J.Binary.Type.Addition;
+                if (node.getArgsNode() == null) {
+                    unaryType = J.Unary.Type.Positive;
+                } else {
+                    type = J.Binary.Type.Addition;
+                }
                 break;
             case "-":
-                type = J.Binary.Type.Subtraction;
+                if (node.getArgsNode() == null) {
+                    unaryType = J.Unary.Type.Negative;
+                } else {
+                    type = J.Binary.Type.Subtraction;
+                }
                 break;
             case "*":
                 type = J.Binary.Type.Multiplication;

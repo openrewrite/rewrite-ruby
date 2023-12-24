@@ -38,6 +38,8 @@ public class RubySpace {
         MULTIPLE_ASSIGNMENT_INITIALIZERS,
         MULTIPLE_ASSIGNMENT_SUFFIX,
         REDO_PREFIX,
+        SUB_ARRAY_INDEX_PREFIX,
+        SUB_ARRAY_START_SUFFIX,
         YIELD,
         YIELD_DATA_SUFFIX,
     }

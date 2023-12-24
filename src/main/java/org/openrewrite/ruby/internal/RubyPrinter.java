@@ -215,6 +215,16 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     }
 
     @Override
+    public J visitSubArrayIndex(Ruby.SubArrayIndex subArrayIndex, PrintOutputCapture<P> p) {
+        beforeSyntax(subArrayIndex, RubySpace.Location.SUB_ARRAY_INDEX_PREFIX, p);
+        visitRightPadded(subArrayIndex.getPadding().getStartIndex(), RubyRightPadded.Location.SUB_ARRAY_START_INDEX, p);
+        p.append(",");
+        visit(subArrayIndex.getLength(), p);
+        afterSyntax(subArrayIndex, p);
+        return subArrayIndex;
+    }
+
+    @Override
     public J visitYield(Ruby.Yield yield, PrintOutputCapture<P> p) {
         beforeSyntax(yield, RubySpace.Location.YIELD, p);
         p.append("yield");

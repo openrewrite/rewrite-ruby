@@ -868,6 +868,93 @@ public interface Ruby extends J {
     @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
     @RequiredArgsConstructor
     @AllArgsConstructor(access = AccessLevel.PRIVATE)
+    class SubArrayIndex implements Ruby, Expression {
+        @Nullable
+        @NonFinal
+        transient WeakReference<Padding> padding;
+
+        @Getter
+        @With
+        @EqualsAndHashCode.Include
+        UUID id;
+
+        @Getter
+        @With
+        Space prefix;
+
+        @Getter
+        @With
+        Markers markers;
+
+        JRightPadded<Expression> startIndex;
+
+        public Expression getStartIndex() {
+            return startIndex.getElement();
+        }
+
+        public SubArrayIndex withStartIndex(Expression startIndex) {
+            return getPadding().withStartIndex(JRightPadded.withElement(this.startIndex, startIndex));
+        }
+
+        @Getter
+        @With
+        Expression length;
+
+        @Override
+        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
+            return v.visitSubArrayIndex(this, p);
+        }
+
+        @Override
+        @Transient
+        public CoordinateBuilder.Expression getCoordinates() {
+            return new CoordinateBuilder.Expression(this);
+        }
+
+        @Override
+        public @Nullable JavaType getType() {
+            return null;
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public SubArrayIndex withType(@Nullable JavaType type) {
+            return this;
+        }
+
+        public Padding getPadding() {
+            Padding p;
+            if (this.padding == null) {
+                p = new Padding(this);
+                this.padding = new WeakReference<>(p);
+            } else {
+                p = this.padding.get();
+                if (p == null || p.t != this) {
+                    p = new Padding(this);
+                    this.padding = new WeakReference<>(p);
+                }
+            }
+            return p;
+        }
+
+        @RequiredArgsConstructor
+        public static class Padding {
+            private final SubArrayIndex t;
+
+            public JRightPadded<Expression> getStartIndex() {
+                return t.startIndex;
+            }
+
+            public Ruby.SubArrayIndex withStartIndex(JRightPadded<Expression> startIndex) {
+                return t.startIndex == startIndex ? t : new Ruby.SubArrayIndex(t.id, t.prefix, t.markers, t.startIndex, t.length);
+            }
+        }
+    }
+
+    @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
+    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+    @RequiredArgsConstructor
+    @AllArgsConstructor(access = AccessLevel.PRIVATE)
     final class Yield implements Ruby, Statement {
         @Nullable
         @NonFinal
