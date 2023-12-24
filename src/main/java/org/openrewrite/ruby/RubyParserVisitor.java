@@ -162,11 +162,6 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         J receiver = convert(node.getReceiverNode());
         Space beforeDot = sourceBefore(".");
         J.Identifier name = getIdentifier(node.getName());
-        JContainer<Expression> args = convertArgs("(", node.getArgsNode(), ")");
-        if (node.getIterNode() != null) {
-            args = JContainer.withElements(args,
-                    ListUtils.concat(args.getElements(), (Expression) convert(node.getIterNode())));
-        }
         if (name.getSimpleName().equals("new")) {
             return new J.NewClass(
                     randomId(),
@@ -175,7 +170,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     padRight(new J.Empty(randomId(), EMPTY, Markers.EMPTY), beforeDot),
                     name.getPrefix(),
                     (TypeTree) receiver,
-                    args,
+                    convertCallArgs(node),
                     null,
                     null
             );
@@ -187,7 +182,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     padRight((Expression) receiver, beforeDot),
                     null,
                     name,
-                    args,
+                    convertCallArgs(node),
                     null
             );
         }
@@ -447,21 +442,51 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     public J visitFCallNode(FCallNode node) {
         Space prefix = whitespace();
         J.Identifier name = getIdentifier(node.getName());
-        JContainer<Expression> args = convertArgs("(", node.getArgsNode(), ")");
-        if (node.getIterNode() != null) {
-            args = JContainer.withElements(args,
-                    ListUtils.concat(args.getElements(), (Expression) convert(node.getIterNode())));
-        }
-        return new J.MethodInvocation(
+        J.MethodInvocation method = new J.MethodInvocation(
                 randomId(),
                 prefix,
                 Markers.EMPTY,
                 null,
                 null,
                 name,
-                args,
+                convertCallArgs(node),
                 null
         );
+
+        if (method.getSimpleName().equals("lambda")) {
+            assert method.getArguments().size() == 2 : "lambda should have exactly one argument -- a block";
+            Expression lastArg = method.getArguments().get(1);
+            assert lastArg instanceof Ruby.Block : "lambda should have exactly one argument -- a block";
+
+            Ruby.Block block = (Ruby.Block) lastArg;
+            JContainer<J> parameters = block.getPadding().getParameters();
+            return new J.Lambda(
+                    method.getId(),
+                    method.getPrefix(),
+                    method.getMarkers(),
+                    new J.Lambda.Parameters(
+                            randomId(),
+                            EMPTY,
+                            Markers.EMPTY,
+                            false,
+                            parameters == null ? emptyList() : parameters.getPadding().getElements()
+                    ),
+                    method.getPadding().getArguments().getBefore(),
+                    block.getBody(),
+                    null
+            );
+        }
+
+        return method;
+    }
+
+    private <T extends BlockAcceptingNode & IArgumentNode> JContainer<Expression> convertCallArgs(T node) {
+        JContainer<Expression> args = convertArgs("(", node.getArgsNode(), ")");
+        if (node.getIterNode() != null) {
+            args = JContainer.withElements(args,
+                    ListUtils.concat(args.getElements(), (Expression) convert(node.getIterNode())));
+        }
+        return args;
     }
 
     @Override
