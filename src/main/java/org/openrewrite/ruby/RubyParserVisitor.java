@@ -15,6 +15,7 @@
  */
 package org.openrewrite.ruby;
 
+import org.jetbrains.annotations.NotNull;
 import org.jruby.RubySymbol;
 import org.jruby.ast.*;
 import org.jruby.ast.types.INameNode;
@@ -1119,6 +1120,46 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                                 padLeft(sourceBefore("="), convert(((LocalAsgnNode) node.getValue()).getValueNode())),
                         null
                 ), EMPTY))
+        );
+    }
+
+    @Override
+    public J visitPostExeNode(PostExeNode node) {
+        Space prefix = sourceBefore("END");
+        return new Ruby.End(
+                randomId(),
+                prefix,
+                Markers.EMPTY,
+                convertBeginEndBlock(node)
+        );
+    }
+
+    @Override
+    public J visitPreExeNode(PreExeNode node) {
+        Space prefix = sourceBefore("BEGIN");
+        return new Ruby.Begin(
+                randomId(),
+                prefix,
+                Markers.EMPTY,
+                convertBeginEndBlock(node)
+        );
+    }
+
+    private J.Block convertBeginEndBlock(IterNode node) {
+        Space blockPrefix = sourceBefore("{");
+        List<JRightPadded<Statement>> statements = convertBlockStatements(
+                node.getBodyNode() instanceof BlockNode ?
+                        Arrays.asList(((BlockNode) node.getBodyNode()).children()) :
+                        singletonList(node.getBodyNode()),
+                n -> EMPTY
+        );
+        return new J.Block(
+                randomId(),
+                blockPrefix,
+                Markers.EMPTY,
+                JRightPadded.build(false),
+                statements,
+                sourceBefore("}")
         );
     }
 

@@ -324,6 +324,28 @@ public interface Ruby extends J {
         }
     }
 
+    @Value
+    @With
+    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+    class Begin implements Ruby, Statement {
+        @EqualsAndHashCode.Include
+        UUID id;
+
+        Space prefix;
+        Markers markers;
+        J.Block block;
+
+        @Override
+        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
+            return v.visitBegin(this, p);
+        }
+
+        @Override
+        public CoordinateBuilder.Statement getCoordinates() {
+            return new CoordinateBuilder.Statement(this);
+        }
+    }
+
     @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
     @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
     @RequiredArgsConstructor
@@ -582,7 +604,6 @@ public interface Ruby extends J {
      * Has no state or behavior of its own aside from the Expression it wraps.
      */
     @SuppressWarnings("unchecked")
-    @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
     @Value
     @With
     @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
@@ -714,6 +735,28 @@ public interface Ruby extends J {
             public Hash withElements(JContainer<KeyValue> elements) {
                 return t.elements == elements ? t : new Hash(t.id, t.prefix, t.markers, elements, t.type);
             }
+        }
+    }
+
+    @Value
+    @With
+    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+    class End implements Ruby, Statement {
+        @EqualsAndHashCode.Include
+        UUID id;
+
+        Space prefix;
+        Markers markers;
+        J.Block block;
+
+        @Override
+        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
+            return v.visitEnd(this, p);
+        }
+
+        @Override
+        public CoordinateBuilder.Statement getCoordinates() {
+            return new CoordinateBuilder.Statement(this);
         }
     }
 

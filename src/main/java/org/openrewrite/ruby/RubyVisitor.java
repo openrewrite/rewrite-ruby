@@ -72,6 +72,14 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         return l;
     }
 
+    public J visitBegin(Ruby.Begin begin, P p) {
+        Ruby.Begin b = begin;
+        b = b.withPrefix(visitSpace(b.getPrefix(), RubySpace.Location.BEGIN_PREFIX, p));
+        b = b.withMarkers(visitMarkers(b.getMarkers(), p));
+        b = b.withBlock((J.Block) visit(b.getBlock(), p));
+        return b;
+    }
+
     public J visitBinary(Ruby.Binary binary, P p) {
         Ruby.Binary b = binary;
         b = b.withPrefix(visitSpace(b.getPrefix(), RubySpace.Location.BINARY_PREFIX, p));
@@ -142,6 +150,14 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         v = v.withTree(visit(v.getTree(), p));
         v = v.withAfter(visitSpace(v.getAfter(), RubySpace.Location.DELIMITED_STRING_VALUE_SUFFIX, p));
         return v;
+    }
+
+    public J visitEnd(Ruby.End end, P p) {
+        Ruby.End e = end;
+        e = e.withPrefix(visitSpace(e.getPrefix(), RubySpace.Location.END_PREFIX, p));
+        e = e.withMarkers(visitMarkers(e.getMarkers(), p));
+        e = e.withBlock((J.Block) visit(e.getBlock(), p));
+        return e;
     }
 
     public J visitExpansion(Ruby.Expansion expansion, P p) {

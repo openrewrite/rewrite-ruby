@@ -78,6 +78,20 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     }
 
     @Override
+    public J visitBegin(Ruby.Begin begin, PrintOutputCapture<P> p) {
+        beforeSyntax(begin, RubySpace.Location.BEGIN_PREFIX, p);
+        p.append("BEGIN");
+        visitSpace(begin.getBlock().getPrefix(), Space.Location.BLOCK_PREFIX, p);
+        visitMarkers(begin.getBlock().getMarkers(), p);
+        p.append("{");
+        visit(begin.getBlock().getStatements(), p);
+        visitSpace(begin.getBlock().getEnd(), Space.Location.BLOCK_END, p);
+        p.append("}");
+        afterSyntax(begin, p);
+        return begin;
+    }
+
+    @Override
     public J visitBinary(Ruby.Binary binary, PrintOutputCapture<P> p) {
         String keyword = "";
         switch (binary.getOperator()) {
@@ -115,6 +129,26 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         p.append(block.isInline() ? "}" : "end");
         afterSyntax(block, p);
         return block;
+    }
+
+    @Override
+    public J visitClassMethod(Ruby.ClassMethod method, PrintOutputCapture<P> p) {
+        beforeSyntax(method, RubySpace.Location.CLASS_METHOD_PREFIX, p);
+        p.append("def");
+        visit(method.getReceiver(), p);
+        visitSpace(method.getPadding().getMethod().getBefore(), RubySpace.Location.CLASS_METHOD_NAME_PREFIX, p);
+        visitMarkers(method.getPadding().getMethod().getMarkers(), p);
+        p.append(".");
+        visit(method.getMethod().getName(), p);
+        boolean omitParentheses = method.getMethod().getPadding().getParameters()
+                .getMarkers().findFirst(OmitParentheses.class).isPresent();
+        visitContainer(omitParentheses ? "" : "(", method.getMethod().getPadding().getParameters(),
+                RubyContainer.Location.CLASS_METHOD_DECLARATION_PARAMETERS, ",",
+                omitParentheses ? "" : ")", p);
+        visit(method.getMethod().getBody(), p);
+        p.append("end");
+        afterSyntax(method, p);
+        return method;
     }
 
     @Override
@@ -161,26 +195,6 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     }
 
     @Override
-    public J visitClassMethod(Ruby.ClassMethod method, PrintOutputCapture<P> p) {
-        beforeSyntax(method, RubySpace.Location.CLASS_METHOD_PREFIX, p);
-        p.append("def");
-        visit(method.getReceiver(), p);
-        visitSpace(method.getPadding().getMethod().getBefore(), RubySpace.Location.CLASS_METHOD_NAME_PREFIX, p);
-        visitMarkers(method.getPadding().getMethod().getMarkers(), p);
-        p.append(".");
-        visit(method.getMethod().getName(), p);
-        boolean omitParentheses = method.getMethod().getPadding().getParameters()
-                .getMarkers().findFirst(OmitParentheses.class).isPresent();
-        visitContainer(omitParentheses ? "" : "(", method.getMethod().getPadding().getParameters(),
-                RubyContainer.Location.CLASS_METHOD_DECLARATION_PARAMETERS, ",",
-                omitParentheses ? "" : ")", p);
-        visit(method.getMethod().getBody(), p);
-        p.append("end");
-        afterSyntax(method, p);
-        return method;
-    }
-
-    @Override
     public J visitDelimitedStringValue(Ruby.DelimitedString.Value value, PrintOutputCapture<P> p) {
         beforeSyntax(value, RubySpace.Location.DELIMITED_STRING_VALUE_PREFIX, p);
         p.append("#{");
@@ -189,6 +203,20 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         p.append('}');
         afterSyntax(value, p);
         return value;
+    }
+
+    @Override
+    public J visitEnd(Ruby.End end, PrintOutputCapture<P> p) {
+        beforeSyntax(end, RubySpace.Location.END_PREFIX, p);
+        p.append("END");
+        visitSpace(end.getBlock().getPrefix(), Space.Location.BLOCK_PREFIX, p);
+        visitMarkers(end.getBlock().getMarkers(), p);
+        p.append("{");
+        visit(end.getBlock().getStatements(), p);
+        visitSpace(end.getBlock().getEnd(), Space.Location.BLOCK_END, p);
+        p.append("}");
+        afterSyntax(end, p);
+        return end;
     }
 
     @Override
