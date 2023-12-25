@@ -97,7 +97,6 @@ public class ClassDeclarationTest implements RewriteTest {
           ruby(
             """
               class Point
-                  attr_reader :x, :y # Define accessor methods for our instance variables
                   def Point.sum(*points)
                   end
               end

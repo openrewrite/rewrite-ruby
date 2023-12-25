@@ -289,7 +289,24 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitDefnNode(DefnNode node) {
+        return convertMethodDeclaration(node);
+    }
+
+    @Override
+    public J visitDefsNode(DefsNode node) {
+        return convertMethodDeclaration(node);
+    }
+
+    private Statement convertMethodDeclaration(MethodDefNode node) {
         Space prefix = sourceBefore("def");
+
+        Expression classMethodReceiver = null;
+        Space classMethodReceiverDot = null;
+        if (node instanceof DefsNode) {
+            classMethodReceiver = convert(((DefsNode) node).getReceiverNode());
+            classMethodReceiverDot = sourceBefore(".");
+        }
+
         J.MethodDeclaration.IdentifierWithAnnotations name = new J.MethodDeclaration.IdentifierWithAnnotations(
                 getIdentifier(node.getName()),
                 emptyList()
@@ -343,7 +360,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         ));
 
         //noinspection unchecked
-        return new J.MethodDeclaration(
+        J.MethodDeclaration method = new J.MethodDeclaration(
                 randomId(),
                 prefix,
                 Markers.EMPTY,
@@ -358,6 +375,18 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 null,
                 null
         );
+
+        if (node instanceof DefsNode) {
+            return new Ruby.ClassMethod(
+                    randomId(),
+                    method.getPrefix(),
+                    Markers.EMPTY,
+                    classMethodReceiver,
+                    padLeft(classMethodReceiverDot, method.withPrefix(EMPTY))
+            );
+        }
+
+        return method;
     }
 
     @Override

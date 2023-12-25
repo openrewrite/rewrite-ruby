@@ -22,6 +22,7 @@ public class RubyContainer {
     @Getter
     public enum Location {
         BLOCK_PARAMETERS(RubySpace.Location.BLOCK_PARAMETERS, RubyRightPadded.Location.BLOCK_PARAMETERS_SUFFIX),
+        CLASS_METHOD_DECLARATION_PARAMETERS(RubySpace.Location.CLASS_METHOD_DECLARATION_PARAMETERS, RubyRightPadded.Location.CLASS_METHOD_DECLARATION_PARAMETERS_SUFFIX),
         HASH_ELEMENTS(RubySpace.Location.HASH, RubyRightPadded.Location.KEY_VALUE_SUFFIX),
         LIST_LITERAL_ELEMENTS(RubySpace.Location.LIST_LITERAL, RubyRightPadded.Location.LIST_LITERAL_SUFFIX),
         MULTIPLE_ASSIGNMENT_ASSIGNMENTS(RubySpace.Location.MULTIPLE_ASSIGNMENT, RubyRightPadded.Location.MULTIPLE_ASSIGNMENT_SUFFIX),

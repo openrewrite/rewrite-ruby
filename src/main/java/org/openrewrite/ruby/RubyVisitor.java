@@ -109,6 +109,22 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         return b;
     }
 
+    public J visitClassMethod(Ruby.ClassMethod classMethod, P p) {
+        Ruby.ClassMethod c = classMethod;
+        c = c.withPrefix(visitSpace(c.getPrefix(), RubySpace.Location.CLASS_METHOD_PREFIX, p));
+        c = c.withMarkers(visitMarkers(c.getMarkers(), p));
+        Statement temp = (Statement) visitStatement(c, p);
+        if (!(temp instanceof Ruby.ClassMethod)) {
+            return temp;
+        } else {
+            c = (Ruby.ClassMethod) temp;
+        }
+        c = c.withReceiver((Expression) visit(c.getReceiver(), p));
+        c = c.getPadding().withMethod(visitLeftPadded(c.getPadding().getMethod(),
+                RubyLeftPadded.Location.CLASS_METHOD_RECEIVER_DOT, p));
+        return c;
+    }
+
     public J visitDelimitedString(Ruby.DelimitedString delimitedString, P p) {
         Ruby.DelimitedString ds = delimitedString;
         ds = ds.withPrefix(visitSpace(ds.getPrefix(), RubySpace.Location.DELIMITED_STRING_PREFIX, p));

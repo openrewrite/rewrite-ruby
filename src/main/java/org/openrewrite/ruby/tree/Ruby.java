@@ -417,6 +417,97 @@ public interface Ruby extends J {
         }
     }
 
+    @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
+    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+    @RequiredArgsConstructor
+    @AllArgsConstructor(access = AccessLevel.PRIVATE)
+    final class ClassMethod implements Ruby, Statement, TypedTree {
+        @Nullable
+        @NonFinal
+        transient WeakReference<Padding> padding;
+
+        @Getter
+        @With
+        @EqualsAndHashCode.Include
+        UUID id;
+
+        @Getter
+        @With
+        Space prefix;
+
+        @Getter
+        @With
+        Markers markers;
+
+        @Getter
+        @With
+        Expression receiver;
+
+        JLeftPadded<J.MethodDeclaration> method;
+
+        public J.MethodDeclaration getMethod() {
+            return method.getElement();
+        }
+
+        public ClassMethod withMethod(J.MethodDeclaration method) {
+            return getPadding().withMethod(this.method.withElement(method));
+        }
+
+        @Override
+        public @Nullable JavaType getType() {
+            return method.getElement().getType();
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public ClassMethod withType(@Nullable JavaType type) {
+            return withMethod(method.getElement().withType(type));
+        }
+
+        public @Nullable JavaType.Method getMethodTye() {
+            return method.getElement().getMethodType();
+        }
+
+        @Override
+        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
+            return v.visitClassMethod(this, p);
+        }
+
+        @Transient
+        @Override
+        public CoordinateBuilder.Statement getCoordinates() {
+            return new CoordinateBuilder.Statement(this);
+        }
+
+        public Padding getPadding() {
+            Padding p;
+            if (this.padding == null) {
+                p = new Padding(this);
+                this.padding = new WeakReference<>(p);
+            } else {
+                p = this.padding.get();
+                if (p == null || p.t != this) {
+                    p = new Padding(this);
+                    this.padding = new WeakReference<>(p);
+                }
+            }
+            return p;
+        }
+
+        @RequiredArgsConstructor
+        public static class Padding {
+            private final ClassMethod t;
+
+            public JLeftPadded<J.MethodDeclaration> getMethod() {
+                return t.method;
+            }
+
+            public ClassMethod withMethod(JLeftPadded<J.MethodDeclaration> method) {
+                return t.method == method ? t : new ClassMethod(t.id, t.prefix, t.markers, t.receiver, method);
+            }
+        }
+    }
+
     @ToString
     @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
     @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)

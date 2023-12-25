@@ -164,6 +164,26 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     }
 
     @Override
+    public J visitClassMethod(Ruby.ClassMethod method, PrintOutputCapture<P> p) {
+        beforeSyntax(method, RubySpace.Location.CLASS_METHOD_PREFIX, p);
+        p.append("def");
+        visit(method.getReceiver(), p);
+        visitSpace(method.getPadding().getMethod().getBefore(), RubySpace.Location.CLASS_METHOD_RECEIVER_DOT, p);
+        visitMarkers(method.getPadding().getMethod().getMarkers(), p);
+        p.append(".");
+        visit(method.getMethod().getName(), p);
+        boolean omitParentheses = method.getMethod().getPadding().getParameters()
+                .getMarkers().findFirst(OmitParentheses.class).isPresent();
+        visitContainer(omitParentheses ? "" : "(", method.getMethod().getPadding().getParameters(),
+                RubyContainer.Location.CLASS_METHOD_DECLARATION_PARAMETERS, ",",
+                omitParentheses ? "" : ")", p);
+        visit(method.getMethod().getBody(), p);
+        p.append("end");
+        afterSyntax(method, p);
+        return method;
+    }
+
+    @Override
     public J visitDelimitedStringValue(Ruby.DelimitedString.Value value, PrintOutputCapture<P> p) {
         beforeSyntax(value, RubySpace.Location.DELIMITED_STRING_VALUE_PREFIX, p);
         p.append("#{");
@@ -279,6 +299,7 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         return delegate.visitSpace(space, loc, p);
     }
 
+    @SuppressWarnings("SameParameterValue")
     protected void visitContainer(String before, @Nullable JContainer<? extends J> container, RubyContainer.Location location,
                                   String suffixBetween, @Nullable String after, PrintOutputCapture<P> p) {
         if (container == null) {

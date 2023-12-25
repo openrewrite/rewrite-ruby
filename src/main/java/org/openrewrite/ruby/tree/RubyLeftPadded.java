@@ -17,7 +17,8 @@ package org.openrewrite.ruby.tree;
 
 public class RubyLeftPadded {
     public enum Location {
-        BINARY_OPERATOR(RubySpace.Location.BINARY_OPERATOR);
+        BINARY_OPERATOR(RubySpace.Location.BINARY_OPERATOR),
+        CLASS_METHOD_RECEIVER_DOT(RubySpace.Location.CLASS_METHOD_RECEIVER_DOT);
 
         private final RubySpace.Location beforeLocation;
 
