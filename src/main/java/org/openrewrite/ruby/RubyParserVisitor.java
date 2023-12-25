@@ -202,8 +202,8 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     randomId(),
                     argElems.get(0).getPrefix(),
                     Markers.EMPTY,
-                    padRight(argElems.get(0).withPrefix(EMPTY), args.getPadding().getElements().get(0).getAfter()),
-                    (Expression) args.getElements().get(1)
+                    argElems.get(0).withPrefix(EMPTY),
+                    padLeft(args.getPadding().getElements().get(0).getAfter(), (Expression) args.getElements().get(1))
             ));
         }
 
@@ -671,8 +671,8 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     randomId(),
                     whitespace(),
                     Markers.EMPTY,
-                    padRight(convert(kv.getKey()), sourceBefore("=>")),
-                    convert(kv.getValue()),
+                    convert(kv.getKey()),
+                    padLeft(sourceBefore("=>"), convert(kv.getValue())),
                     null
             ), i == nodePairs.size() - 1 ? sourceBefore("}") : sourceBefore(",")));
         }

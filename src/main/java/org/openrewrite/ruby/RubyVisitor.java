@@ -44,10 +44,6 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         return super.visitContainer(container, JContainer.Location.LANGUAGE_EXTENSION, p);
     }
 
-    public <T> JLeftPadded<T> visitLeftPadded(JLeftPadded<T> left, RubyLeftPadded.Location loc, P p) {
-        return super.visitLeftPadded(left, JLeftPadded.Location.LANGUAGE_EXTENSION, p);
-    }
-
     public <T> JRightPadded<T> visitRightPadded(@Nullable JRightPadded<T> right, RubyRightPadded.Location loc, P p) {
         return super.visitRightPadded(right, JRightPadded.Location.LANGUAGE_EXTENSION, p);
     }
@@ -87,7 +83,7 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
             b = (Ruby.Binary) temp;
         }
         b = b.withLeft(visitAndCast(b.getLeft(), p));
-        b = b.getPadding().withOperator(visitLeftPadded(b.getPadding().getOperator(), RubyLeftPadded.Location.BINARY_OPERATOR, p));
+        b = b.getPadding().withOperator(visitLeftPadded(b.getPadding().getOperator(), JLeftPadded.Location.LANGUAGE_EXTENSION, p));
         b = b.withRight(visitAndCast(b.getRight(), p));
         b = b.withType(visitType(b.getType(), p));
         return b;
@@ -121,7 +117,7 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         }
         c = c.withReceiver((Expression) visit(c.getReceiver(), p));
         c = c.getPadding().withMethod(visitLeftPadded(c.getPadding().getMethod(),
-                RubyLeftPadded.Location.CLASS_METHOD_RECEIVER_DOT, p));
+                JLeftPadded.Location.LANGUAGE_EXTENSION, p));
         return c;
     }
 
@@ -188,8 +184,8 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         } else {
             k = (Ruby.KeyValue) temp;
         }
-        k = k.getPadding().withKey(visitRightPadded(k.getPadding().getKey(), RubyRightPadded.Location.KEY_VALUE_SUFFIX, p));
-        k = k.withValue((Expression) visit(k.getValue(), p));
+        k = k.withKey((Expression) visit(k.getKey(), p));
+        k = k.getPadding().withValue(visitLeftPadded(k.getPadding().getValue(), JLeftPadded.Location.LANGUAGE_EXTENSION, p));
         k = k.withType(visitType(k.getType(), p));
         return k;
     }

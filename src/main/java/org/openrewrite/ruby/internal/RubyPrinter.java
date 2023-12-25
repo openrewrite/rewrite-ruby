@@ -29,10 +29,7 @@ import org.openrewrite.marker.Marker;
 import org.openrewrite.marker.Markers;
 import org.openrewrite.ruby.RubyVisitor;
 import org.openrewrite.ruby.marker.*;
-import org.openrewrite.ruby.tree.Ruby;
-import org.openrewrite.ruby.tree.RubyContainer;
-import org.openrewrite.ruby.tree.RubyRightPadded;
-import org.openrewrite.ruby.tree.RubySpace;
+import org.openrewrite.ruby.tree.*;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -168,7 +165,7 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         beforeSyntax(method, RubySpace.Location.CLASS_METHOD_PREFIX, p);
         p.append("def");
         visit(method.getReceiver(), p);
-        visitSpace(method.getPadding().getMethod().getBefore(), RubySpace.Location.CLASS_METHOD_RECEIVER_DOT, p);
+        visitSpace(method.getPadding().getMethod().getBefore(), RubySpace.Location.CLASS_METHOD_NAME_PREFIX, p);
         visitMarkers(method.getPadding().getMethod().getMarkers(), p);
         p.append(".");
         visit(method.getMethod().getName(), p);
@@ -214,9 +211,8 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     @Override
     public J visitKeyValue(Ruby.KeyValue keyValue, PrintOutputCapture<P> p) {
         beforeSyntax(keyValue, RubySpace.Location.KEY_VALUE_PREFIX, p);
-        visitRightPadded(keyValue.getPadding().getKey(), RubyRightPadded.Location.KEY_VALUE_SUFFIX, p);
-        p.append("=>");
-        visit(keyValue.getValue(), p);
+        visit(keyValue.getKey(), p);
+        visitLeftPadded("=>", keyValue.getPadding().getValue(), RubyLeftPadded.Location.KEY_VALUE_VALUE_PREFIX, p);
         afterSyntax(keyValue, p);
         return keyValue;
     }
@@ -243,9 +239,8 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     @Override
     public J visitSubArrayIndex(Ruby.SubArrayIndex subArrayIndex, PrintOutputCapture<P> p) {
         beforeSyntax(subArrayIndex, RubySpace.Location.SUB_ARRAY_INDEX_PREFIX, p);
-        visitRightPadded(subArrayIndex.getPadding().getStartIndex(), RubyRightPadded.Location.SUB_ARRAY_START_INDEX, p);
-        p.append(",");
-        visit(subArrayIndex.getLength(), p);
+        visit(subArrayIndex.getStartIndex(), p);
+        visitLeftPadded(",", subArrayIndex.getPadding().getLength(), RubyLeftPadded.Location.SUB_ARRAY_LENGTH_PREFIX, p);
         afterSyntax(subArrayIndex, p);
         return subArrayIndex;
     }
@@ -264,16 +259,15 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         return yield;
     }
 
-    protected void beforeSyntax(J j, @SuppressWarnings("unused") RubySpace.Location loc,
-                                PrintOutputCapture<P> p) {
-        beforeSyntax(j.getPrefix(), j.getMarkers(), p);
+    protected void beforeSyntax(J j, RubySpace.Location loc, PrintOutputCapture<P> p) {
+        beforeSyntax(j.getPrefix(), j.getMarkers(), loc, p);
     }
 
-    protected void beforeSyntax(Space prefix, Markers markers, PrintOutputCapture<P> p) {
+    protected void beforeSyntax(Space prefix, Markers markers, RubySpace.Location location, PrintOutputCapture<P> p) {
         for (Marker marker : markers.getMarkers()) {
             p.append(p.getMarkerPrinter().beforePrefix(marker, new Cursor(getCursor(), marker), MARKER_WRAPPER));
         }
-        visitSpace(prefix, Space.Location.LANGUAGE_EXTENSION, p);
+        visitSpace(prefix, location, p);
         visitMarkers(markers, p);
         for (Marker marker : markers.getMarkers()) {
             p.append(p.getMarkerPrinter().beforeSyntax(marker, new Cursor(getCursor(), marker), MARKER_WRAPPER));
@@ -311,17 +305,29 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         p.append(after == null ? "" : after);
     }
 
-    protected void visitRightPadded(List<? extends JRightPadded<? extends J>> nodes, RubyRightPadded.Location location, String suffixBetween, PrintOutputCapture<P> p) {
+    public void visitLeftPadded(@Nullable String prefix, @Nullable JLeftPadded<? extends J> leftPadded,
+                                RubyLeftPadded.Location location, PrintOutputCapture<P> p) {
+        if (leftPadded != null) {
+            beforeSyntax(leftPadded.getBefore(), leftPadded.getMarkers(), location.getBeforeLocation(), p);
+            if (prefix != null) {
+                p.append(prefix);
+            }
+            visit(leftPadded.getElement(), p);
+            afterSyntax(leftPadded.getMarkers(), p);
+        }
+    }
+
+    protected void visitRightPadded(List<? extends JRightPadded<? extends J>> nodes, RubyRightPadded.Location location, String suffix, PrintOutputCapture<P> p) {
         for (int i = 0; i < nodes.size(); i++) {
             JRightPadded<? extends J> node = nodes.get(i);
             visit(node.getElement(), p);
             visitSpace(node.getAfter(), location.getAfterLocation(), p);
             if (i < nodes.size() - 1) {
-                p.append(suffixBetween);
+                p.append(suffix);
             } else {
                 for (Marker m : node.getMarkers().getMarkers()) {
                     if (m instanceof TrailingComma) {
-                        p.append(suffixBetween);
+                        p.append(suffix);
                         visitSpace(((TrailingComma) m).getSuffix(), Space.Location.LANGUAGE_EXTENSION, p);
                         break;
                     }

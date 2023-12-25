@@ -773,19 +773,21 @@ public interface Ruby extends J {
         @With
         Markers markers;
 
-        JRightPadded<Expression> key;
-
-        public Expression getKey() {
-            return key.getElement();
-        }
-
-        public KeyValue withKey(@Nullable Expression key) {
-            return getPadding().withKey(JRightPadded.withElement(this.key, key));
-        }
+        @Getter
+        @With
+        Expression key;
 
         @Getter
         @With
-        Expression value;
+        JLeftPadded<Expression> value;
+
+        public Expression getValue() {
+            return value.getElement();
+        }
+
+        public KeyValue withValue(@Nullable Expression value) {
+            return getPadding().withValue(JLeftPadded.withElement(this.value, value));
+        }
 
         @Getter
         @With
@@ -822,13 +824,12 @@ public interface Ruby extends J {
         public static class Padding {
             private final KeyValue t;
 
-            @Nullable
-            public JRightPadded<Expression> getKey() {
-                return t.key;
+            public JLeftPadded<Expression> getValue() {
+                return t.value;
             }
 
-            public KeyValue withKey(@Nullable JRightPadded<Expression> key) {
-                return t.key == key ? t : new KeyValue(t.id, t.prefix, t.markers, key, t.value, t.type);
+            public KeyValue withValue(JLeftPadded<Expression> value) {
+                return t.value == value ? t : new KeyValue(t.id, t.prefix, t.markers, t.key, value, t.type);
             }
         }
     }
@@ -977,19 +978,20 @@ public interface Ruby extends J {
         @With
         Markers markers;
 
-        JRightPadded<Expression> startIndex;
-
-        public Expression getStartIndex() {
-            return startIndex.getElement();
-        }
-
-        public SubArrayIndex withStartIndex(Expression startIndex) {
-            return getPadding().withStartIndex(JRightPadded.withElement(this.startIndex, startIndex));
-        }
-
         @Getter
         @With
-        Expression length;
+        Expression startIndex;
+
+        JLeftPadded<Expression> length;
+
+        public Expression getLength() {
+            return length.getElement();
+        }
+
+        public SubArrayIndex withLength(Expression length) {
+            return getPadding().withLength(JLeftPadded.withElement(this.length, length));
+        }
+
 
         @Override
         public <P> J acceptRuby(RubyVisitor<P> v, P p) {
@@ -1032,12 +1034,12 @@ public interface Ruby extends J {
         public static class Padding {
             private final SubArrayIndex t;
 
-            public JRightPadded<Expression> getStartIndex() {
-                return t.startIndex;
+            public JLeftPadded<Expression> getLength() {
+                return t.length;
             }
 
-            public Ruby.SubArrayIndex withStartIndex(JRightPadded<Expression> startIndex) {
-                return t.startIndex == startIndex ? t : new Ruby.SubArrayIndex(t.id, t.prefix, t.markers, t.startIndex, t.length);
+            public Ruby.SubArrayIndex withLength(JLeftPadded<Expression> length) {
+                return t.length == length ? t : new Ruby.SubArrayIndex(t.id, t.prefix, t.markers, t.startIndex, length);
             }
         }
     }

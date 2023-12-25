@@ -15,19 +15,21 @@
  */
 package org.openrewrite.ruby.tree;
 
+import lombok.Getter;
+
 public class RubyLeftPadded {
+
+    @Getter
     public enum Location {
         BINARY_OPERATOR(RubySpace.Location.BINARY_OPERATOR),
-        CLASS_METHOD_RECEIVER_DOT(RubySpace.Location.CLASS_METHOD_RECEIVER_DOT);
+        CLASS_METHOD_NAME_PREFIX(RubySpace.Location.CLASS_METHOD_NAME_PREFIX),
+        KEY_VALUE_VALUE_PREFIX(RubySpace.Location.KEY_VALUE_VALUE_PREFIX),
+        SUB_ARRAY_LENGTH_PREFIX(RubySpace.Location.SUB_ARRAY_LENGTH_PREFIX);
 
         private final RubySpace.Location beforeLocation;
 
         Location(RubySpace.Location beforeLocation) {
             this.beforeLocation = beforeLocation;
-        }
-
-        public RubySpace.Location getBeforeLocation() {
-            return beforeLocation;
         }
     }
 }
