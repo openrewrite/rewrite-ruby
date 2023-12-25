@@ -237,6 +237,74 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     }
 
     @Override
+    public J visitRescue(Ruby.Rescue rescue, PrintOutputCapture<P> p) {
+        beforeSyntax(rescue, RubySpace.Location.RESCUE_PREFIX, p);
+        p.append("begin");
+        J.Try aTry = rescue.getTry();
+        visitSpace(aTry.getPrefix(), Space.Location.TRY_PREFIX, p);
+        visitMarkers(aTry.getMarkers(), p);
+        visit(aTry.getBody(), p);
+
+        for (J.Try.Catch aCatch : aTry.getCatches()) {
+            visitSpace(aCatch.getPrefix(), Space.Location.CATCH_PREFIX, p);
+            visitMarkers(aCatch.getMarkers(), p);
+            p.append("rescue");
+
+            J.VariableDeclarations param = aCatch.getParameter().getTree();
+            visitSpace(param.getPrefix(), Space.Location.CONTROL_PARENTHESES_PREFIX, p);
+            visitMarkers(param.getMarkers(), p);
+
+            TypeTree types = param.getTypeExpression();
+            if (types instanceof J.MultiCatch) {
+                J.MultiCatch multiCatch = (J.MultiCatch) types;
+                visitRightPadded(multiCatch.getPadding().getAlternatives(), RubyRightPadded.Location.RESCUE_TYPE_SUFFIX, ",", p);
+            } else {
+                visit(types, p);
+            }
+
+            if (!param.getVariables().isEmpty()) {
+                List<J.VariableDeclarations.NamedVariable> variables = param.getVariables();
+                for (int i = 0; i < variables.size(); i++) {
+                    if (i > 1) {
+                        throw new IllegalArgumentException("Expected at most one variable name in rescue");
+                    }
+                    J.VariableDeclarations.NamedVariable exceptionName = variables.get(i);
+                    visitSpace(exceptionName.getPrefix(), Space.Location.LANGUAGE_EXTENSION, p);
+                    visitMarkers(exceptionName.getMarkers(), p);
+                    p.append("=>");
+                    visit(exceptionName.getName(), p);
+                }
+            }
+
+            visit(aCatch.getBody(), p);
+        }
+
+        if (rescue.getElse() != null) {
+            visitSpace(rescue.getElse().getPrefix(), Space.Location.BLOCK_PREFIX, p);
+            p.append("else");
+            visit(rescue.getElse().withPrefix(Space.EMPTY), p);
+        }
+
+        if (aTry.getFinally() != null) {
+            visitSpace(aTry.getFinally().getPrefix(), Space.Location.BLOCK_PREFIX, p);
+            p.append("ensure");
+            visit(aTry.getFinally().withPrefix(Space.EMPTY), p);
+        }
+
+        p.append("end");
+        afterSyntax(rescue, p);
+        return rescue;
+    }
+
+    @Override
+    public J visitRetry(Ruby.Retry retry, PrintOutputCapture<P> p) {
+        beforeSyntax(retry, RubySpace.Location.RETRY_PREFIX, p);
+        p.append("retry");
+        afterSyntax(retry, p);
+        return retry;
+    }
+
+    @Override
     public J visitSubArrayIndex(Ruby.SubArrayIndex subArrayIndex, PrintOutputCapture<P> p) {
         beforeSyntax(subArrayIndex, RubySpace.Location.SUB_ARRAY_INDEX_PREFIX, p);
         visit(subArrayIndex.getStartIndex(), p);
@@ -317,17 +385,17 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         }
     }
 
-    protected void visitRightPadded(List<? extends JRightPadded<? extends J>> nodes, RubyRightPadded.Location location, String suffix, PrintOutputCapture<P> p) {
+    protected void visitRightPadded(List<? extends JRightPadded<? extends J>> nodes, RubyRightPadded.Location location, String suffixBetween, PrintOutputCapture<P> p) {
         for (int i = 0; i < nodes.size(); i++) {
             JRightPadded<? extends J> node = nodes.get(i);
             visit(node.getElement(), p);
             visitSpace(node.getAfter(), location.getAfterLocation(), p);
             if (i < nodes.size() - 1) {
-                p.append(suffix);
+                p.append(suffixBetween);
             } else {
                 for (Marker m : node.getMarkers().getMarkers()) {
                     if (m instanceof TrailingComma) {
-                        p.append(suffix);
+                        p.append(suffixBetween);
                         visitSpace(((TrailingComma) m).getSuffix(), Space.Location.LANGUAGE_EXTENSION, p);
                         break;
                     }
@@ -675,6 +743,12 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
             visit(aReturn.getExpression(), p);
             afterSyntax(aReturn, p);
             return aReturn;
+        }
+
+        @Override
+        public J visitTry(J.Try tryable, PrintOutputCapture<P> p) {
+            throw new UnsupportedOperationException("A try statement is not supported in Ruby without being " +
+                                                    "wrapped in a Rescue object.");
         }
 
         @Override

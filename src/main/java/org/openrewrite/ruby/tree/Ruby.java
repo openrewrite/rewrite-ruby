@@ -956,6 +956,93 @@ public interface Ruby extends J {
         }
     }
 
+    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+    @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
+    @AllArgsConstructor
+    final class Rescue implements Ruby, Statement {
+        @Getter
+        @With
+        @EqualsAndHashCode.Include
+        UUID id;
+
+        @Getter
+        @With
+        Space prefix;
+
+        @Getter
+        @With
+        Markers markers;
+
+        J.Try tryBlock;
+
+        /**
+         * A Java try block contains most of the functionality of a Ruby rescue block,
+         * including the guarded statements after begin, rescue clauses (equivalent to
+         * catch and multi-catch), and the ensure clause (equivalent to finally). The else
+         * block in Ruby is the only thing that has no corollary in Java, and is represented
+         * separately here.
+         *
+         * @return The "try" part of the rescue statement.
+         */
+        public Try getTry() {
+            return tryBlock;
+        }
+
+        public Rescue withTry(Try tryBlock) {
+            return this.tryBlock == tryBlock ? this : new Rescue(id, prefix, markers, tryBlock, elseClause);
+        }
+
+        @Nullable
+        J.Block elseClause;
+
+        @Nullable
+        public J.Block getElse() {
+            return elseClause;
+        }
+
+        public Rescue withElse(@Nullable J.Block elseClause) {
+            return this.elseClause == elseClause ? this : new Rescue(id, prefix, markers, tryBlock, elseClause);
+        }
+
+        @Override
+        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
+            return v.visitRescue(this, p);
+        }
+
+        @Override
+        @Transient
+        public CoordinateBuilder.Statement getCoordinates() {
+            return new CoordinateBuilder.Statement(this);
+        }
+
+        @Override
+        public String toString() {
+            return withPrefix(Space.EMPTY).printTrimmed(new JavaPrinter<>());
+        }
+    }
+
+    @Value
+    @With
+    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+    class Retry implements Ruby, Statement {
+        @EqualsAndHashCode.Include
+        UUID id;
+
+        Space prefix;
+        Markers markers;
+
+        @Override
+        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
+            return v.visitRetry(this, p);
+        }
+
+        @Override
+        @Transient
+        public CoordinateBuilder.Statement getCoordinates() {
+            return new CoordinateBuilder.Statement(this);
+        }
+    }
+
     @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
     @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
     @RequiredArgsConstructor

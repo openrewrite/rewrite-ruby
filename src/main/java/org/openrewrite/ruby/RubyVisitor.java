@@ -220,6 +220,34 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         return r;
     }
 
+    public J visitRescue(Ruby.Rescue rescue, P p) {
+        Ruby.Rescue r = rescue;
+        r = r.withPrefix(visitSpace(r.getPrefix(), RubySpace.Location.RESCUE_PREFIX, p));
+        r = r.withMarkers(visitMarkers(r.getMarkers(), p));
+        Statement temp = (Statement) visitStatement(r, p);
+        if (!(temp instanceof Ruby.Rescue)) {
+            return temp;
+        } else {
+            r = (Ruby.Rescue) temp;
+        }
+        r = r.withTry((J.Try) visitNonNull(r.getTry(), p));
+        r = r.withElse((J.Block) visit(r.getElse(), p));
+        return r;
+    }
+
+    public J visitRetry(Ruby.Retry retry, P p) {
+        Ruby.Retry r = retry;
+        r = r.withPrefix(visitSpace(r.getPrefix(), RubySpace.Location.RETRY_PREFIX, p));
+        r = r.withMarkers(visitMarkers(r.getMarkers(), p));
+        Statement temp = (Statement) visitStatement(r, p);
+        if (!(temp instanceof Ruby.Retry)) {
+            return temp;
+        } else {
+            r = (Ruby.Retry) temp;
+        }
+        return r;
+    }
+
     public J visitSubArrayIndex(Ruby.SubArrayIndex subArrayIndex, P p) {
         Ruby.SubArrayIndex s = subArrayIndex;
         s = s.withPrefix(visitSpace(s.getPrefix(), RubySpace.Location.SUB_ARRAY_INDEX_PREFIX, p));

@@ -28,6 +28,7 @@ public class RubyRightPadded {
         LIST_LITERAL_SUFFIX(RubySpace.Location.LIST_LITERAL_SUFFIX),
         MULTIPLE_ASSIGNMENT_INITIALIZERS_SUFFIX(RubySpace.Location.MULTIPLE_ASSIGNMENT_INITIALIZERS_SUFFIX),
         MULTIPLE_ASSIGNMENT_SUFFIX(RubySpace.Location.MULTIPLE_ASSIGNMENT_SUFFIX),
+        RESCUE_TYPE_SUFFIX(RubySpace.Location.RESCUE_TYPE_SUFFIX),
         YIELD_DATA_SUFFIX(RubySpace.Location.YIELD_DATA_SUFFIX);
 
         private final RubySpace.Location afterLocation;

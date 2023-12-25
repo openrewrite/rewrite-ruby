@@ -17,6 +17,7 @@ package org.openrewrite.ruby;
 
 import org.jruby.RubySymbol;
 import org.jruby.ast.*;
+import org.jruby.ast.types.INameNode;
 import org.jruby.ast.visitor.AbstractNodeVisitor;
 import org.jruby.ast.visitor.OperatorCallNode;
 import org.jruby.util.KeyValuePair;
@@ -110,6 +111,13 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 elements,
                 null
         );
+    }
+
+    @Override
+    public J visitBeginNode(BeginNode node) {
+        throw new UnsupportedOperationException("Calls to visitBeginNode have not been observed " +
+                                                "with a variety of rescue statements. Implement if one " +
+                                                "is found.");
     }
 
     @Override
@@ -349,14 +357,15 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         }
 
         J.Block bodyBlock = (J.Block) body;
-        bodyBlock = bodyBlock.getPadding().withStatements(ListUtils.mapLast(bodyBlock.getPadding().getStatements(), statement -> statement.getElement() instanceof J.Return ?
-                statement :
-                statement.withElement(new J.Return(
-                        randomId(),
-                        statement.getElement().getPrefix(),
-                        Markers.EMPTY.add(new ImplicitReturn(randomId())),
-                        statement.getElement().withPrefix(EMPTY)
-                ))
+        bodyBlock = bodyBlock.getPadding().withStatements(ListUtils.mapLast(bodyBlock.getPadding().getStatements(), statement ->
+                statement.getElement() instanceof J.Return || !(statement.getElement() instanceof Expression) ?
+                        statement :
+                        statement.withElement(new J.Return(
+                                randomId(),
+                                statement.getElement().getPrefix(),
+                                Markers.EMPTY.add(new ImplicitReturn(randomId())),
+                                statement.getElement().withPrefix(EMPTY)
+                        ))
         ));
 
         //noinspection unchecked
@@ -405,6 +414,11 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 (Expression) node.getEndNode().accept(this),
                 null
         );
+    }
+
+    @Override
+    public J visitDAsgnNode(DAsgnNode node) {
+        return visitAsgnNode(node, node.getName());
     }
 
     @Override
@@ -471,6 +485,39 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     @Override
     public J visitDXStrNode(DXStrNode node) {
         return visitDNode(node);
+    }
+
+    @Override
+    public J visitEnsureNode(EnsureNode node) {
+        Ruby.Rescue rescue = convert(node.getBodyNode());
+        Space prefix;
+        if (rescue.getElse() == null) {
+            List<J.Try.Catch> catches = rescue.getTry().getCatches();
+            prefix = catches.get(catches.size() - 1).getBody().getEnd();
+            rescue = rescue.withTry(rescue.getTry().withCatches(ListUtils.mapLast(catches, c ->
+                    c.withBody(c.getBody().withEnd(EMPTY)))));
+        } else {
+            prefix = rescue.getElse().getEnd();
+            rescue = rescue.withElse(rescue.getElse().withEnd(EMPTY));
+        }
+
+        skip("ensure");
+        List<JRightPadded<Statement>> ensureBody;
+        if (node.getEnsureNode() instanceof BlockNode) {
+            ensureBody = convertAll(Arrays.asList(((BlockNode) node.getEnsureNode()).children()),
+                    n -> EMPTY, n -> EMPTY);
+        } else {
+            ensureBody = singletonList(padRight(convert(node.getEnsureNode()), EMPTY));
+        }
+
+        return rescue.withTry(rescue.getTry().withFinally(new J.Block(
+                randomId(),
+                prefix,
+                Markers.EMPTY,
+                JRightPadded.build(false),
+                ensureBody,
+                sourceBefore("end")
+        )));
     }
 
     @Override
@@ -657,6 +704,11 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 ),
                 padRight(convert(node.getBodyNode()), sourceBefore("end"))
         );
+    }
+
+    @Override
+    public J visitGlobalVarNode(GlobalVarNode node) {
+        return getIdentifier(node.getName());
     }
 
     @Override
@@ -1210,6 +1262,156 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitRescueBodyNode(RescueBodyNode node) {
+        throw new UnsupportedOperationException("RescueBodyNode is a recursive data structure that is " +
+                                                "handled by visitRescueNode and so should never be called.");
+    }
+
+    @Override
+    public J visitRescueNode(RescueNode node) {
+        Space prefix = sourceBefore("begin");
+        Space bodyPrefix = whitespace();
+        J.Block body = visitBlock(node.getBodyNode());
+        List<J.Try.Catch> catches = convertCatches(node.getRescueNode(), emptyList());
+
+        J.Block elseBlock = null;
+        if (node.getElseNode() != null) {
+            Space elsePrefix = sourceBefore("else");
+            List<JRightPadded<Statement>> ensureBody;
+            if (node.getElseNode() instanceof BlockNode) {
+                ensureBody = convertAll(Arrays.asList(((BlockNode) node.getElseNode()).children()),
+                        n -> EMPTY, n -> EMPTY);
+            } else {
+                ensureBody = singletonList(padRight(convert(node.getElseNode()), EMPTY));
+            }
+            elseBlock = new J.Block(
+                    randomId(),
+                    elsePrefix,
+                    Markers.EMPTY,
+                    JRightPadded.build(false),
+                    ensureBody,
+                    whitespace()
+            );
+        }
+
+        if (elseBlock == null) {
+            // whitespace rather than sourceBefore("end") because an ensure may follow
+            catches = ListUtils.mapLast(catches, c -> c.withBody(c.getBody().withEnd(whitespace())));
+        }
+        if (source.startsWith("end", cursor)) {
+            skip("end");
+        }
+
+        return new Ruby.Rescue(
+                randomId(),
+                prefix,
+                Markers.EMPTY,
+                new J.Try(
+                        randomId(),
+                        bodyPrefix,
+                        Markers.EMPTY,
+                        JContainer.empty(),
+                        body,
+                        catches,
+                        null
+                ),
+                elseBlock
+        );
+    }
+
+    private List<J.Try.Catch> convertCatches(@Nullable RescueBodyNode rescue, List<J.Try.Catch> mappedRescues) {
+        if (rescue == null) {
+            return mappedRescues;
+        }
+        // delay allocation until at least one rescue is found
+        if (mappedRescues.isEmpty()) {
+            mappedRescues = new ArrayList<>(3);
+        }
+
+        Space prefix = sourceBefore("rescue");
+        Space exceptionVariablePrefix = whitespace();
+
+        List<JRightPadded<J>> exceptionTypes = convertAll(
+                Arrays.asList((((ArrayNode) rescue.getExceptionNodes()).children())),
+                n -> sourceBefore(","), n -> EMPTY);
+
+        List<JRightPadded<J.VariableDeclarations.NamedVariable>> names = new ArrayList<>(1);
+        List<JRightPadded<Statement>> catchBody;
+        Space beforeExceptionNamePrefix = whitespace();
+        Space bodyPrefix = beforeExceptionNamePrefix;
+        if (source.startsWith("=>", cursor)) {
+            skip("=>");
+            BlockNode body = (BlockNode) rescue.getBodyNode();
+
+            // because the exceptionName is being assigned to $!
+            J.Identifier exceptionName = getIdentifier(((INameNode) body.get(0)).getName());
+            names.add(padRight(new J.VariableDeclarations.NamedVariable(
+                    randomId(),
+                    beforeExceptionNamePrefix,
+                    Markers.EMPTY,
+                    exceptionName,
+                    emptyList(),
+                    null,
+                    null
+            ), EMPTY));
+
+            bodyPrefix = whitespace();
+            List<Node> bodyNodes = Arrays.asList(body.children());
+            bodyNodes = bodyNodes.subList(1, bodyNodes.size());
+            catchBody = convertAll(bodyNodes, n -> EMPTY, n -> EMPTY);
+        } else if (rescue.getBodyNode() instanceof BlockNode) {
+            catchBody = convertAll(Arrays.asList(((BlockNode) rescue.getBodyNode()).children()),
+                    n -> EMPTY, n -> EMPTY);
+        } else {
+            catchBody = singletonList(padRight(convert(rescue.getBodyNode()), EMPTY));
+        }
+
+        TypeTree exceptionType;
+        if (exceptionTypes.size() == 1) {
+            exceptionType = (TypeTree) exceptionTypes.get(0).getElement();
+        } else {
+            //noinspection unchecked
+            exceptionType = new J.MultiCatch(randomId(), EMPTY, Markers.EMPTY,
+                    exceptionTypes.stream().map(t -> (JRightPadded<NameTree>)
+                            (JRightPadded<?>) t).collect(toList()));
+        }
+
+        J.VariableDeclarations exceptionVariable = new J.VariableDeclarations(
+                randomId(),
+                exceptionVariablePrefix,
+                Markers.EMPTY,
+                emptyList(),
+                emptyList(),
+                exceptionType,
+                null,
+                emptyList(),
+                names
+        );
+
+        mappedRescues.add(new J.Try.Catch(
+                randomId(),
+                prefix,
+                Markers.EMPTY,
+                new J.ControlParentheses<>(
+                        randomId(),
+                        EMPTY,
+                        Markers.EMPTY,
+                        padRight(exceptionVariable, EMPTY)
+                ),
+                new J.Block(
+                        randomId(),
+                        bodyPrefix,
+                        Markers.EMPTY,
+                        JRightPadded.build(false),
+                        catchBody,
+                        EMPTY
+                )
+        ));
+
+        return convertCatches(rescue.getOptRescueNode(), mappedRescues);
+    }
+
+    @Override
     public J visitRestArgNode(RestArgNode node) {
         return new J.VariableDeclarations(
                 randomId(),
@@ -1229,6 +1431,15 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                         null,
                         null
                 ), EMPTY))
+        );
+    }
+
+    @Override
+    public J visitRetryNode(RetryNode node) {
+        return new Ruby.Retry(
+                randomId(),
+                sourceBefore("retry"),
+                Markers.EMPTY
         );
     }
 
