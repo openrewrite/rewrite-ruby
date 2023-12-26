@@ -158,7 +158,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     @Override
     public J visitArrayNode(ArrayNode node) {
         Space prefix = whitespace();
-        JContainer<Expression> elements = convertArgs("[", node, "]");
+        JContainer<Expression> elements = convertArgs("[", node, null, "]");
         return new Ruby.Array(
                 randomId(),
                 prefix,
@@ -277,6 +277,16 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitBlockPassNode(BlockPassNode node) {
+        return new Ruby.BlockArgument(
+                randomId(),
+                sourceBefore("&"),
+                Markers.EMPTY,
+                convert(node.getBodyNode())
+        );
+    }
+
+    @Override
     public J visitBlockNode(BlockNode node) {
         return visitBlock(node);
     }
@@ -355,7 +365,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     private J.ArrayAccess convertArrayAccess(CallNode node) {
         Space prefix = whitespace();
         Expression receiver = convert(node.getReceiverNode());
-        JContainer<J> args = convertArgs("[", node.getArgsNode(), "]");
+        JContainer<J> args = convertArgs("[", node.getArgsNode(), node.getIterNode(), "]");
         List<J> argElems = args.getElements();
         if (argElems.size() == 2) {
             argElems = singletonList(new Ruby.SubArrayIndex(
@@ -600,7 +610,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 emptyList()
         );
 
-        JContainer<J> args = convertArgs("(", node.getArgsNode(), ")");
+        JContainer<J> args = convertArgs("(", node.getArgsNode(), null, ")");
         args = JContainer.withElements(args, ListUtils.map(args.getElements(), arg -> {
             if (arg instanceof J.Identifier) {
                 return new J.VariableDeclarations(
@@ -935,12 +945,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     private <T extends BlockAcceptingNode & IArgumentNode> JContainer<Expression> convertCallArgs(T node) {
-        JContainer<Expression> args = convertArgs("(", node.getArgsNode(), ")");
-        if (node.getIterNode() != null) {
-            args = JContainer.withElements(args,
-                    ListUtils.concat(args.getElements(), (Expression) convert(node.getIterNode())));
-        }
-        return args;
+        return convertArgs("(", node.getArgsNode(), node.getIterNode(), ")");
     }
 
     @Override
@@ -1111,14 +1116,14 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         if (inline) {
             skip("{");
             if (!node.getArgsNode().isEmpty()) {
-                parameters = convertArgs("|", node.getArgsNode(), "|");
+                parameters = convertArgs("|", node.getArgsNode(), null, "|");
             }
             body = visitBlock(node.getBodyNode());
             skip("}");
         } else {
             skip("do");
             if (!node.getArgsNode().isEmpty()) {
-                parameters = convertArgs("|", node.getArgsNode(), "|");
+                parameters = convertArgs("|", node.getArgsNode(), null, "|");
             }
             body = visitBlock(node.getBodyNode());
             // visitBlock handles the skip("end")
@@ -1221,7 +1226,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     @Override
     public J visitMultipleAsgnNode(MultipleAsgnNode node) {
         Space prefix = whitespace();
-        JContainer<Expression> assignments = convertArgs("(", node.getPre(), ")");
+        JContainer<Expression> assignments = convertArgs("(", node.getPre(), null, ")");
         if (node.getRest() != null) {
             assignments = assignments.getPadding().withElements(ListUtils.concat(
                     ListUtils.mapLast(assignments.getPadding().getElements(), assign -> assign.withAfter(sourceBefore(","))),
@@ -1549,7 +1554,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 randomId(),
                 sourceBefore("yield"),
                 Markers.EMPTY,
-                convertArgs("(", node.getArgsNode(), ")")
+                convertArgs("(", node.getArgsNode(), null, ")")
         );
     }
 
@@ -1886,6 +1891,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     private <J2 extends J> JContainer<J2> convertArgs(String before, @Nullable Node argsNode,
+                                                      @Nullable Node iterNode,
                                                       String after) {
         Markers markers = Markers.EMPTY;
         Space prefix = whitespace();
@@ -1900,7 +1906,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
         List<Node> args;
         if (argsNode == null) {
-            args = singletonList(new NilNode(0));
+            args = new ArrayList<>(1);
         } else if (argsNode instanceof ListNode) {
             ListNode listNode = (ListNode) argsNode;
             args = new ArrayList<>(listNode.size());
@@ -1923,10 +1929,16 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             throw new UnsupportedOperationException("Unexpected args node type " + argsNode.getClass().getSimpleName());
         }
 
+        List<JRightPadded<J2>> mappedArgs = convertAll(args, n -> sourceBefore(","),
+                n -> omitParentheses ? EMPTY : sourceBefore(after));
+
+        if (iterNode != null) {
+            mappedArgs = ListUtils.concat(mappedArgs, padRight(convert(iterNode), EMPTY));
+        }
+
         return JContainer.build(
                 prefix,
-                convertAll(args, n -> sourceBefore(","),
-                        n -> omitParentheses ? EMPTY : sourceBefore(after)),
+                mappedArgs,
                 markers
         );
     }

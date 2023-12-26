@@ -365,7 +365,7 @@ public interface Ruby extends J {
 
         Space prefix;
         Markers markers;
-        J.Identifier argument;
+        Expression argument;
 
         @Override
         public <P> J acceptRuby(RubyVisitor<P> v, P p) {

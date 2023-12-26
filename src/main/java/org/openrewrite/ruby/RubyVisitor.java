@@ -141,7 +141,7 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         } else {
             b = (Ruby.BlockArgument) temp;
         }
-        b = b.withArgument((J.Identifier) visit(b.getArgument(), p));
+        b = b.withArgument((Expression) visit(b.getArgument(), p));
         return b;
     }
 

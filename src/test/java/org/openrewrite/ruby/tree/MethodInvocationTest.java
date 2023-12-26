@@ -15,6 +15,7 @@
  */
 package org.openrewrite.ruby.tree;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openrewrite.test.RewriteTest;
@@ -31,6 +32,28 @@ public class MethodInvocationTest implements RewriteTest {
             """
               print %s
               """.formatted(args)
+          )
+        );
+    }
+
+    @Test
+    void blockPass() {
+        rewriteRun(
+          ruby(
+            """
+              accept(&consumer)
+              """
+          )
+        );
+    }
+
+    @Test
+    void blockLastArgument() {
+        rewriteRun(
+          ruby(
+            """
+              accept(1) { |a| a }
+              """
           )
         );
     }
