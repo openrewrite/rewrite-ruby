@@ -587,6 +587,22 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         }
 
         @Override
+        public J visitCase(J.Case aCase, PrintOutputCapture<P> p) {
+            beforeSyntax(aCase, Space.Location.CASE_PREFIX, p);
+            if (aCase.getExpressions().isEmpty()) {
+                p.append("else");
+            } else {
+                p.append("case");
+                visitContainer("", aCase.getPadding().getExpressions(), JContainer.Location.CASE_EXPRESSION,
+                        ",", "", p);
+            }
+            visitContainer("", aCase.getPadding().getStatements(), JContainer.Location.CASE,
+                    "", "", p);
+            afterSyntax(aCase, p);
+            return aCase;
+        }
+
+        @Override
         public J visitClassDeclaration(J.ClassDeclaration classDecl, PrintOutputCapture<P> p) {
             beforeSyntax(classDecl, Space.Location.CLASS_DECLARATION_PREFIX, p);
             p.append("class");
@@ -737,6 +753,17 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
 
             afterSyntax(method, p);
             return method;
+        }
+
+        @Override
+        public J visitSwitch(J.Switch aSwitch, PrintOutputCapture<P> p) {
+            beforeSyntax(aSwitch, Space.Location.SWITCH_PREFIX, p);
+            p.append("case");
+            visit(aSwitch.getSelector(), p);
+            visitRightPadded(aSwitch.getCases().getPadding().getStatements(),
+                    JRightPadded.Location.BLOCK_STATEMENT, "", p);
+            afterSyntax(aSwitch, p);
+            return aSwitch;
         }
 
         @Override

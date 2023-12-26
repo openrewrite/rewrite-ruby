@@ -47,7 +47,8 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 import static org.openrewrite.Tree.randomId;
 import static org.openrewrite.internal.StringUtils.indexOfNextNonWhitespace;
-import static org.openrewrite.java.tree.Space.*;
+import static org.openrewrite.java.tree.Space.EMPTY;
+import static org.openrewrite.java.tree.Space.format;
 
 /**
  * For detailed descriptions of what every node type is, see
@@ -134,25 +135,21 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
      * @return A {@link J.Block}.
      */
     private J.Block visitBlock(Node node) {
-        Space prefix = whitespace();
-        List<JRightPadded<Statement>> statements = convertBlockStatements(
-                node instanceof ListNode ?
-                        Arrays.asList(((ListNode) node).children()) :
-                        singletonList(node),
-                n -> {
-                    Space eob = whitespace();
-                    if (source.startsWith("end", cursor)) {
-                        skip("end");
-                    }
-                    return eob;
-                }
-        );
         return new J.Block(
                 randomId(),
-                prefix,
+                whitespace(),
                 Markers.EMPTY,
                 JRightPadded.build(false),
-                statements,
+                convertBlockStatements(
+                        node,
+                        n -> {
+                            Space eob = whitespace();
+                            if (source.startsWith("end", cursor)) {
+                                skip("end");
+                            }
+                            return eob;
+                        }
+                ),
                 EMPTY
         );
     }
@@ -233,8 +230,14 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         );
     }
 
-    private List<JRightPadded<Statement>> convertBlockStatements(List<? extends Node> trees,
-                                                                 Function<Node, Space> suffix) {
+    private List<JRightPadded<Statement>> convertBlockStatements(Node node, Function<Node, Space> suffix) {
+        List<? extends Node> trees;
+        if (node instanceof ListNode && !(node instanceof DNode)) {
+            trees = Arrays.asList(((ListNode) node).children());
+        } else {
+            trees = singletonList(node);
+        }
+
         if (trees.isEmpty()) {
             return emptyList();
         }
@@ -248,6 +251,53 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             converted.add((JRightPadded<Statement>) (JRightPadded<?>) stat);
         }
         return converted;
+    }
+
+    @Override
+    public J visitCaseNode(CaseNode node) {
+        Space prefix = sourceBefore("case");
+        J.ControlParentheses<Expression> selector = new J.ControlParentheses<>(
+                randomId(),
+                EMPTY,
+                Markers.EMPTY,
+                padRight(convert(node.getCaseNode()), EMPTY)
+        );
+        J.Block cases = new J.Block(
+                randomId(),
+                EMPTY,
+                Markers.EMPTY,
+                JRightPadded.build(false),
+                convertAll(Arrays.asList(node.getCases().children()), n -> EMPTY, n -> EMPTY),
+                node.getElseNode() == null ? sourceBefore("end") : EMPTY
+        );
+
+        if (node.getElseNode() != null) {
+            Space elsePrefix = sourceBefore("else");
+            JContainer<Statement> body = JContainer.build(
+                    whitespace(),
+                    convertBlockStatements(node.getElseNode(), n -> EMPTY),
+                    Markers.EMPTY
+            );
+            cases = cases.getPadding().withStatements(ListUtils.concat(cases.getPadding().getStatements(),
+                    padRight(new J.Case(
+                            randomId(),
+                            elsePrefix,
+                            Markers.EMPTY,
+                            J.Case.Type.Statement,
+                            JContainer.empty(),
+                            body,
+                            null
+                    ), EMPTY)));
+            cases = cases.withEnd(sourceBefore("end"));
+        }
+
+        return new J.Switch(
+                randomId(),
+                prefix,
+                Markers.EMPTY,
+                selector,
+                cases
+        );
     }
 
     @Override
@@ -461,30 +511,12 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitDRegxNode(DRegexpNode node) {
-        Ruby.DelimitedString dString = visitDNode(whitespace(), "/", node);
-        int optionCount = 0;
-        RegexpOptions options = node.getOptions();
-        if (options.isExtended()) {
-            optionCount++;
-        }
-        if (!options.isKcodeDefault()) {
-            optionCount++;
-        }
-        if (options.isIgnorecase()) {
-            optionCount++;
-        }
-        if (options.isJava()) {
-            optionCount++;
-        }
-        if (options.isLiteral()) {
-            optionCount++;
-        }
-        if (options.isMultiline()) {
-            optionCount++;
-        }
-        String optionsString = source.substring(cursor, cursor + optionCount);
-        skip(optionsString);
-        return dString.withRegexpOptions(optionsString.chars().mapToObj(opt -> {
+        return visitDNode(whitespace(), "/", node)
+                .withRegexpOptions(convertRegexOptions(node.getOptions()));
+    }
+
+    private List<Ruby.DelimitedString.RegexpOptions> convertRegexOptions(RegexpOptions options) {
+        return regexOptionsString(options).chars().mapToObj(opt -> {
             switch (opt) {
                 case 'x':
                     return Ruby.DelimitedString.RegexpOptions.Extended;
@@ -507,7 +539,35 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 default:
                     throw new UnsupportedOperationException(String.format("Unknown regexp option %s", opt));
             }
-        }).collect(toList()));
+        }).collect(toList());
+    }
+
+    private String regexOptionsString(RegexpOptions options) {
+        int optionCount = 0;
+        if (options.isExtended()) {
+            optionCount++;
+        }
+        if (!options.isKcodeDefault()) {
+            optionCount++;
+        }
+        if (options.isIgnorecase()) {
+            optionCount++;
+        }
+        if (options.isJava()) {
+            optionCount++;
+        }
+        if (options.isLiteral()) {
+            optionCount++;
+        }
+        if (options.isMultiline()) {
+            optionCount++;
+        }
+        if(options.isOnce()) {
+            optionCount++;
+        }
+        String optionsString = source.substring(cursor, cursor + optionCount);
+        skip(optionsString);
+        return optionsString;
     }
 
     @Override
@@ -577,7 +637,8 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     public J visitRegexpNode(RegexpNode node) {
         DStrNode dstr = new DStrNode(0, node.getValue().getEncoding());
         dstr.add(new StrNode(node.getLine(), node.getValue()));
-        return convert(dstr);
+        return this.<Ruby.DelimitedString>convert(dstr).withRegexpOptions(
+                convertRegexOptions(node.getOptions()));
     }
 
     private Ruby.DelimitedString visitDNode(DNode node) {
@@ -597,6 +658,8 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     delimiter = source.substring(cursor, 2);
                     break;
             }
+        } else if (source.charAt(cursor) == '/') {
+            delimiter = "/";
         }
         return visitDNode(prefix, delimiter, node);
     }
@@ -1183,19 +1246,12 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     private J.Block convertBeginEndBlock(IterNode node) {
-        Space blockPrefix = sourceBefore("{");
-        List<JRightPadded<Statement>> statements = convertBlockStatements(
-                node.getBodyNode() instanceof BlockNode ?
-                        Arrays.asList(((BlockNode) node.getBodyNode()).children()) :
-                        singletonList(node.getBodyNode()),
-                n -> EMPTY
-        );
         return new J.Block(
                 randomId(),
-                blockPrefix,
+                sourceBefore("{"),
                 Markers.EMPTY,
                 JRightPadded.build(false),
-                statements,
+                convertBlockStatements(node.getBodyNode(), n -> EMPTY),
                 sourceBefore("}")
         );
     }
@@ -1271,6 +1327,32 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     @Override
     public J visitVCallNode(VCallNode node) {
         return getIdentifier(node.getName());
+    }
+
+    @Override
+    public J visitWhenNode(WhenNode node) {
+        Space prefix = sourceBefore("when");
+        JContainer<Expression> expressions = JContainer.build(
+                whitespace(),
+                node.getExpressionNodes() instanceof ArrayNode ?
+                        convertAll(Arrays.asList(((ArrayNode) node.getExpressionNodes()).children()),
+                                n -> sourceBefore(","), n -> EMPTY) :
+                        singletonList(padRight(convert(node.getExpressionNodes()), EMPTY)),
+                Markers.EMPTY
+        );
+        return new J.Case(
+                randomId(),
+                prefix,
+                Markers.EMPTY,
+                J.Case.Type.Statement,
+                expressions,
+                JContainer.build(
+                        whitespace(),
+                        convertBlockStatements(node.getBodyNode(), n -> EMPTY),
+                        Markers.EMPTY
+                ),
+                null
+        );
     }
 
     @Override
@@ -1390,20 +1472,12 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
         J.Block elseBlock = null;
         if (node.getElseNode() != null) {
-            Space elsePrefix = sourceBefore("else");
-            List<JRightPadded<Statement>> ensureBody;
-            if (node.getElseNode() instanceof BlockNode) {
-                ensureBody = convertAll(Arrays.asList(((BlockNode) node.getElseNode()).children()),
-                        n -> EMPTY, n -> EMPTY);
-            } else {
-                ensureBody = singletonList(padRight(convert(node.getElseNode()), EMPTY));
-            }
             elseBlock = new J.Block(
                     randomId(),
-                    elsePrefix,
+                    sourceBefore("else"),
                     Markers.EMPTY,
                     JRightPadded.build(false),
-                    ensureBody,
+                    convertBlockStatements(node.getElseNode(), n -> EMPTY),
                     whitespace()
             );
         }
@@ -1559,10 +1633,6 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public Ruby.CompilationUnit visitRootNode(RootNode node) {
-        List<JRightPadded<Statement>> body = node.getBodyNode() instanceof BlockNode ?
-                convertBlockStatements(Arrays.asList(((BlockNode) node.getBodyNode()).children()),
-                        n -> whitespace()) :
-                convertBlockStatements(singletonList(node.getBodyNode()), n -> whitespace());
         return new Ruby.CompilationUnit(
                 randomId(),
                 Space.EMPTY,
@@ -1572,7 +1642,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 charset,
                 charsetBomMarked,
                 null,
-                body
+                convertBlockStatements(node.getBodyNode(), n -> whitespace())
         );
     }
 

@@ -70,6 +70,18 @@ public class StringTest implements RewriteTest {
         );
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"", "i", "x", "m", "u", "e", "s", "n"})
+    void regex(String options) {
+        rewriteRun(
+          ruby(
+            """
+              /^[yY]/%s
+              """.formatted(options)
+          )
+        );
+    }
+
     @Test
     void regexRDString() {
         rewriteRun(
@@ -82,11 +94,11 @@ public class StringTest implements RewriteTest {
     }
 
     @Test
-    void regexSlashDelimited() {
+    void regexDString() {
         rewriteRun(
           ruby(
             """
-              /my name is #{myname}/o
+              /my name is #{name}/o
               """
           )
         );

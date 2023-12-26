@@ -592,7 +592,7 @@ public interface Ruby extends J {
             None,
             EUCJPEncoding,
             SJISEncoding,
-            UTF8Encoding
+            UTF8Encoding,
         }
     }
 
