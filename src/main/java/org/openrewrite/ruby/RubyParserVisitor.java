@@ -234,6 +234,19 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitBackRefNode(BackRefNode node) {
+        return new J.Identifier(
+                randomId(),
+                sourceBefore("$" + node.getType()),
+                Markers.EMPTY,
+                emptyList(),
+                "$" + node.getType(),
+                null,
+                null
+        );
+    }
+
+    @Override
     public J visitBeginNode(BeginNode node) {
         throw new UnsupportedOperationException("Calls to visitBeginNode have not been observed " +
                                                 "with a variety of rescue statements. Implement if one " +

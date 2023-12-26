@@ -104,6 +104,18 @@ public class StringTest implements RewriteTest {
         );
     }
 
+    @Test
+    void backReferences() {
+        rewriteRun(
+          ruby(
+            """
+              /h/.match("hello")
+              $&
+              """
+          )
+        );
+    }
+
     @Disabled
     @ParameterizedTest
     @ValueSource(strings = {"<<", "<<-"})
