@@ -470,6 +470,8 @@ public interface Ruby extends J {
         public enum Type {
             Comparison,
             Exponentiation,
+            FlipFlopInclusive,
+            FlipFlopExclusive,
             RangeExclusive,
             RangeInclusive,
             Within,

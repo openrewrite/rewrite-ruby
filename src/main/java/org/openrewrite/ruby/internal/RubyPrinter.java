@@ -111,9 +111,11 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
             case Exponentiation:
                 keyword = "**";
                 break;
+            case FlipFlopInclusive:
             case RangeInclusive:
                 keyword = "..";
                 break;
+            case FlipFlopExclusive:
             case RangeExclusive:
                 keyword = "...";
                 break;

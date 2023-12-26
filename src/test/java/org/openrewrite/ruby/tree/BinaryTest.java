@@ -82,4 +82,19 @@ public class BinaryTest implements RewriteTest {
           )
         );
     }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"..", "..."})
+    void flipFlop(String op) {
+        rewriteRun(
+          ruby(
+            """
+              x = 0
+              if x==0%sx<=3 then
+                puts "hello"
+              end
+              """.formatted(op)
+          )
+        );
+    }
 }

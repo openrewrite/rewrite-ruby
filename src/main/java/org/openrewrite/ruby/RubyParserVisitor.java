@@ -988,6 +988,27 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitFlipNode(FlipNode node) {
+        Space prefix = whitespace();
+        Expression left = convert(node.getBeginNode());
+        Space opPrefix = sourceBefore("..");
+        Ruby.Binary.Type op = Ruby.Binary.Type.FlipFlopInclusive;
+        if (source.charAt(cursor) == '.') {
+            skip(".");
+            op = Ruby.Binary.Type.FlipFlopExclusive;
+        }
+        return new Ruby.Binary(
+                randomId(),
+                prefix,
+                Markers.EMPTY,
+                left,
+                padLeft(opPrefix, op),
+                convert(node.getEndNode()),
+                JavaType.Primitive.Boolean
+        );
+    }
+
+    @Override
     public J visitForNode(ForNode node) {
         Markers markers = Markers.EMPTY;
         Space prefix = sourceBefore("for");
