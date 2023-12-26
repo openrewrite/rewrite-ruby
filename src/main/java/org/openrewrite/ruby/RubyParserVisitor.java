@@ -1065,6 +1065,11 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitGlobalAsgnNode(GlobalAsgnNode node) {
+        return visitAsgnNode(node, node.getName());
+    }
+
+    @Override
     public J visitGlobalVarNode(GlobalVarNode node) {
         return getIdentifier(node.getName());
     }

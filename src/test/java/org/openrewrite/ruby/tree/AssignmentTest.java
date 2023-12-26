@@ -116,4 +116,15 @@ public class AssignmentTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void global() {
+        rewriteRun(
+          ruby(
+            """
+              $a = 1
+              """
+          )
+        );
+    }
 }
