@@ -20,7 +20,10 @@ import org.openrewrite.internal.ListUtils;
 import org.openrewrite.internal.lang.Nullable;
 import org.openrewrite.java.JavaVisitor;
 import org.openrewrite.java.tree.*;
-import org.openrewrite.ruby.tree.*;
+import org.openrewrite.ruby.tree.Ruby;
+import org.openrewrite.ruby.tree.RubyContainer;
+import org.openrewrite.ruby.tree.RubyRightPadded;
+import org.openrewrite.ruby.tree.RubySpace;
 
 @SuppressWarnings("unused")
 public class RubyVisitor<P> extends JavaVisitor<P> {
@@ -172,6 +175,14 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         }
         e = e.withTree((TypedTree) visit(e.getTree(), p));
         return e;
+    }
+
+    public J visitExpressionTypeTree(Ruby.ExpressionTypeTree expressionTypeTree, P p) {
+        Ruby.ExpressionTypeTree s = expressionTypeTree;
+        s = s.withPrefix(visitSpace(s.getPrefix(), RubySpace.Location.EXPRESSION_TYPE_TREE_PREFIX, p));
+        s = s.withMarkers(visitMarkers(s.getMarkers(), p));
+        s = s.withNewType((J.NewClass) visit(s.getNewType(), p));
+        return s;
     }
 
     public J visitHash(Ruby.Hash hash, P p) {

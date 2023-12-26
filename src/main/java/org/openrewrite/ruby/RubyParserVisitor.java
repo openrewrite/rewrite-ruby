@@ -15,7 +15,6 @@
  */
 package org.openrewrite.ruby;
 
-import org.jetbrains.annotations.NotNull;
 import org.jruby.RubySymbol;
 import org.jruby.ast.*;
 import org.jruby.ast.types.INameNode;
@@ -48,9 +47,12 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 import static org.openrewrite.Tree.randomId;
 import static org.openrewrite.internal.StringUtils.indexOfNextNonWhitespace;
-import static org.openrewrite.java.tree.Space.EMPTY;
-import static org.openrewrite.java.tree.Space.format;
+import static org.openrewrite.java.tree.Space.*;
 
+/**
+ * For detailed descriptions of what every node type is, see
+ * <a href="https://www.rubydoc.info/gems/ruby-internal/Node">Ruby internals on Node</a>.
+ */
 public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     private final Path sourcePath;
 
@@ -250,25 +252,45 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitClassNode(ClassNode node) {
+        Space prefix = whitespace();
+        skip("class");
+        J.Identifier name = getIdentifier(node.getCPath().getName());
+
+        JLeftPadded<TypeTree> extendings = null;
+        Node superNode = node.getSuperNode();
+        if (superNode != null) {
+            Space extendingsPrefix = sourceBefore("<");
+            Expression superClass = convert(superNode);
+            extendings = padLeft(
+                    extendingsPrefix,
+                    superClass instanceof TypeTree ?
+                            (TypeTree) superClass :
+                            new Ruby.ExpressionTypeTree(
+                                    randomId(),
+                                    superClass.getPrefix(),
+                                    Markers.EMPTY,
+                                    superClass.withPrefix(EMPTY)
+                            )
+            );
+        }
+
         return new J.ClassDeclaration(
                 randomId(),
-                whitespace(),
+                prefix,
                 Markers.EMPTY,
                 emptyList(),
                 emptyList(),
                 new J.ClassDeclaration.Kind(
                         randomId(),
-                        sourceBefore("class"),
+                        EMPTY,
                         Markers.EMPTY,
                         emptyList(),
                         J.ClassDeclaration.Kind.Type.Class
                 ),
-                getIdentifier(node.getCPath().getName()),
+                name,
                 null,
                 null,
-                node.getSuperNode() == null ?
-                        null :
-                        padLeft(sourceBefore("<"), convert(node.getSuperNode())),
+                extendings,
                 null,
                 null,
                 visitBlock(node.getBodyNode()),
@@ -1182,6 +1204,42 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 Markers.EMPTY,
                 returnValue
         );
+    }
+
+    @Override
+    public J visitSuperNode(SuperNode node) {
+        return new J.MethodInvocation(
+                randomId(),
+                whitespace(),
+                Markers.EMPTY,
+                null,
+                null,
+                new J.Identifier(
+                        randomId(),
+                        sourceBefore("super"),
+                        Markers.EMPTY,
+                        emptyList(),
+                        "super",
+                        null,
+                        null
+                ),
+                convertCallArgs(new SuperArgsNode(node)),
+                null
+        );
+    }
+
+    /**
+     * Because {@link SuperNode} does not implement {@link IArgumentNode}.
+     */
+    private static class SuperArgsNode extends SuperNode implements IArgumentNode {
+        public SuperArgsNode(SuperNode superNode) {
+            super(superNode.getLine(), superNode.getArgsNode(), superNode.getIterNode());
+        }
+
+        @Override
+        public Node setArgsNode(Node node) {
+            throw new UnsupportedOperationException("Setter will never be called");
+        }
     }
 
     @Override

@@ -35,21 +35,6 @@ public class ClassDeclarationTest implements RewriteTest {
     }
 
     @Test
-    void classExtends() {
-        rewriteRun(
-          ruby(
-            """
-              class Box
-              end
-                            
-              class BigBox < Box
-              end
-              """
-          )
-        );
-    }
-
-    @Test
     void initializeAndInstanceMethod() {
         rewriteRun(
           ruby(
@@ -98,6 +83,46 @@ public class ClassDeclarationTest implements RewriteTest {
             """
               class Point
                   def Point.sum(*points)
+                  end
+              end
+              """
+          )
+        );
+    }
+
+    @Test
+    void extendClass() {
+        rewriteRun(
+          ruby(
+            """
+              class Point2D < Point
+              end
+              """
+          )
+        );
+    }
+
+    @Test
+    void extendStruct() {
+        rewriteRun(
+          ruby(
+            """
+              class Point2D < Struct.new("Point2D", :x, :y)
+              end
+              """
+          )
+        );
+    }
+
+    @Test
+    void superCall() {
+        rewriteRun(
+          ruby(
+            """
+              class Point3D < Point2D
+                  def initialize(x,y,z)
+                      super(x,y)
+                      @z = z
                   end
               end
               """

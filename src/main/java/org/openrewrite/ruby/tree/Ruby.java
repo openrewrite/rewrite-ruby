@@ -1174,6 +1174,42 @@ public interface Ruby extends J {
         }
     }
 
+    /**
+     * A Ruby class may extend from a `Struct.new(..)` expression.
+     */
+    @Value
+    @With
+    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+    class ExpressionTypeTree implements Ruby, TypeTree {
+        @EqualsAndHashCode.Include
+        UUID id;
+
+        Space prefix;
+        Markers markers;
+
+        /**
+         * Most commonly will be a call of some sort, frequently a {@link J.NewClass}, for example
+         * in the case of <code>class Point < Struct.new(:x, :y)</code>.
+         */
+        Expression newType;
+
+        @Override
+        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
+            return v.visitExpressionTypeTree(this, p);
+        }
+
+        @Override
+        public @Nullable JavaType getType() {
+            return newType.getType();
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public ExpressionTypeTree withType(@Nullable JavaType type) {
+            return withNewType(newType.withType(type));
+        }
+    }
+
     @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
     @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
     @RequiredArgsConstructor

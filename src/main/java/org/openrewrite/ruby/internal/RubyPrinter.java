@@ -229,6 +229,14 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     }
 
     @Override
+    public J visitExpressionTypeTree(Ruby.ExpressionTypeTree expressionTypeTree, PrintOutputCapture<P> p) {
+        beforeSyntax(expressionTypeTree, RubySpace.Location.EXPRESSION_TYPE_TREE_PREFIX, p);
+        visit(expressionTypeTree.getNewType(), p);
+        afterSyntax(expressionTypeTree, p);
+        return expressionTypeTree;
+    }
+
+    @Override
     public J visitHash(Ruby.Hash hash, PrintOutputCapture<P> p) {
         beforeSyntax(hash, RubySpace.Location.HASH_PREFIX, p);
         visitContainer("{", hash.getPadding().getElements(), RubyContainer.Location.HASH_ELEMENTS, ",", "}", p);
