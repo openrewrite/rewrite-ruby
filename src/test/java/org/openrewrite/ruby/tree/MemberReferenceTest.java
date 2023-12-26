@@ -32,4 +32,15 @@ public class MemberReferenceTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void constantOnObject() {
+        rewriteRun(
+          ruby(
+            """
+              a = ::RubyVM
+              """
+          )
+        );
+    }
 }

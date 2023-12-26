@@ -314,6 +314,21 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitColon3Node(Colon3Node node) {
+        return new J.MemberReference(
+                randomId(),
+                whitespace(),
+                Markers.EMPTY,
+                padRight(new J.Empty(randomId(), EMPTY, Markers.EMPTY), sourceBefore("::")),
+                null,
+                padLeft(EMPTY, getIdentifier(node.getName())),
+                null,
+                null,
+                null
+        );
+    }
+
+    @Override
     public J visitConstNode(ConstNode node) {
         return getIdentifier(node.getName());
     }
