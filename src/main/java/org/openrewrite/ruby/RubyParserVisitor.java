@@ -591,6 +591,11 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitConstDeclNode(ConstDeclNode node) {
+        return visitAsgnNode(node, node.getName());
+    }
+
+    @Override
     public J visitConstNode(ConstNode node) {
         return getIdentifier(node.getName());
     }

@@ -137,7 +137,7 @@ public class ClassDeclarationTest implements RewriteTest {
             """
               class Point
                   @@n = 0
-    
+                  
                   def initialize(x,y)
                       @x, @y = x, y
                       @@n += 1
@@ -146,6 +146,24 @@ public class ClassDeclarationTest implements RewriteTest {
                   def count
                       @@n
                   end
+              end
+              """
+          )
+        );
+    }
+
+    @Test
+    void constants() {
+        rewriteRun(
+          ruby(
+            """
+              class Point
+                  def initialize(x,y)
+                      @x, @y = x, y
+                      @@n += 1
+                  end
+                            
+                  ORIGIN = Point.new(0,0)
               end
               """
           )
