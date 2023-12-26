@@ -43,4 +43,15 @@ public class LiteralTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void floatLiteral() {
+        rewriteRun(
+          ruby(
+            """
+              1.0
+              """
+          )
+        );
+    }
 }

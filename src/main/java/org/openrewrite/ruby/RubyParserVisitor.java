@@ -1009,6 +1009,19 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitFloatNode(FloatNode node) {
+        return new J.Literal(
+                randomId(),
+                sourceBefore(Double.toString(node.getValue())),
+                Markers.EMPTY,
+                node.getValue(),
+                Double.toString(node.getValue()),
+                null,
+                JavaType.Primitive.Float
+        );
+    }
+
+    @Override
     public J visitForNode(ForNode node) {
         Markers markers = Markers.EMPTY;
         Space prefix = sourceBefore("for");
