@@ -1307,6 +1307,45 @@ public interface Ruby extends J {
         }
     }
 
+    @Value
+    @With
+    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+    class Unary implements Ruby, Expression, TypedTree {
+        @EqualsAndHashCode.Include
+        UUID id;
+
+        Space prefix;
+        Markers markers;
+        Ruby.Unary.Type operator;
+        Expression expression;
+
+        @Override
+        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
+            return v.visitUnary(this, p);
+        }
+
+        @Transient
+        @Override
+        public CoordinateBuilder.Expression getCoordinates() {
+            return new CoordinateBuilder.Expression(this);
+        }
+
+        public enum Type {
+            Defined,
+        }
+
+        @Override
+        public JavaType getType() {
+            return JavaType.Primitive.Boolean;
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public Ruby.Unary withType(@Nullable JavaType ignored) {
+            return this;
+        }
+    }
+
     @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
     @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
     @RequiredArgsConstructor

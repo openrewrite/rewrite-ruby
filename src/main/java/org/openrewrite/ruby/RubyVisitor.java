@@ -333,6 +333,21 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         return s;
     }
 
+    public J visitUnary(Ruby.Unary binary, P p) {
+        Ruby.Unary b = binary;
+        b = b.withPrefix(visitSpace(b.getPrefix(), RubySpace.Location.UNARY_PREFIX, p));
+        b = b.withMarkers(visitMarkers(b.getMarkers(), p));
+        Expression temp = (Expression) visitExpression(b, p);
+        if (!(temp instanceof Ruby.Unary)) {
+            return temp;
+        } else {
+            b = (Ruby.Unary) temp;
+        }
+        b = b.withExpression((Expression) visit(b.getExpression(), p));
+        b = b.withType(visitType(b.getType(), p));
+        return b;
+    }
+
     public J visitYield(Ruby.Yield yield, P p) {
         Ruby.Yield y = yield;
         y = y.withPrefix(visitSpace(y.getPrefix(), RubySpace.Location.YIELD, p));

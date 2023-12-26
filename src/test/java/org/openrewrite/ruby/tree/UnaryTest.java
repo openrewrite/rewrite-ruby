@@ -15,6 +15,7 @@
  */
 package org.openrewrite.ruby.tree;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openrewrite.test.RewriteTest;
@@ -31,6 +32,17 @@ public class UnaryTest implements RewriteTest {
             """
               %s 42
               """.formatted(op)
+          )
+        );
+    }
+
+    @Test
+    void defined() {
+        rewriteRun(
+          ruby(
+            """
+              defined? d
+              """
           )
         );
     }

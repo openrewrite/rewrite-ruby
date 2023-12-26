@@ -378,6 +378,15 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     }
 
     @Override
+    public J visitUnary(Ruby.Unary unary, PrintOutputCapture<P> p) {
+        beforeSyntax(unary, RubySpace.Location.UNARY_PREFIX, p);
+        p.append("defined?");
+        visit(unary.getExpression(), p);
+        afterSyntax(unary, p);
+        return unary;
+    }
+
+    @Override
     public J visitYield(Ruby.Yield yield, PrintOutputCapture<P> p) {
         beforeSyntax(yield, RubySpace.Location.YIELD, p);
         p.append("yield");

@@ -601,6 +601,17 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitDefinedNode(DefinedNode node) {
+        return new Ruby.Unary(
+                randomId(),
+                sourceBefore("defined?"),
+                Markers.EMPTY,
+                Ruby.Unary.Type.Defined,
+                convert(node.getExpressionNode())
+        );
+    }
+
+    @Override
     public J visitDefnNode(DefnNode node) {
         return convertMethodDeclaration(node);
     }
