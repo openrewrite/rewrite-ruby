@@ -20,14 +20,17 @@ import org.openrewrite.test.RewriteTest;
 
 import static org.openrewrite.ruby.Assertions.ruby;
 
-public class AliasTest implements RewriteTest {
+public class SplatTest implements RewriteTest {
 
     @Test
-    void alias() {
+    void splat() {
         rewriteRun(
           ruby(
             """
-              alias new_name old_name
+              a = [1, 2, 3]
+              b = *a
+              c = 1, *a
+              d = 1, 2, *a
               """
           )
         );

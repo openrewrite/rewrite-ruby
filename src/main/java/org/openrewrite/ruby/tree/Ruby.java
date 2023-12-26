@@ -204,6 +204,15 @@ public interface Ruby extends J {
             return getPadding().withElements(JContainer.withElements(this.elements, elements));
         }
 
+        public enum Type {
+            ArrayLiteral,
+
+            /**
+             * When using a splat along with an argument <code>1, *a</code>
+             */
+            ArgumentConcatenation
+        }
+
         @Getter
         @With
         @Nullable
@@ -1106,6 +1115,38 @@ public interface Ruby extends J {
         @Transient
         public CoordinateBuilder.Statement getCoordinates() {
             return new CoordinateBuilder.Statement(this);
+        }
+    }
+
+    @Value
+    @With
+    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+    class Splat implements Ruby, Expression {
+        @EqualsAndHashCode.Include
+        UUID id;
+
+        Space prefix;
+        Markers markers;
+        Expression value;
+
+        @Override
+        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
+            return v.visitSplat(this, p);
+        }
+
+        @Override
+        public @Nullable JavaType getType() {
+            return value.getType();
+        }
+
+        @Override
+        public <T extends J> T withType(@Nullable JavaType type) {
+            return value.withType(type);
+        }
+
+        @Override
+        public CoordinateBuilder.Expression getCoordinates() {
+            return new CoordinateBuilder.Expression(this);
         }
     }
 

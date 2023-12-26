@@ -290,6 +290,20 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         return r;
     }
 
+    public J visitSplat(Ruby.Splat splat, P p) {
+        Ruby.Splat s = splat;
+        s = s.withPrefix(visitSpace(s.getPrefix(), RubySpace.Location.SPLAT_PREFIX, p));
+        s = s.withMarkers(visitMarkers(s.getMarkers(), p));
+        Expression temp = (Expression) visitExpression(s, p);
+        if (!(temp instanceof Ruby.Splat)) {
+            return temp;
+        } else {
+            s = (Ruby.Splat) temp;
+        }
+        s = s.withValue((Expression) visitNonNull(s.getValue(), p));
+        return s;
+    }
+
     public J visitSubArrayIndex(Ruby.SubArrayIndex subArrayIndex, P p) {
         Ruby.SubArrayIndex s = subArrayIndex;
         s = s.withPrefix(visitSpace(s.getPrefix(), RubySpace.Location.SUB_ARRAY_INDEX_PREFIX, p));

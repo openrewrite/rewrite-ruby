@@ -351,6 +351,15 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     }
 
     @Override
+    public J visitSplat(Ruby.Splat splat, PrintOutputCapture<P> p) {
+        beforeSyntax(splat, RubySpace.Location.SPLAT_PREFIX, p);
+        p.append("*");
+        visit(splat.getValue(), p);
+        afterSyntax(splat, p);
+        return splat;
+    }
+
+    @Override
     public J visitSubArrayIndex(Ruby.SubArrayIndex subArrayIndex, PrintOutputCapture<P> p) {
         beforeSyntax(subArrayIndex, RubySpace.Location.SUB_ARRAY_INDEX_PREFIX, p);
         visit(subArrayIndex.getStartIndex(), p);

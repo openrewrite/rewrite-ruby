@@ -93,6 +93,36 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitArgsCatNode(ArgsCatNode node) {
+        Space prefix = whitespace();
+        List<JRightPadded<Expression>> elements;
+        if (node.getFirstNode() instanceof ListNode) {
+            elements = convertAll(Arrays.asList(((ListNode) node.getFirstNode()).children()), n -> sourceBefore(","),
+                    n -> sourceBefore(","));
+        } else {
+            elements = singletonList(padRight(convert(node.getFirstNode()), sourceBefore(",")));
+        }
+        elements = ListUtils.concat(elements, padRight(new Ruby.Splat(
+                randomId(),
+                sourceBefore("*"),
+                Markers.EMPTY,
+                convert(node.getSecondNode())
+        ), EMPTY));
+
+        return new Ruby.Array(
+                randomId(),
+                prefix,
+                Markers.EMPTY,
+                JContainer.build(
+                        EMPTY,
+                        elements,
+                        Markers.EMPTY.add(new OmitParentheses(randomId()))
+                ),
+                null
+        );
+    }
+
+    @Override
     public J visitAndNode(AndNode node) {
         Space prefix = whitespace();
         Expression left = convert(node.getFirstNode());
@@ -1693,6 +1723,16 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 charsetBomMarked,
                 null,
                 convertBlockStatements(node.getBodyNode(), n -> whitespace())
+        );
+    }
+
+    @Override
+    public J visitSplatNode(SplatNode node) {
+        return new Ruby.Splat(
+                randomId(),
+                sourceBefore("*"),
+                Markers.EMPTY,
+                convert(node.getValue())
         );
     }
 
