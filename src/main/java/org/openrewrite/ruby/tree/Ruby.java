@@ -359,6 +359,39 @@ public interface Ruby extends J {
     @Value
     @With
     @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+    class BlockArgument implements Ruby, Expression {
+        @EqualsAndHashCode.Include
+        UUID id;
+
+        Space prefix;
+        Markers markers;
+        J.Identifier argument;
+
+        @Override
+        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
+            return v.visitBlockArgument(this, p);
+        }
+
+        @Override
+        public @Nullable JavaType getType() {
+            return argument.getType();
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public BlockArgument withType(@Nullable JavaType type) {
+            return withArgument(argument.withType(type));
+        }
+
+        @Override
+        public CoordinateBuilder.Expression getCoordinates() {
+            return new CoordinateBuilder.Expression(this);
+        }
+    }
+
+    @Value
+    @With
+    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
     class Begin implements Ruby, Statement {
         @EqualsAndHashCode.Include
         UUID id;

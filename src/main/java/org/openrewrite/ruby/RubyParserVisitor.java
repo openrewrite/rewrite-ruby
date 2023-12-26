@@ -267,6 +267,16 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitBlockArgNode(BlockArgNode node) {
+        return new Ruby.BlockArgument(
+                randomId(),
+                sourceBefore("&"),
+                Markers.EMPTY,
+                getIdentifier(node.getName())
+        );
+    }
+
+    @Override
     public J visitBlockNode(BlockNode node) {
         return visitBlock(node);
     }
@@ -1903,6 +1913,9 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             ArgsNode argsArgsNode = (ArgsNode) argsNode;
             args = new ArrayList<>(argsArgsNode.getArgs().length);
             Collections.addAll(args, argsArgsNode.getArgs());
+            if (argsArgsNode.getBlock() != null) {
+                args.add(argsArgsNode.getBlock());
+            }
             if (argsArgsNode.getRestArgNode() != null) {
                 args.add(argsArgsNode.getRestArgNode());
             }

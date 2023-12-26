@@ -21,6 +21,7 @@ public class RubySpace {
         BEGIN_PREFIX,
         BINARY_OPERATOR,
         BINARY_PREFIX,
+        BLOCK_ARGUMENT_PREFIX,
         BLOCK_PARAMETERS,
         BLOCK_PARAMETERS_SUFFIX,
         BLOCK_PREFIX,

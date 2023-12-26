@@ -62,6 +62,18 @@ public class MethodDeclarationTest implements RewriteTest {
     }
 
     @Test
+    void blockArg() {
+        rewriteRun(
+          ruby(
+            """
+              def accept(&arg)
+              end
+              """
+          )
+        );
+    }
+
+    @Test
     void singleArg() {
         rewriteRun(
           ruby(

@@ -142,6 +142,15 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     }
 
     @Override
+    public J visitBlockArgument(Ruby.BlockArgument blockArgument, PrintOutputCapture<P> p) {
+        beforeSyntax(blockArgument, RubySpace.Location.BLOCK_ARGUMENT_PREFIX, p);
+        p.append("&");
+        visit(blockArgument.getArgument(), p);
+        afterSyntax(blockArgument, p);
+        return blockArgument;
+    }
+
+    @Override
     public J visitClassMethod(Ruby.ClassMethod method, PrintOutputCapture<P> p) {
         beforeSyntax(method, RubySpace.Location.CLASS_METHOD_PREFIX, p);
         p.append("def");

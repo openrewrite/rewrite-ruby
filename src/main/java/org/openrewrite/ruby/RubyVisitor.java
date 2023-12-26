@@ -131,6 +131,20 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         return b;
     }
 
+    public J visitBlockArgument(Ruby.BlockArgument blockArgument, P p) {
+        Ruby.BlockArgument b = blockArgument;
+        b = b.withPrefix(visitSpace(b.getPrefix(), RubySpace.Location.BLOCK_ARGUMENT_PREFIX, p));
+        b = b.withMarkers(visitMarkers(b.getMarkers(), p));
+        Expression temp = (Expression) visitExpression(b, p);
+        if (!(temp instanceof Ruby.BlockArgument)) {
+            return temp;
+        } else {
+            b = (Ruby.BlockArgument) temp;
+        }
+        b = b.withArgument((J.Identifier) visit(b.getArgument(), p));
+        return b;
+    }
+
     public J visitClassMethod(Ruby.ClassMethod classMethod, P p) {
         Ruby.ClassMethod c = classMethod;
         c = c.withPrefix(visitSpace(c.getPrefix(), RubySpace.Location.CLASS_METHOD_PREFIX, p));
