@@ -17,6 +17,7 @@ package org.openrewrite.ruby.tree;
 
 public class RubySpace {
     public enum Location {
+        ALIAS_PREFIX,
         BEGIN_PREFIX,
         BINARY_OPERATOR,
         BINARY_PREFIX,
@@ -33,6 +34,7 @@ public class RubySpace {
         DELIMITED_STRING_VALUE_SUFFIX,
         END_PREFIX,
         EXPANSION_PREFIX,
+        EXPRESSION_TYPE_TREE_PREFIX,
         HASH,
         HASH_ELEMENTS_SUFFIX,
         HASH_PREFIX,
@@ -50,7 +52,6 @@ public class RubySpace {
         RETRY_PREFIX,
         STRUCT_EXTENDS_ARGUMENTS,
         STRUCT_EXTENDS_ARGUMENTS_SUFFIX,
-        EXPRESSION_TYPE_TREE_PREFIX,
         SUB_ARRAY_INDEX_PREFIX,
         SUB_ARRAY_LENGTH_PREFIX,
         YIELD,

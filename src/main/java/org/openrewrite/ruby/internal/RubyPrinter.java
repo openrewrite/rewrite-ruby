@@ -64,6 +64,16 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     }
 
     @Override
+    public J visitAlias(Ruby.Alias alias, PrintOutputCapture<P> p) {
+        beforeSyntax(alias, RubySpace.Location.ALIAS_PREFIX, p);
+        p.append("alias");
+        visit(alias.getNewName(), p);
+        visit(alias.getExistingName(), p);
+        afterSyntax(alias, p);
+        return alias;
+    }
+
+    @Override
     public J visitArray(Ruby.Array array, PrintOutputCapture<P> p) {
         beforeSyntax(array, RubySpace.Location.LIST_LITERAL, p);
         if (array.getPadding().getElements().getMarkers().findFirst(OmitParentheses.class).isPresent()) {

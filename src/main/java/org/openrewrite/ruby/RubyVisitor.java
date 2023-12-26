@@ -60,6 +60,21 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         return c;
     }
 
+    public J visitAlias(Ruby.Alias alias, P p) {
+        Ruby.Alias a = alias;
+        a = a.withPrefix(visitSpace(a.getPrefix(), RubySpace.Location.ALIAS_PREFIX, p));
+        a = a.withMarkers(visitMarkers(a.getMarkers(), p));
+        Statement temp = (Statement) visitStatement(a, p);
+        if (!(temp instanceof Ruby.Alias)) {
+            return temp;
+        } else {
+            a = (Ruby.Alias) temp;
+        }
+        a = a.withNewName((J.Identifier) visit(a.getNewName(), p));
+        a = a.withExistingName((J.Identifier) visit(a.getExistingName(), p));
+        return a;
+    }
+
     public J visitArray(Ruby.Array array, P p) {
         Ruby.Array l = array;
         l = l.withPrefix(visitSpace(l.getPrefix(), RubySpace.Location.LIST_LITERAL, p));

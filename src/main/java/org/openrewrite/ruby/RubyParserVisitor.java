@@ -82,6 +82,17 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitAliasNode(AliasNode node) {
+        return new Ruby.Alias(
+                randomId(),
+                sourceBefore("alias"),
+                Markers.EMPTY,
+                convert(node.getNewName()),
+                convert(node.getOldName())
+        );
+    }
+
+    @Override
     public J visitAndNode(AndNode node) {
         Space prefix = whitespace();
         Expression left = convert(node.getFirstNode());
@@ -992,6 +1003,11 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 parameters,
                 body
         );
+    }
+
+    @Override
+    public J visitLiteralNode(LiteralNode node) {
+        return getIdentifier(node.getSymbolName());
     }
 
     @Override
