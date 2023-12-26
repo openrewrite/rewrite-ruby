@@ -142,6 +142,10 @@ public class ClassDeclarationTest implements RewriteTest {
                       @x, @y = x, y
                       @@n += 1
                   end
+                  
+                  def count
+                      @@n
+                  end
               end
               """
           )
