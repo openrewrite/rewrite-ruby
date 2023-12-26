@@ -29,10 +29,25 @@ public class CaseTest implements RewriteTest {
             """
               response = gets
               case response
-              when /^[yY]/
-                  return true
               when /^[nN]/, /^$/
                   return false
+              when /^[yY]/
+                  return true
+              end
+              """
+          )
+        );
+    }
+
+    @Test
+    void caseSelectElse() {
+        rewriteRun(
+          ruby(
+            """
+              response = gets
+              case response
+              when /^[yY]/
+                  return true
               else
                   return false
               end

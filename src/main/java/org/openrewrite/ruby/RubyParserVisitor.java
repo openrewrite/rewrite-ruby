@@ -262,12 +262,19 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 Markers.EMPTY,
                 padRight(convert(node.getCaseNode()), EMPTY)
         );
+
+        Map<Integer, List<WhenNode>> groupedWhen = new LinkedHashMap<>();
+        for (Node aCase : node.getCases()) {
+            groupedWhen.computeIfAbsent(aCase.getLine(), k -> new ArrayList<>())
+                    .add((WhenNode) aCase);
+        }
+
         J.Block cases = new J.Block(
                 randomId(),
                 EMPTY,
                 Markers.EMPTY,
                 JRightPadded.build(false),
-                convertAll(Arrays.asList(node.getCases().children()), n -> EMPTY, n -> EMPTY),
+                groupedWhen.values().stream().map(this::convertCases).collect(toList()),
                 node.getElseNode() == null ? sourceBefore("end") : EMPTY
         );
 
@@ -298,6 +305,39 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 selector,
                 cases
         );
+    }
+
+    private JRightPadded<Statement> convertCases(List<WhenNode> whenNodes) {
+        Space prefix = sourceBefore("when");
+
+        List<Node> expressionNodes = new ArrayList<>();
+        for (WhenNode node : whenNodes) {
+            if (node.getExpressionNodes() instanceof ArrayNode) {
+                Collections.addAll(expressionNodes, ((ArrayNode) node.getExpressionNodes()).children());
+            } else {
+                expressionNodes.add(node.getExpressionNodes());
+            }
+        }
+
+        JContainer<Expression> expressions = JContainer.build(
+                whitespace(),
+                convertAll(expressionNodes, n -> sourceBefore(","), n -> EMPTY),
+                Markers.EMPTY
+        );
+
+        return padRight(new J.Case(
+                randomId(),
+                prefix,
+                Markers.EMPTY,
+                J.Case.Type.Statement,
+                expressions,
+                JContainer.build(
+                        whitespace(),
+                        convertBlockStatements(whenNodes.get(0).getBodyNode(), n -> EMPTY),
+                        Markers.EMPTY
+                ),
+                null
+        ), EMPTY);
     }
 
     @Override
@@ -562,7 +602,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         if (options.isMultiline()) {
             optionCount++;
         }
-        if(options.isOnce()) {
+        if (options.isOnce()) {
             optionCount++;
         }
         String optionsString = source.substring(cursor, cursor + optionCount);
@@ -1331,28 +1371,9 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitWhenNode(WhenNode node) {
-        Space prefix = sourceBefore("when");
-        JContainer<Expression> expressions = JContainer.build(
-                whitespace(),
-                node.getExpressionNodes() instanceof ArrayNode ?
-                        convertAll(Arrays.asList(((ArrayNode) node.getExpressionNodes()).children()),
-                                n -> sourceBefore(","), n -> EMPTY) :
-                        singletonList(padRight(convert(node.getExpressionNodes()), EMPTY)),
-                Markers.EMPTY
-        );
-        return new J.Case(
-                randomId(),
-                prefix,
-                Markers.EMPTY,
-                J.Case.Type.Statement,
-                expressions,
-                JContainer.build(
-                        whitespace(),
-                        convertBlockStatements(node.getBodyNode(), n -> EMPTY),
-                        Markers.EMPTY
-                ),
-                null
-        );
+        throw new UnsupportedOperationException("Multiple WhenNodes can potentially map to one J.Case, " +
+                                                "so the grouping of WhenNodes is handled in visitCaseNode " +
+                                                "and this method should never be called.");
     }
 
     @Override

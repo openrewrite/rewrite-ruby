@@ -592,7 +592,7 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
             if (aCase.getExpressions().isEmpty()) {
                 p.append("else");
             } else {
-                p.append("case");
+                p.append("when");
                 visitContainer("", aCase.getPadding().getExpressions(), JContainer.Location.CASE_EXPRESSION,
                         ",", "", p);
             }
@@ -762,6 +762,8 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
             visit(aSwitch.getSelector(), p);
             visitRightPadded(aSwitch.getCases().getPadding().getStatements(),
                     JRightPadded.Location.BLOCK_STATEMENT, "", p);
+            visitSpace(aSwitch.getCases().getEnd(), Space.Location.BLOCK_END, p);
+            p.append("end");
             afterSyntax(aSwitch, p);
             return aSwitch;
         }
