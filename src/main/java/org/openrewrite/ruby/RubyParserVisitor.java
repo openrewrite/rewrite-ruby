@@ -125,6 +125,19 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitBignumNode(BignumNode node) {
+        return new J.Literal(
+                randomId(),
+                sourceBefore(node.getValue().toString()),
+                Markers.EMPTY,
+                node.getValue(),
+                node.getValue().toString(),
+                null,
+                JavaType.Primitive.Long
+        );
+    }
+
+    @Override
     public J visitBlockNode(BlockNode node) {
         return visitBlock(node);
     }

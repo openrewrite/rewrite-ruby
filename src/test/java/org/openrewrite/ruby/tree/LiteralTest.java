@@ -32,4 +32,15 @@ public class LiteralTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void bignum() {
+        rewriteRun(
+          ruby(
+            """
+              1234567890123456789012345678901234567890
+              """
+          )
+        );
+    }
 }
