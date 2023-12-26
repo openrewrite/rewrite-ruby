@@ -551,6 +551,11 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitClassVarAsgnNode(ClassVarAsgnNode node) {
+        return visitAsgnNode(node, node.getName());
+    }
+
+    @Override
     public J visitColon2Node(Colon2Node node) {
         return new J.MemberReference(
                 randomId(),
@@ -1826,6 +1831,19 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 charsetBomMarked,
                 null,
                 convertBlockStatements(node.getBodyNode(), n -> whitespace())
+        );
+    }
+
+    @Override
+    public J visitSelfNode(SelfNode node) {
+        return new J.Identifier(
+                randomId(),
+                sourceBefore("self"),
+                Markers.EMPTY,
+                emptyList(),
+                "self",
+                null,
+                null
         );
     }
 

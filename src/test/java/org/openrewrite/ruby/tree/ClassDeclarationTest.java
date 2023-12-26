@@ -129,4 +129,22 @@ public class ClassDeclarationTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void classVariableAssignment() {
+        rewriteRun(
+          ruby(
+            """
+              class Point
+                  @@n = 0
+    
+                  def initialize(x,y)
+                      @x, @y = x, y
+                      @@n += 1
+                  end
+              end
+              """
+          )
+        );
+    }
 }
