@@ -141,6 +141,16 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitArgsNode(ArgsNode node) {
+        throw new UnsupportedOperationException("Handled by convertArgs and skipped.");
+    }
+
+    @Override
+    public Expression visitArgsPushNode(ArgsPushNode node) {
+        return convert(node.getFirstNode());
+    }
+
+    @Override
     public J visitArgumentNode(ArgumentNode node) {
         return getIdentifier(node.getName());
     }
@@ -154,6 +164,71 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 prefix,
                 Markers.EMPTY,
                 elements,
+                null
+        );
+    }
+
+    @Override
+    public J visitAttrAssignNode(AttrAssignNode node) {
+        Space prefix = whitespace();
+        if (node.getName().asJavaString().equals("[]=")) {
+            return convertArrayAssignment(node, prefix);
+        }
+        return new J.Assignment(
+                randomId(),
+                prefix,
+                Markers.EMPTY,
+                convert(node.getReceiverNode()),
+                padLeft(sourceBefore("="), convert(node.getArgsNode())),
+                null
+        );
+    }
+
+    private J.Assignment convertArrayAssignment(AttrAssignNode node, Space prefix) {
+        Expression arrayAccessReceiver = convert(node.getReceiverNode());
+        Space arrayDimensionPrefix = sourceBefore("[");
+        Expression index;
+        Node assignment;
+        if (node.getArgsNode() instanceof ArgsPushNode) {
+            ArgsPushNode argsPushNode = (ArgsPushNode) node.getArgsNode();
+            index = visitArgsPushNode(argsPushNode);
+            assignment = argsPushNode.getSecondNode();
+        } else {
+            ListNode args = (ListNode) node.getArgsNode();
+            if (args.size() == 2) {
+                index = convert(args.get(0));
+            } else if (args.size() == 3) {
+                index = new Ruby.SubArrayIndex(
+                        randomId(),
+                        EMPTY,
+                        Markers.EMPTY,
+                        convert(args.get(0)),
+                        padLeft(sourceBefore(","), convert(args.get(1)))
+                );
+            } else {
+                throw new IllegalStateException("Unexpected array index with 3 nodes");
+            }
+            assignment = args.get(args.size() - 1);
+        }
+
+        return new J.Assignment(
+                randomId(),
+                prefix,
+                Markers.EMPTY,
+                new J.ArrayAccess(
+                        randomId(),
+                        EMPTY,
+                        Markers.EMPTY,
+                        arrayAccessReceiver,
+                        new J.ArrayDimension(
+                                randomId(),
+                                arrayDimensionPrefix,
+                                Markers.EMPTY,
+                                padRight(index, sourceBefore("]"))
+                        ),
+                        null
+                ),
+                padLeft(sourceBefore("="), convert(assignment)),
                 null
         );
     }

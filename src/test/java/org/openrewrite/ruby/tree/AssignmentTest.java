@@ -80,4 +80,40 @@ public class AssignmentTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void arrayAssignment() {
+        rewriteRun(
+          ruby(
+            """
+              a[1] = 1
+              a[0,2] = ['A', 'B']
+              """
+          )
+        );
+    }
+
+    @Test
+    void attributeAssignment() {
+        rewriteRun(
+          ruby(
+            """
+              a.b  = 1
+              """
+          )
+        );
+    }
+
+    @Test
+    void splatArrayAssignment() {
+        rewriteRun(
+          ruby(
+            """
+              a = [2, 3]
+              b[*a]  = 1
+              b[0, 1, *a]  = 1
+              """
+          )
+        );
+    }
 }
