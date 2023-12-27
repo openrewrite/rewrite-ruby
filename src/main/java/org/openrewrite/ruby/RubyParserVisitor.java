@@ -1332,10 +1332,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                         JContainer.<Expression>build(
                                 prefix,
                                 ListUtils.mapFirst(
-                                        convertAll(StreamSupport.stream(((ArrayNode) node.getValueNode()).spliterator(), false)
-                                                        .filter(Objects::nonNull)
-                                                        .collect(toList()), n -> sourceBefore(","),
-                                                n -> EMPTY),
+                                        this.<Expression>convertArgs("[", node.getValueNode(), null, "]").getPadding().getElements(),
                                         arg -> arg.withElement(arg.getElement().withPrefix(firstArgPrefix))
                                 ),
                                 Markers.EMPTY
@@ -2040,6 +2037,13 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 Markers.EMPTY,
                 convert(node.getValue())
         );
+    }
+
+    @Override
+    public J visitStarNode(StarNode node) {
+        // The star is parsed in visitMultipleAsgnNode. In cases where there is a variable after the
+        // star, a StarNode is not created by the compiler.
+        return new J.Empty(randomId(), EMPTY, Markers.EMPTY);
     }
 
     @Override

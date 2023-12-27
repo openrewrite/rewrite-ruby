@@ -59,6 +59,17 @@ public class AssignmentTest implements RewriteTest {
     }
 
     @Test
+    void starAssignment() {
+        rewriteRun(
+          ruby(
+            """
+              a, b, * = arr
+              """
+          )
+        );
+    }
+
+    @Test
     void assignMultiplication() {
         rewriteRun(
           ruby(
