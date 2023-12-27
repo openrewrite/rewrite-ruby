@@ -2098,6 +2098,20 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitXStrNode(XStrNode node) {
+        String valueSource = "`" + node.getValue() + "`";
+        return new J.Literal(
+                randomId(),
+                sourceBefore(valueSource),
+                Markers.EMPTY,
+                new String(node.getValue().getUnsafeBytes(), node.getValue().getEncoding().getCharset()),
+                valueSource,
+                null,
+                JavaType.Primitive.String
+        );
+    }
+
+    @Override
     public J visitYieldNode(YieldNode node) {
         return new Ruby.Yield(
                 randomId(),

@@ -159,4 +159,15 @@ public class StringTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void xString() {
+        rewriteRun(
+          ruby(
+            """
+              `hello`
+              """
+          )
+        );
+    }
 }
