@@ -55,4 +55,18 @@ public class CaseTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void casePatternMatching() {
+        rewriteRun(
+          ruby(
+            """
+              case %i[a b c d]
+                  in Symbol then puts "Single"
+                  else puts "Unable to match input."
+              end
+              """
+          )
+        );
+    }
 }

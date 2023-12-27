@@ -733,7 +733,9 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
             if (aCase.getExpressions().isEmpty()) {
                 p.append("else");
             } else {
-                p.append("when");
+                p.append(aCase.getMarkers().findFirst(PatternCase.class)
+                        .map(pc -> "in")
+                        .orElse("when"));
                 visitContainer("", aCase.getPadding().getExpressions(), JContainer.Location.CASE_EXPRESSION,
                         ",", "", p);
             }

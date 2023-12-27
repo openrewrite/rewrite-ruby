@@ -159,7 +159,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     public J visitArrayNode(ArrayNode node) {
         Space prefix = whitespace();
 
-        if (!node.isEmpty() && source.startsWith("%")) {
+        if (!node.isEmpty() && source.startsWith("%", cursor)) {
             Node first = node.get(0);
             if (first instanceof SymbolNode || first instanceof DSymbolNode) {
                 // this is a symbol array literal like %i[foo bar baz]
@@ -460,37 +460,43 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitCaseNode(CaseNode node) {
+        return convertCase(node.getCaseNode(), node.getCases(), node.getElseNode(), false);
+    }
+
+    private J.Switch convertCase(Node caseNode, ListNode cases, @Nullable Node elseNode,
+                                 boolean patternCase) {
         Space prefix = sourceBefore("case");
         J.ControlParentheses<Expression> selector = new J.ControlParentheses<>(
                 randomId(),
                 EMPTY,
                 Markers.EMPTY,
-                padRight(convert(node.getCaseNode()), EMPTY)
+                padRight(convert(caseNode), EMPTY)
         );
 
-        Map<Integer, List<WhenNode>> groupedWhen = new LinkedHashMap<>();
-        for (Node aCase : node.getCases()) {
-            groupedWhen.computeIfAbsent(aCase.getLine(), k -> new ArrayList<>())
-                    .add((WhenNode) aCase);
+        Map<Integer, List<Node>> groupedWhen = new LinkedHashMap<>();
+        for (Node aCase : cases) {
+            if (aCase != null) {
+                groupedWhen.computeIfAbsent(aCase.getLine(), k -> new ArrayList<>()).add(aCase);
+            }
         }
 
-        J.Block cases = new J.Block(
+        J.Block caseBlock = new J.Block(
                 randomId(),
                 EMPTY,
                 Markers.EMPTY,
                 JRightPadded.build(false),
-                groupedWhen.values().stream().map(this::convertCases).collect(toList()),
-                node.getElseNode() == null ? sourceBefore("end") : EMPTY
+                groupedWhen.values().stream().map(c -> convertCases(c, patternCase)).collect(toList()),
+                elseNode == null ? sourceBefore("end") : EMPTY
         );
 
-        if (node.getElseNode() != null) {
+        if (elseNode != null) {
             Space elsePrefix = sourceBefore("else");
             JContainer<Statement> body = JContainer.build(
                     whitespace(),
-                    convertBlockStatements(node.getElseNode(), n -> EMPTY),
+                    convertBlockStatements(elseNode, n -> EMPTY),
                     Markers.EMPTY
             );
-            cases = cases.getPadding().withStatements(ListUtils.concat(cases.getPadding().getStatements(),
+            caseBlock = caseBlock.getPadding().withStatements(ListUtils.concat(caseBlock.getPadding().getStatements(),
                     padRight(new J.Case(
                             randomId(),
                             elsePrefix,
@@ -500,7 +506,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                             body,
                             null
                     ), EMPTY)));
-            cases = cases.withEnd(sourceBefore("end"));
+            caseBlock = caseBlock.withEnd(sourceBefore("end"));
         }
 
         return new J.Switch(
@@ -508,19 +514,30 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 prefix,
                 Markers.EMPTY,
                 selector,
-                cases
+                caseBlock
         );
     }
 
-    private JRightPadded<Statement> convertCases(List<WhenNode> whenNodes) {
-        Space prefix = sourceBefore("when");
+    private JRightPadded<Statement> convertCases(List<Node> cases, boolean patternCase) {
+        assert !cases.isEmpty();
+        Space prefix = sourceBefore(patternCase ? "in" : "when");
 
         List<Node> expressionNodes = new ArrayList<>();
-        for (WhenNode node : whenNodes) {
-            if (node.getExpressionNodes() instanceof ArrayNode) {
-                Collections.addAll(expressionNodes, ((ArrayNode) node.getExpressionNodes()).children());
+        for (Node node : cases) {
+            if (patternCase) {
+                InNode in = (InNode) node;
+                if (in.getExpression() instanceof ArrayNode) {
+                    Collections.addAll(expressionNodes, ((ArrayNode) in.getExpression()).children());
+                } else {
+                    expressionNodes.add(in.getExpression());
+                }
             } else {
-                expressionNodes.add(node.getExpressionNodes());
+                WhenNode when = (WhenNode) node;
+                if (when.getExpressionNodes() instanceof ArrayNode) {
+                    Collections.addAll(expressionNodes, ((ArrayNode) when.getExpressionNodes()).children());
+                } else {
+                    expressionNodes.add(when.getExpressionNodes());
+                }
             }
         }
 
@@ -530,15 +547,24 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 Markers.EMPTY
         );
 
+        Node body = cases.get(0) instanceof WhenNode ?
+                ((WhenNode) cases.get(0)).getBodyNode() :
+                ((InNode) cases.get(0)).getBody();
+
+        Markers markers = Markers.EMPTY;
+        if (patternCase) {
+            markers = markers.add(new PatternCase(randomId()));
+        }
+
         return padRight(new J.Case(
                 randomId(),
                 prefix,
-                Markers.EMPTY,
+                markers,
                 J.Case.Type.Statement,
                 expressions,
                 JContainer.build(
                         whitespace(),
-                        convertBlockStatements(whenNodes.get(0).getBodyNode(), n -> EMPTY),
+                        convertBlockStatements(body, n -> EMPTY),
                         Markers.EMPTY
                 ),
                 null
@@ -1155,6 +1181,11 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitInNode(InNode node) {
+        return super.visitInNode(node);
+    }
+
+    @Override
     public J visitInstAsgnNode(InstAsgnNode node) {
         return visitAsgnNode(node, node.getName());
     }
@@ -1633,6 +1664,11 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 convert(node.getSecondNode()),
                 null
         );
+    }
+
+    @Override
+    public J visitPatternCaseNode(PatternCaseNode node) {
+        return convertCase(node.getCaseNode(), node.getCases(), node.getElseNode(), true);
     }
 
     @Override
