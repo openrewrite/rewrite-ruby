@@ -31,6 +31,7 @@ public class RubyRightPadded {
         NUMERIC_VALUE_SUFFIX(RubySpace.Location.NUMERIC_VALUE_SUFFIX),
         RESCUE_TYPE_SUFFIX(RubySpace.Location.RESCUE_TYPE_SUFFIX),
         STRUCT_EXTENDS_ARGUMENTS_SUFFIX(RubySpace.Location.STRUCT_EXTENDS_ARGUMENTS_SUFFIX),
+        SYMBOLS_NAMES_SUFFIX(RubySpace.Location.SYMBOLS_NAMES_SUFFIX),
         YIELD_DATA_SUFFIX(RubySpace.Location.YIELD_DATA_SUFFIX);
 
         private final RubySpace.Location afterLocation;

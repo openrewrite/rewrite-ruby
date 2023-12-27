@@ -28,7 +28,8 @@ public class RubyContainer {
         MULTIPLE_ASSIGNMENT_ASSIGNMENTS(RubySpace.Location.MULTIPLE_ASSIGNMENT_PREFIX, RubyRightPadded.Location.MULTIPLE_ASSIGNMENT_SUFFIX),
         MULTIPLE_ASSIGNMENT_INITIALIZERS(RubySpace.Location.MULTIPLE_ASSIGNMENT_INITIALIZERS, RubyRightPadded.Location.MULTIPLE_ASSIGNMENT_INITIALIZERS_SUFFIX),
         STRUCT_EXTENDS_ARGUMENTS(RubySpace.Location.STRUCT_EXTENDS_ARGUMENTS, RubyRightPadded.Location.STRUCT_EXTENDS_ARGUMENTS_SUFFIX),
-        YIELD_DATA(RubySpace.Location.YIELD, RubyRightPadded.Location.YIELD_DATA_SUFFIX);
+        YIELD_DATA(RubySpace.Location.YIELD_DATA, RubyRightPadded.Location.YIELD_DATA_SUFFIX),
+        SYMBOLS_NAMES(RubySpace.Location.SYMBOL_NAMES, RubyRightPadded.Location.SYMBOLS_NAMES_SUFFIX);
 
         private final RubySpace.Location beforeLocation;
         private final RubyRightPadded.Location elementLocation;

@@ -200,7 +200,7 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         beforeSyntax(dString, RubySpace.Location.DELIMITED_STRING_VALUE_PREFIX, p);
         p.append(dString.getDelimiter());
         visit(dString.getStrings(), p);
-        p.append(dString.getDelimiter().charAt(dString.getDelimiter().length() - 1));
+        p.append(DelimiterMatcher.end(dString.getDelimiter()));
         for (Ruby.DelimitedString.RegexpOptions regexpOption : dString.getRegexpOptions()) {
             switch (regexpOption) {
                 case IgnoreCase:
@@ -419,11 +419,25 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
 
     @Override
     public J visitSubArrayIndex(Ruby.SubArrayIndex subArrayIndex, PrintOutputCapture<P> p) {
-        beforeSyntax(subArrayIndex, RubySpace.Location.SUB_ARRAY_INDEX_PREFIX, p);
+        beforeSyntax(subArrayIndex, RubySpace.Location.SYMBOL_PREFIX, p);
         visit(subArrayIndex.getStartIndex(), p);
         visitLeftPadded(",", subArrayIndex.getPadding().getLength(), RubyLeftPadded.Location.SUB_ARRAY_LENGTH_PREFIX, p);
         afterSyntax(subArrayIndex, p);
         return subArrayIndex;
+    }
+
+    @Override
+    public J visitSymbol(Ruby.Symbols symbols, PrintOutputCapture<P> p) {
+        beforeSyntax(symbols, RubySpace.Location.SYMBOL_PREFIX, p);
+        if (!symbols.getDelimiter().startsWith("%")) {
+            p.append(":");
+        }
+        p.append(symbols.getDelimiter());
+        visitContainer("", symbols.getPadding().getNames(), RubyContainer.Location.SYMBOLS_NAMES,
+                "", "", p);
+        p.append(DelimiterMatcher.end(symbols.getDelimiter()));
+        afterSyntax(symbols, p);
+        return symbols;
     }
 
     @Override
@@ -437,7 +451,7 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
 
     @Override
     public J visitYield(Ruby.Yield yield, PrintOutputCapture<P> p) {
-        beforeSyntax(yield, RubySpace.Location.YIELD, p);
+        beforeSyntax(yield, RubySpace.Location.YIELD_DATA, p);
         p.append("yield");
         JContainer<Statement> args = yield.getPadding().getData();
         if (args.getMarkers().findFirst(OmitParentheses.class).isPresent()) {

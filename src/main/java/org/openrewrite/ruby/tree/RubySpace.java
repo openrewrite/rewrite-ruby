@@ -56,9 +56,11 @@ public class RubySpace {
         SPLAT_PREFIX,
         STRUCT_EXTENDS_ARGUMENTS,
         STRUCT_EXTENDS_ARGUMENTS_SUFFIX,
-        SUB_ARRAY_INDEX_PREFIX,
         SUB_ARRAY_LENGTH_PREFIX,
-        YIELD,
+        SYMBOLS_NAMES_SUFFIX,
+        SYMBOL_NAMES,
+        SYMBOL_PREFIX,
+        YIELD_DATA,
         YIELD_DATA_SUFFIX,
     }
 }

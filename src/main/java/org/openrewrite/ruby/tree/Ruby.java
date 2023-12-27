@@ -735,7 +735,7 @@ public interface Ruby extends J {
         @lombok.Value
         @With
         @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
-        public static class Value implements Ruby {
+        public static class Value implements Ruby, Expression {
             @EqualsAndHashCode.Include
             UUID id;
 
@@ -752,6 +752,23 @@ public interface Ruby extends J {
             @Override
             public <P> J acceptRuby(RubyVisitor<P> v, P p) {
                 return v.visitDelimitedStringValue(this, p);
+            }
+
+            @Transient
+            @Override
+            public CoordinateBuilder.Expression getCoordinates() {
+                return new CoordinateBuilder.Expression(this);
+            }
+
+            @Override
+            public @Nullable JavaType getType() {
+                return null;
+            }
+
+            @SuppressWarnings("unchecked")
+            @Override
+            public Value withType(@Nullable JavaType type) {
+                return this;
             }
         }
 
@@ -1545,6 +1562,98 @@ public interface Ruby extends J {
 
             public Ruby.SubArrayIndex withLength(JLeftPadded<Expression> length) {
                 return t.length == length ? t : new Ruby.SubArrayIndex(t.id, t.prefix, t.markers, t.startIndex, length);
+            }
+        }
+    }
+
+    /**
+     * Symbols are commonly defined individually, but can also be defined in bulk using
+     * <code>%i{...}</code> or <code>%I{...}</code> array syntax. This data structure is
+     * intended to be similar in many ways to {@link org.openrewrite.java.tree.J.VariableDeclarations},
+     * where one variable declaration statement can involve multiple named variables.
+     */
+    @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
+    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+    @RequiredArgsConstructor
+    @AllArgsConstructor(access = AccessLevel.PRIVATE)
+    final class Symbols implements Ruby, Expression {
+        @Nullable
+        @NonFinal
+        transient WeakReference<Padding> padding;
+
+        @Getter
+        @With
+        @EqualsAndHashCode.Include
+        UUID id;
+
+        @Getter
+        @With
+        Space prefix;
+
+        @Getter
+        @With
+        Markers markers;
+
+        @Getter
+        @With
+        String delimiter;
+
+        JContainer<Expression> names;
+
+        public List<Expression> getNames() {
+            return names.getElements();
+        }
+
+        public Symbols withNames(List<Expression> names) {
+            return getPadding().withNames(JContainer.withElements(this.names, names));
+        }
+
+        @Getter
+        @With
+        @Nullable
+        JavaType type;
+
+        @Override
+        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
+            return v.visitSymbol(this, p);
+        }
+
+        @Override
+        @Transient
+        public CoordinateBuilder.Expression getCoordinates() {
+            return new CoordinateBuilder.Expression(this);
+        }
+
+        @Override
+        public String toString() {
+            return withPrefix(Space.EMPTY).printTrimmed(new JavaPrinter<>());
+        }
+
+        public Padding getPadding() {
+            Padding p;
+            if (this.padding == null) {
+                p = new Padding(this);
+                this.padding = new WeakReference<>(p);
+            } else {
+                p = this.padding.get();
+                if (p == null || p.t != this) {
+                    p = new Padding(this);
+                    this.padding = new WeakReference<>(p);
+                }
+            }
+            return p;
+        }
+
+        @RequiredArgsConstructor
+        public static class Padding {
+            private final Symbols t;
+
+            public JContainer<Expression> getNames() {
+                return t.names;
+            }
+
+            public Ruby.Symbols withNames(JContainer<Expression> names) {
+                return t.names == names ? t : new Ruby.Symbols(t.id, t.prefix, t.markers, t.delimiter, names, t.type);
             }
         }
     }

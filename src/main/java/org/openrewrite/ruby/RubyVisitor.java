@@ -162,6 +162,7 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
             b = (Ruby.BlockArgument) temp;
         }
         b = b.withArgument((Expression) visit(b.getArgument(), p));
+        b = b.withType(visitType(b.getType(), p));
         return b;
     }
 
@@ -223,6 +224,7 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
             e = (Ruby.Expansion) temp;
         }
         e = e.withTree((TypedTree) visit(e.getTree(), p));
+        e = e.withType(visitType(e.getType(), p));
         return e;
     }
 
@@ -294,6 +296,7 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
             n = (Ruby.NumericDomain) temp;
         }
         n = n.withValue((Expression) visitNonNull(n.getValue(), p));
+        n = n.withType(visitType(n.getType(), p));
         return n;
     }
 
@@ -365,12 +368,13 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
             s = (Ruby.Splat) temp;
         }
         s = s.withValue((Expression) visitNonNull(s.getValue(), p));
+        s = s.withType(visitType(s.getType(), p));
         return s;
     }
 
     public J visitSubArrayIndex(Ruby.SubArrayIndex subArrayIndex, P p) {
         Ruby.SubArrayIndex s = subArrayIndex;
-        s = s.withPrefix(visitSpace(s.getPrefix(), RubySpace.Location.SUB_ARRAY_INDEX_PREFIX, p));
+        s = s.withPrefix(visitSpace(s.getPrefix(), RubySpace.Location.SYMBOL_PREFIX, p));
         s = s.withMarkers(visitMarkers(s.getMarkers(), p));
         Expression temp = (Expression) visitExpression(s, p);
         if (!(temp instanceof Ruby.SubArrayIndex)) {
@@ -380,6 +384,22 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         }
         s = s.withStartIndex((Expression) visitNonNull(s.getStartIndex(), p));
         s = s.withLength((Expression) visitNonNull(s.getLength(), p));
+        return s;
+    }
+
+    public J visitSymbol(Ruby.Symbols symbols, P p) {
+        Ruby.Symbols s = symbols;
+        s = s.withPrefix(visitSpace(s.getPrefix(), RubySpace.Location.SYMBOL_PREFIX, p));
+        s = s.withMarkers(visitMarkers(s.getMarkers(), p));
+        Expression temp = (Expression) visitExpression(s, p);
+        if (!(temp instanceof Ruby.Symbols)) {
+            return temp;
+        } else {
+            s = (Ruby.Symbols) temp;
+        }
+        s = s.getPadding().withNames(visitContainer(s.getPadding().getNames(),
+                RubyContainer.Location.SYMBOLS_NAMES, p));
+        s = s.withType(visitType(s.getType(), p));
         return s;
     }
 
@@ -400,7 +420,7 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
 
     public J visitYield(Ruby.Yield yield, P p) {
         Ruby.Yield y = yield;
-        y = y.withPrefix(visitSpace(y.getPrefix(), RubySpace.Location.YIELD, p));
+        y = y.withPrefix(visitSpace(y.getPrefix(), RubySpace.Location.YIELD_DATA, p));
         y = y.withMarkers(visitMarkers(y.getMarkers(), p));
         Statement temp = (Statement) visitStatement(y, p);
         if (!(temp instanceof Ruby.Yield)) {

@@ -31,6 +31,7 @@ import org.openrewrite.java.marker.ImplicitReturn;
 import org.openrewrite.java.marker.OmitParentheses;
 import org.openrewrite.java.tree.*;
 import org.openrewrite.marker.Markers;
+import org.openrewrite.ruby.internal.DelimiterMatcher;
 import org.openrewrite.ruby.marker.*;
 import org.openrewrite.ruby.tree.Ruby;
 
@@ -159,6 +160,14 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     @Override
     public J visitArrayNode(ArrayNode node) {
         Space prefix = whitespace();
+
+        if (!node.isEmpty() &&
+            (node.get(0) instanceof SymbolNode || node.get(0) instanceof DSymbolNode) &&
+            (source.startsWith("%i") || source.startsWith("%I"))) {
+            // this is a symbol array literal like %i[foo bar baz]
+            return convertSymbols(node.children()).withPrefix(prefix);
+        }
+
         JContainer<Expression> elements = convertArgs("[", node, null, "]");
         return new Ruby.Array(
                 randomId(),
@@ -759,7 +768,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitDRegxNode(DRegexpNode node) {
-        return visitDNode(whitespace(), "/", node)
+        return convertDNode(whitespace(), "/", node)
                 .withRegexpOptions(convertRegexOptions(node.getOptions()));
     }
 
@@ -820,7 +829,12 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitDStrNode(DStrNode node) {
-        return visitDNode(node);
+        return convertDNode(node);
+    }
+
+    @Override
+    public J visitDSymbolNode(DSymbolNode node) {
+        return convertSymbols(node);
     }
 
     @Override
@@ -830,10 +844,10 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitDXStrNode(DXStrNode node) {
-        return visitDNode(node);
+        return convertDNode(node);
     }
 
-    private Ruby.DelimitedString visitDNode(DNode node) {
+    private Ruby.DelimitedString convertDNode(DNode node) {
         Space prefix = whitespace();
         String delimiter = "\"";
         if (source.charAt(cursor) == '%') {
@@ -853,10 +867,10 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         } else if (source.charAt(cursor) == '/') {
             delimiter = "/";
         }
-        return visitDNode(prefix, delimiter, node);
+        return convertDNode(prefix, delimiter, node);
     }
 
-    private Ruby.DelimitedString visitDNode(Space prefix, String delimiter, DNode node) {
+    private Ruby.DelimitedString convertDNode(Space prefix, String delimiter, DNode node) {
         skip(delimiter);
         Ruby.DelimitedString dString = new Ruby.DelimitedString(
                 randomId(),
@@ -871,7 +885,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 emptyList(),
                 null
         );
-        skip(delimiter.substring(delimiter.length() - 1));
+        skip(DelimiterMatcher.end(delimiter));
         return dString;
     }
 
@@ -1157,12 +1171,6 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
-    public J visitInNode(InNode node) {
-        throw new UnsupportedOperationException("The only known use of `in` is in for loops, " +
-                                                "where it is handled.");
-    }
-
-    @Override
     public J visitInstAsgnNode(InstAsgnNode node) {
         return visitAsgnNode(node, node.getName());
     }
@@ -1360,7 +1368,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 source.startsWith("[", cursor) ?
                         JContainer.build(initializerPrefix, singletonList(padRight(visitArrayNode(
                                 (ArrayNode) node.getValueNode()).withPrefix(firstArgPrefix), EMPTY)), Markers.EMPTY) :
-                        JContainer.<Expression>build(
+                        JContainer.build(
                                 prefix,
                                 ListUtils.mapFirst(
                                         this.<Expression>convertArgs("[", node.getValueNode(), null, "]").getPadding().getElements(),
@@ -2029,7 +2037,59 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitSymbolNode(SymbolNode node) {
-        return convertIdentifier(node.getName());
+        return convertSymbols(node);
+    }
+
+    /**
+     * @param nodes An array of either {@link SymbolNode} or {@link DSymbolNode}.
+     * @return A {@link Ruby.Symbols} node.
+     */
+    public Ruby.Symbols convertSymbols(Node... nodes) {
+        Space prefix = whitespace();
+
+        String delimiter;
+        if (source.startsWith("%", cursor)) { // %s or %i
+            delimiter = source.substring(cursor, cursor + 3);
+        } else {
+            skip(":");
+            if (nodes[0] instanceof SymbolNode) {
+                RubySymbol firstName = ((SymbolNode) nodes[0]).getName();
+                delimiter = source.startsWith(firstName.asJavaString(), cursor) ?
+                        "" : source.substring(cursor, cursor + 1);
+            } else {
+                delimiter = source.substring(cursor, cursor + 1);
+            }
+        }
+        skip(delimiter);
+
+        List<JRightPadded<Expression>> nameNodes = new ArrayList<>(nodes.length);
+        if (delimiter.startsWith("%i")) {
+            // whitespace is only trimmed around symbol array names
+            for (Node node : nodes) {
+                nameNodes.add(padRight(
+                        node instanceof SymbolNode ?
+                                convertIdentifier(((SymbolNode) node).getName()) :
+                                convert(((DSymbolNode) node).children()[0]), whitespace()));
+            }
+        } else if (nodes[0] instanceof SymbolNode) {
+            // whitespace on the end of non-array name symbols is actually part of the name...
+            nameNodes.add(padRight(convertIdentifier(((SymbolNode) nodes[0]).getName()), EMPTY));
+        } else { // instanceof DSymbolNode
+            nameNodes.add(padRight(convert((((DSymbolNode) nodes[0]).children()[0])), whitespace()));
+        }
+
+        if (delimiter.startsWith("%")) {
+            skip(DelimiterMatcher.end(delimiter));
+        }
+
+        return new Ruby.Symbols(
+                randomId(),
+                prefix,
+                Markers.EMPTY,
+                delimiter,
+                JContainer.build(EMPTY, nameNodes, Markers.EMPTY),
+                null
+        );
     }
 
     @Override
