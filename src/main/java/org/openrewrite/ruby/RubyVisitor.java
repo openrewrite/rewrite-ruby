@@ -283,6 +283,20 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         return m;
     }
 
+    public J visitNumericDomain(Ruby.NumericDomain numericDomain, P p) {
+        Ruby.NumericDomain n = numericDomain;
+        n = n.withPrefix(visitSpace(n.getPrefix(), RubySpace.Location.NUMERIC_DOMAIN_PREFIX, p));
+        n = n.withMarkers(visitMarkers(n.getMarkers(), p));
+        Expression temp = (Expression) visitExpression(n, p);
+        if (!(temp instanceof Ruby.NumericDomain)) {
+            return temp;
+        } else {
+            n = (Ruby.NumericDomain) temp;
+        }
+        n = n.withValue((Expression) visitNonNull(n.getValue(), p));
+        return n;
+    }
+
     public J visitOpenEigenclass(Ruby.OpenEigenclass openEigenclass, P p) {
         Ruby.OpenEigenclass o = openEigenclass;
         o = o.withPrefix(visitSpace(o.getPrefix(), RubySpace.Location.OPEN_EIGENCLASS_PREFIX, p));
@@ -297,20 +311,6 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
                 JLeftPadded.Location.LANGUAGE_EXTENSION, p));
         o = o.withBody((J.Block) visit(o.getBody(), p));
         return o;
-    }
-
-    public J visitRational(Ruby.Rational rational, P p) {
-        Ruby.Rational s = rational;
-        s = s.withPrefix(visitSpace(s.getPrefix(), RubySpace.Location.RATIONAL_PREFIX, p));
-        s = s.withMarkers(visitMarkers(s.getMarkers(), p));
-        Expression temp = (Expression) visitExpression(s, p);
-        if (!(temp instanceof Ruby.Rational)) {
-            return temp;
-        } else {
-            s = (Ruby.Rational) temp;
-        }
-        s = s.withNumerator((Expression) visitNonNull(s.getNumerator(), p));
-        return s;
     }
 
     public J visitRedo(Ruby.Redo redo, P p) {

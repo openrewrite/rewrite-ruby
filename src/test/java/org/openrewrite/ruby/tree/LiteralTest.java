@@ -65,4 +65,26 @@ public class LiteralTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void encoding() {
+        rewriteRun(
+          ruby(
+            """
+              __ENCODING__
+              """
+          )
+        );
+    }
+
+    @Test
+    void complex() {
+        rewriteRun(
+          ruby(
+            """
+              1+2i
+              """
+          )
+        );
+    }
 }

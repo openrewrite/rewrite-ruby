@@ -1233,7 +1233,7 @@ public interface Ruby extends J {
     @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
     @RequiredArgsConstructor
     @AllArgsConstructor(access = AccessLevel.PRIVATE)
-    final class Rational implements Ruby, Expression, TypedTree {
+    final class NumericDomain implements Ruby, Expression, TypedTree {
         @Nullable
         @NonFinal
         transient WeakReference<Padding> padding;
@@ -1251,14 +1251,23 @@ public interface Ruby extends J {
         @With
         Markers markers;
 
-        JRightPadded<Expression> numerator;
+        JRightPadded<Expression> value;
 
-        public Expression getNumerator() {
-            return numerator.getElement();
+        public Expression getValue() {
+            return value.getElement();
         }
 
-        public Rational withNumerator(Expression numerator) {
-            return getPadding().withNumerator(JRightPadded.withElement(this.numerator, numerator));
+        public NumericDomain withValue(Expression value) {
+            return getPadding().withValue(JRightPadded.withElement(this.value, value));
+        }
+
+        @Getter
+        @With
+        Domain domain;
+
+        public enum Domain {
+            Rational,
+            Complex
         }
 
         @Getter
@@ -1268,7 +1277,7 @@ public interface Ruby extends J {
 
         @Override
         public <P> J acceptRuby(RubyVisitor<P> v, P p) {
-            return v.visitRational(this, p);
+            return v.visitNumericDomain(this, p);
         }
 
         @Transient
@@ -1294,14 +1303,14 @@ public interface Ruby extends J {
 
         @RequiredArgsConstructor
         public static class Padding {
-            private final Rational t;
+            private final NumericDomain t;
 
-            public JRightPadded<Expression> getNumerator() {
-                return t.numerator;
+            public JRightPadded<Expression> getValue() {
+                return t.value;
             }
 
-            public Rational withNumerator(JRightPadded<Expression> numerator) {
-                return t.numerator == numerator ? t : new Rational(t.id, t.prefix, t.markers, numerator, t.type);
+            public NumericDomain withValue(JRightPadded<Expression> value) {
+                return t.value == value ? t : new NumericDomain(t.id, t.prefix, t.markers, value, t.domain, t.type);
             }
         }
     }

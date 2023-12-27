@@ -599,6 +599,18 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitComplexNode(ComplexNode node) {
+        return new Ruby.NumericDomain(
+                randomId(),
+                whitespace(),
+                Markers.EMPTY,
+                padRight(convert(node.getNumber()), sourceBefore("i")),
+                Ruby.NumericDomain.Domain.Complex,
+                null
+        );
+    }
+
+    @Override
     public J visitConstDeclNode(ConstDeclNode node) {
         return visitAsgnNode(node, node.getName());
     }
@@ -861,6 +873,19 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         );
         skip(delimiter.substring(delimiter.length() - 1));
         return dString;
+    }
+
+    @Override
+    public J visitEncodingNode(EncodingNode node) {
+        return new J.Identifier(
+                randomId(),
+                sourceBefore("__ENCODING__"),
+                Markers.EMPTY,
+                emptyList(),
+                "__ENCODING__",
+                null,
+                null
+        );
     }
 
     @Override
@@ -1129,6 +1154,12 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 then,
                 anElse
         );
+    }
+
+    @Override
+    public J visitInNode(InNode node) {
+        throw new UnsupportedOperationException("The only known use of `in` is in for loops, " +
+                                                "where it is handled.");
     }
 
     @Override
@@ -1639,11 +1670,12 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitRationalNode(RationalNode node) {
-        return new Ruby.Rational(
+        return new Ruby.NumericDomain(
                 randomId(),
                 whitespace(),
                 Markers.EMPTY,
                 padRight(convert(node.getNumerator()), sourceBefore("r")),
+                Ruby.NumericDomain.Domain.Rational,
                 null
         );
     }

@@ -309,6 +309,19 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     }
 
     @Override
+    public J visitNumericDomain(Ruby.NumericDomain numericDomain, PrintOutputCapture<P> p) {
+        beforeSyntax(numericDomain, RubySpace.Location.NUMERIC_DOMAIN_PREFIX, p);
+        visitRightPadded(
+                numericDomain.getPadding().getValue(),
+                RubyRightPadded.Location.NUMERIC_VALUE_SUFFIX,
+                numericDomain.getDomain() == Ruby.NumericDomain.Domain.Rational ? "r" : "i",
+                p
+        );
+        afterSyntax(numericDomain, p);
+        return numericDomain;
+    }
+
+    @Override
     public J visitOpenEigenclass(Ruby.OpenEigenclass openEigenclass, PrintOutputCapture<P> p) {
         beforeSyntax(openEigenclass, RubySpace.Location.OPEN_EIGENCLASS_PREFIX, p);
         p.append("class");
@@ -317,15 +330,6 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         p.append("end");
         afterSyntax(openEigenclass, p);
         return openEigenclass;
-    }
-
-    @Override
-    public J visitRational(Ruby.Rational rational, PrintOutputCapture<P> p) {
-        beforeSyntax(rational, RubySpace.Location.RATIONAL_PREFIX, p);
-        visitRightPadded(rational.getPadding().getNumerator(),
-                RubyRightPadded.Location.RATIONAL_NUMERATOR_SUFFIX, "r", p);
-        afterSyntax(rational, p);
-        return rational;
     }
 
     @Override
