@@ -2191,15 +2191,31 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitXStrNode(XStrNode node) {
-        String valueSource = "`" + node.getValue() + "`";
-        return new J.Literal(
+        Space prefix = whitespace();
+        String value = new String(node.getValue().getUnsafeBytes(),
+                node.getValue().getEncoding().getCharset());
+        String delimiter = source.charAt(cursor) == '`' ? "`" : source.substring(cursor, cursor + 3);
+        skip(delimiter);
+        skip(value);
+        skip(DelimiterMatcher.end(delimiter));
+        return new Ruby.DelimitedString(
                 randomId(),
-                sourceBefore(valueSource),
+                prefix,
                 Markers.EMPTY,
-                new String(node.getValue().getUnsafeBytes(), node.getValue().getEncoding().getCharset()),
-                valueSource,
-                null,
-                JavaType.Primitive.String
+                delimiter,
+                singletonList(
+                        new J.Literal(
+                                randomId(),
+                                EMPTY,
+                                Markers.EMPTY,
+                                value,
+                                value,
+                                null,
+                                JavaType.Primitive.String
+                        )
+                ),
+                emptyList(),
+                null
         );
     }
 

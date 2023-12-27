@@ -59,12 +59,12 @@ public class StringTest implements RewriteTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"", "Q", "q", "x"})
+    @ValueSource(strings = {"", "Q", "q"})
     void percentDelimitedString(String delim) {
         rewriteRun(
           ruby(
             """
-              %%%s!#{a1} The programming language is #{a1}!
+              %%%s[#{a1} The programming language is #{a1}]
               """.formatted(delim)
           )
         );
@@ -87,7 +87,7 @@ public class StringTest implements RewriteTest {
         rewriteRun(
           ruby(
             """
-              %r|^/usr/local/.*|
+              %r[^/usr/local/.*]
               """
           )
         );
@@ -166,6 +166,39 @@ public class StringTest implements RewriteTest {
           ruby(
             """
               `hello`
+              """
+          )
+        );
+    }
+
+    @Test
+    void xStringPercentDelimited() {
+        rewriteRun(
+          ruby(
+            """
+              %x(echo 1)
+              """
+          )
+        );
+    }
+
+    @Test
+    void nonInterpolableStringArrayLiteral() {
+        rewriteRun(
+          ruby(
+            """
+              %w[foo bar baz]
+              """
+          )
+        );
+    }
+
+    @Test
+    void interpolableStringArrayLiteral() {
+        rewriteRun(
+          ruby(
+            """
+              %W(#{1 + 1})
               """
           )
         );

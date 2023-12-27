@@ -26,7 +26,7 @@ public final class DelimiterMatcher {
         if (beginDelimiter.startsWith("%")) {
             char t = beginDelimiter.charAt(1);
             if (t == 'q' || t == 'Q' || t == 's' || t == 'i' || t == 'I' ||
-                t == 'w' || t == 'W' || t == 'r') {
+                t == 'w' || t == 'W' || t == 'r' || t == 'x') {
                 return matchBeginDelimiter(beginDelimiter.charAt(2), beginDelimiter.substring(2));
             }
             // for the %[foo bar baz] case
