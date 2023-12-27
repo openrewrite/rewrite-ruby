@@ -70,6 +70,17 @@ public class AssignmentTest implements RewriteTest {
     }
 
     @Test
+    void collectIntoSingleValueAssignment() {
+        rewriteRun(
+          ruby(
+            """
+              lhs = a, b, c
+              """
+          )
+        );
+    }
+
+    @Test
     void assignMultiplication() {
         rewriteRun(
           ruby(

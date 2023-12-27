@@ -1587,6 +1587,24 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitOrNode(OrNode node) {
+        Space prefix = whitespace();
+        Expression left = convert(node.getFirstNode());
+        Space opPrefix = whitespace();
+        String op = source.startsWith("||", cursor) ? "||" : "or";
+        skip(op);
+        return new J.Binary(
+                randomId(),
+                prefix,
+                op.equals("||") ? Markers.EMPTY : Markers.EMPTY.add(new EnglishOperator(randomId())),
+                left,
+                padLeft(opPrefix, J.Binary.Type.Or),
+                convert(node.getSecondNode()),
+                null
+        );
+    }
+
+    @Override
     public J visitPostExeNode(PostExeNode node) {
         Space prefix = sourceBefore("END");
         return new Ruby.End(
@@ -1620,6 +1638,17 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitRationalNode(RationalNode node) {
+        return new Ruby.Rational(
+                randomId(),
+                whitespace(),
+                Markers.EMPTY,
+                padRight(convert(node.getNumerator()), sourceBefore("r")),
+                null
+        );
+    }
+
+    @Override
     public J visitRedoNode(RedoNode node) {
         return new Ruby.Redo(
                 randomId(),
@@ -1637,176 +1666,8 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
-    public J visitReturnNode(ReturnNode node) {
-        Space prefix = sourceBefore("return");
-        Expression returnValue = convert(node.getValueNode());
-        return new J.Return(
-                randomId(),
-                prefix,
-                Markers.EMPTY,
-                returnValue
-        );
-    }
-
-    @Override
-    public J visitSuperNode(SuperNode node) {
-        return new J.MethodInvocation(
-                randomId(),
-                whitespace(),
-                Markers.EMPTY,
-                null,
-                null,
-                new J.Identifier(
-                        randomId(),
-                        sourceBefore("super"),
-                        Markers.EMPTY,
-                        emptyList(),
-                        "super",
-                        null,
-                        null
-                ),
-                convertCallArgs(new SuperArgsNode(node)),
-                null
-        );
-    }
-
-    /**
-     * Because {@link SuperNode} does not implement {@link IArgumentNode}.
-     */
-    private static class SuperArgsNode extends SuperNode implements IArgumentNode {
-        public SuperArgsNode(SuperNode superNode) {
-            super(superNode.getLine(), superNode.getArgsNode(), superNode.getIterNode());
-        }
-
-        @Override
-        public Node setArgsNode(Node node) {
-            throw new UnsupportedOperationException("Setter will never be called");
-        }
-    }
-
-    @Override
-    public J visitSymbolNode(SymbolNode node) {
-        return getIdentifier(node.getName());
-    }
-
-    @Override
-    public J visitTrueNode(TrueNode node) {
-        return new J.Literal(randomId(), sourceBefore("true"), Markers.EMPTY, true, "true",
-                null, JavaType.Primitive.Boolean);
-    }
-
-    @Override
-    public J visitVCallNode(VCallNode node) {
-        return getIdentifier(node.getName());
-    }
-
-    @Override
-    public J visitWhenNode(WhenNode node) {
-        throw new UnsupportedOperationException("Multiple WhenNodes can potentially map to one J.Case, " +
-                                                "so the grouping of WhenNodes is handled in visitCaseNode " +
-                                                "and this method should never be called.");
-    }
-
-    @Override
-    public J visitWhileNode(WhileNode node) {
-        return whileOrUntilNode(node.getConditionNode(), node.getBodyNode());
-    }
-
-    @Override
-    public J visitUntilNode(UntilNode node) {
-        return whileOrUntilNode(node.getConditionNode(), node.getBodyNode());
-    }
-
-    private J whileOrUntilNode(Node conditionNode, Node bodyNode) {
-        Space prefix = whitespace();
-
-        if (source.startsWith("while", cursor) || source.startsWith("until", cursor)) {
-            Markers markers = whileOrUntil();
-            Space conditionPrefix = whitespace();
-            Expression conditionExpr = convert(conditionNode);
-            boolean explicitDo = Pattern.compile("\\s+do").matcher(source).find(cursor);
-            J.ControlParentheses<Expression> condition = new J.ControlParentheses<>(
-                    randomId(),
-                    conditionPrefix,
-                    explicitDo ?
-                            Markers.EMPTY.add(new ExplicitDo(randomId())) :
-                            Markers.EMPTY,
-                    padRight(conditionExpr, explicitDo ? sourceBefore("do") : EMPTY)
-            );
-
-            return new J.WhileLoop(
-                    randomId(),
-                    prefix,
-                    markers,
-                    condition,
-                    padRight(convert(bodyNode), sourceBefore("end"))
-            );
-        } else {
-            JRightPadded<Statement> body = padRight(convert(bodyNode), whitespace());
-            Markers markers = whileOrUntil();
-
-            Space conditionPrefix = whitespace();
-            Expression conditionExpr = convert(conditionNode);
-            J.ControlParentheses<Expression> condition = new J.ControlParentheses<>(
-                    randomId(),
-                    conditionPrefix,
-                    Markers.EMPTY,
-                    padRight(conditionExpr, EMPTY)
-            );
-
-            return new J.WhileLoop(
-                    randomId(),
-                    prefix,
-                    markers.add(new WhileModifier(randomId())),
-                    condition,
-                    body
-            );
-        }
-    }
-
-    private Markers whileOrUntil() {
-        Markers markers = Markers.EMPTY;
-        if (source.startsWith("until", cursor)) {
-            markers = markers.add(new Until(randomId()));
-            skip("until");
-        } else {
-            skip("while");
-        }
-        return markers;
-    }
-
-    @Override
-    public J visitYieldNode(YieldNode node) {
-        return new Ruby.Yield(
-                randomId(),
-                sourceBefore("yield"),
-                Markers.EMPTY,
-                convertArgs("(", node.getArgsNode(), null, ")")
-        );
-    }
-
-    private J.Identifier getIdentifier(RubySymbol name) {
-        String nameStr = name.asJavaString();
-        return new J.Identifier(randomId(), sourceBefore(nameStr), Markers.EMPTY, emptyList(),
-                nameStr, null, null);
-    }
-
-    @Override
-    public J visitOrNode(OrNode node) {
-        Space prefix = whitespace();
-        Expression left = convert(node.getFirstNode());
-        Space opPrefix = whitespace();
-        String op = source.startsWith("||", cursor) ? "||" : "or";
-        skip(op);
-        return new J.Binary(
-                randomId(),
-                prefix,
-                op.equals("||") ? Markers.EMPTY : Markers.EMPTY.add(new EnglishOperator(randomId())),
-                left,
-                padLeft(opPrefix, J.Binary.Type.Or),
-                convert(node.getSecondNode()),
-                null
-        );
+    public J visitRequiredKeywordArgumentValueNode(RequiredKeywordArgumentValueNode node) {
+        throw new UnsupportedOperationException("This is only used in the event of syntax errors.");
     }
 
     @Override
@@ -1984,6 +1845,18 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitReturnNode(ReturnNode node) {
+        Space prefix = sourceBefore("return");
+        Expression returnValue = convert(node.getValueNode());
+        return new J.Return(
+                randomId(),
+                prefix,
+                Markers.EMPTY,
+                returnValue
+        );
+    }
+
+    @Override
     public Ruby.CompilationUnit visitRootNode(RootNode node) {
         return new Ruby.CompilationUnit(
                 randomId(),
@@ -2077,6 +1950,156 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             skip(delimiter);
         }
         return literal;
+    }
+
+    @Override
+    public J visitSuperNode(SuperNode node) {
+        return new J.MethodInvocation(
+                randomId(),
+                whitespace(),
+                Markers.EMPTY,
+                null,
+                null,
+                new J.Identifier(
+                        randomId(),
+                        sourceBefore("super"),
+                        Markers.EMPTY,
+                        emptyList(),
+                        "super",
+                        null,
+                        null
+                ),
+                convertCallArgs(new SuperArgsNode(node)),
+                null
+        );
+    }
+
+    /**
+     * Because {@link SuperNode} does not implement {@link IArgumentNode}.
+     */
+    private static class SuperArgsNode extends SuperNode implements IArgumentNode {
+        public SuperArgsNode(SuperNode superNode) {
+            super(superNode.getLine(), superNode.getArgsNode(), superNode.getIterNode());
+        }
+
+        @Override
+        public Node setArgsNode(Node node) {
+            throw new UnsupportedOperationException("Setter will never be called");
+        }
+    }
+
+    @Override
+    public J visitSValueNode(SValueNode node) {
+        // https://www.rubydoc.info/gems/ruby-internal/Node/SVALUE
+        throw new UnsupportedOperationException("Does not appear to be called even for SVALUEs as described " +
+                                                "in the Ruby documentation.");
+    }
+
+    @Override
+    public J visitSymbolNode(SymbolNode node) {
+        return getIdentifier(node.getName());
+    }
+
+    @Override
+    public J visitTrueNode(TrueNode node) {
+        return new J.Literal(randomId(), sourceBefore("true"), Markers.EMPTY, true, "true",
+                null, JavaType.Primitive.Boolean);
+    }
+
+    @Override
+    public J visitVCallNode(VCallNode node) {
+        return getIdentifier(node.getName());
+    }
+
+    @Override
+    public J visitWhenNode(WhenNode node) {
+        throw new UnsupportedOperationException("Multiple WhenNodes can potentially map to one J.Case, " +
+                                                "so the grouping of WhenNodes is handled in visitCaseNode " +
+                                                "and this method should never be called.");
+    }
+
+    @Override
+    public J visitWhileNode(WhileNode node) {
+        return whileOrUntilNode(node.getConditionNode(), node.getBodyNode());
+    }
+
+    @Override
+    public J visitUntilNode(UntilNode node) {
+        return whileOrUntilNode(node.getConditionNode(), node.getBodyNode());
+    }
+
+    private J whileOrUntilNode(Node conditionNode, Node bodyNode) {
+        Space prefix = whitespace();
+
+        if (source.startsWith("while", cursor) || source.startsWith("until", cursor)) {
+            Markers markers = whileOrUntil();
+            Space conditionPrefix = whitespace();
+            Expression conditionExpr = convert(conditionNode);
+            boolean explicitDo = Pattern.compile("\\s+do").matcher(source).find(cursor);
+            J.ControlParentheses<Expression> condition = new J.ControlParentheses<>(
+                    randomId(),
+                    conditionPrefix,
+                    explicitDo ?
+                            Markers.EMPTY.add(new ExplicitDo(randomId())) :
+                            Markers.EMPTY,
+                    padRight(conditionExpr, explicitDo ? sourceBefore("do") : EMPTY)
+            );
+
+            return new J.WhileLoop(
+                    randomId(),
+                    prefix,
+                    markers,
+                    condition,
+                    padRight(convert(bodyNode), sourceBefore("end"))
+            );
+        } else {
+            JRightPadded<Statement> body = padRight(convert(bodyNode), whitespace());
+            Markers markers = whileOrUntil();
+
+            Space conditionPrefix = whitespace();
+            Expression conditionExpr = convert(conditionNode);
+            J.ControlParentheses<Expression> condition = new J.ControlParentheses<>(
+                    randomId(),
+                    conditionPrefix,
+                    Markers.EMPTY,
+                    padRight(conditionExpr, EMPTY)
+            );
+
+            return new J.WhileLoop(
+                    randomId(),
+                    prefix,
+                    markers.add(new WhileModifier(randomId())),
+                    condition,
+                    body
+            );
+        }
+    }
+
+    private Markers whileOrUntil() {
+        Markers markers = Markers.EMPTY;
+        if (source.startsWith("until", cursor)) {
+            markers = markers.add(new Until(randomId()));
+            skip("until");
+        } else {
+            skip("while");
+        }
+        return markers;
+    }
+
+    @Override
+    public J visitYieldNode(YieldNode node) {
+        return new Ruby.Yield(
+                randomId(),
+                sourceBefore("yield"),
+                Markers.EMPTY,
+                convertArgs("(", node.getArgsNode(), null, ")")
+        );
+    }
+
+    private J.Identifier getIdentifier(RubySymbol name) {
+        String nameStr = name.asJavaString();
+        return new J.Identifier(randomId(), sourceBefore(nameStr), Markers.EMPTY, emptyList(),
+                nameStr, null, null);
     }
 
     private <J2 extends J> J2 convert(@Nullable Node t) {

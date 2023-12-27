@@ -1229,6 +1229,83 @@ public interface Ruby extends J {
         }
     }
 
+    @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
+    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+    @RequiredArgsConstructor
+    @AllArgsConstructor(access = AccessLevel.PRIVATE)
+    final class Rational implements Ruby, Expression, TypedTree {
+        @Nullable
+        @NonFinal
+        transient WeakReference<Padding> padding;
+
+        @Getter
+        @With
+        @EqualsAndHashCode.Include
+        UUID id;
+
+        @Getter
+        @With
+        Space prefix;
+
+        @Getter
+        @With
+        Markers markers;
+
+        JRightPadded<Expression> numerator;
+
+        public Expression getNumerator() {
+            return numerator.getElement();
+        }
+
+        public Rational withNumerator(Expression numerator) {
+            return getPadding().withNumerator(JRightPadded.withElement(this.numerator, numerator));
+        }
+
+        @Getter
+        @With
+        @Nullable
+        JavaType type;
+
+        @Override
+        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
+            return v.visitRational(this, p);
+        }
+
+        @Transient
+        @Override
+        public CoordinateBuilder.Expression getCoordinates() {
+            return new CoordinateBuilder.Expression(this);
+        }
+
+        public Padding getPadding() {
+            Padding p;
+            if (this.padding == null) {
+                p = new Padding(this);
+                this.padding = new WeakReference<>(p);
+            } else {
+                p = this.padding.get();
+                if (p == null || p.t != this) {
+                    p = new Padding(this);
+                    this.padding = new WeakReference<>(p);
+                }
+            }
+            return p;
+        }
+
+        @RequiredArgsConstructor
+        public static class Padding {
+            private final Rational t;
+
+            public JRightPadded<Expression> getNumerator() {
+                return t.numerator;
+            }
+
+            public Rational withNumerator(JRightPadded<Expression> numerator) {
+                return t.numerator == numerator ? t : new Rational(t.id, t.prefix, t.markers, numerator, t.type);
+            }
+        }
+    }
+
     @Value
     @With
     @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)

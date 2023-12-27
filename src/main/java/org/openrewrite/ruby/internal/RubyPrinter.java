@@ -320,6 +320,15 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     }
 
     @Override
+    public J visitRational(Ruby.Rational rational, PrintOutputCapture<P> p) {
+        beforeSyntax(rational, RubySpace.Location.RATIONAL_PREFIX, p);
+        visitRightPadded(rational.getPadding().getNumerator(),
+                RubyRightPadded.Location.RATIONAL_NUMERATOR_SUFFIX, "r", p);
+        afterSyntax(rational, p);
+        return rational;
+    }
+
+    @Override
     public J visitRedo(Ruby.Redo redo, PrintOutputCapture<P> p) {
         beforeSyntax(redo, RubySpace.Location.REDO_PREFIX, p);
         p.append("redo");
@@ -506,6 +515,19 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
             }
             visit(leftPadded.getElement(), p);
             afterSyntax(leftPadded.getMarkers(), p);
+        }
+    }
+
+    protected void visitRightPadded(@Nullable JRightPadded<? extends J> rightPadded, RubyRightPadded.Location location,
+                                    @Nullable String suffix, PrintOutputCapture<P> p) {
+        if (rightPadded != null) {
+            beforeSyntax(Space.EMPTY, rightPadded.getMarkers(), (RubySpace.Location) null, p);
+            visit(rightPadded.getElement(), p);
+            afterSyntax(rightPadded.getMarkers(), p);
+            visitSpace(rightPadded.getAfter(), location.getAfterLocation(), p);
+            if (suffix != null) {
+                p.append(suffix);
+            }
         }
     }
 

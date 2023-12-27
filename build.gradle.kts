@@ -13,7 +13,7 @@ dependencies {
     implementation("org.openrewrite:rewrite-java")
 
     implementation("io.micrometer:micrometer-core:1.9.+")
-    implementation("org.jruby:jruby-complete:latest.release")
+    implementation("org.jruby:jruby-core:latest.release")
 
     implementation("org.openrewrite:rewrite-test")
 }

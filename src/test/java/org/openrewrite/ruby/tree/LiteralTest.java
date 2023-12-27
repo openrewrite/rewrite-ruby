@@ -54,4 +54,15 @@ public class LiteralTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void rationalLiteral() {
+        rewriteRun(
+          ruby(
+            """
+              2/3r
+              """
+          )
+        );
+    }
 }
