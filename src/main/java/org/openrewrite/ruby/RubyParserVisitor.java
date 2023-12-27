@@ -1245,20 +1245,28 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             Space variablePrefix = whitespace();
             J.Identifier variable = convertIdentifier(name);
             OperatorCallNode assignOp = (OperatorCallNode) node.getValueNode();
+            Space opPrefix = whitespace();
             if (source.charAt(cursor) == '=') {
+                skip("=");
                 return new J.Assignment(
                         randomId(),
                         variablePrefix,
                         Markers.EMPTY,
                         variable,
-                        padLeft(sourceBefore("="), visitOperatorCallNode(assignOp)),
+                        padLeft(opPrefix, visitOperatorCallNode(assignOp)),
                         null
                 );
             } else {
-                return convertOpAsgn(
+                Expression mapped = convertOpAsgn(
                         () -> variable,
                         assignOp.getName().asJavaString(), ((ListNode) assignOp.getArgsNode()).get(0)
-                );
+                ).withPrefix(variablePrefix);
+                if (mapped instanceof J.AssignmentOperation) {
+                    J.AssignmentOperation j = (J.AssignmentOperation) mapped;
+                    return j.getPadding().withOperator(j.getPadding().getOperator().withBefore(opPrefix));
+                }
+                Ruby.AssignmentOperation r = (Ruby.AssignmentOperation) mapped;
+                return r.getPadding().withOperator(r.getPadding().getOperator().withBefore(opPrefix));
             }
         } else {
             Space prefix = whitespace();

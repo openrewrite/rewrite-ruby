@@ -41,7 +41,8 @@ public class CharacterLiteralToString extends Recipe {
         return new RubyIsoVisitor<ExecutionContext>() {
             @Override
             public J.Literal visitLiteral(J.Literal literal, ExecutionContext ctx) {
-                if (literal.getType() == JavaType.Primitive.Char && literal.getValueSource() != null) {
+                if (literal.getType() == JavaType.Primitive.String && literal.getValueSource() != null &&
+                    literal.getValueSource().startsWith("?")) {
                     return literal.withType(JavaType.Primitive.String)
                             .withValueSource(String.format("'%s'", literal.getValueSource().substring(1)));
                 }
