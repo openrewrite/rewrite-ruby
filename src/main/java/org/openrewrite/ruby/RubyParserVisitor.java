@@ -39,6 +39,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.StreamSupport;
 
@@ -942,43 +943,62 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitOpAsgnNode(OpAsgnNode node) {
+        return convertOpAsgn(() -> convert(node.getReceiverNode()), node.getOperatorName(), node.getValueNode()
+        );
+    }
+
+    @Override
     public J visitOpAsgnAndNode(OpAsgnAndNode node) {
-        return convertOpAsgn(node.getFirstNode(), node.getSecondNode(),
-                "&&=", Ruby.AssignmentOperation.Type.And);
+        return convertOpAsgn(() -> convert(node.getFirstNode()), "&&", node.getSecondNode());
     }
 
     @Override
     public J visitOpAsgnOrNode(OpAsgnOrNode node) {
-        return convertOpAsgn(node.getFirstNode(), node.getSecondNode(),
-                "||=", Ruby.AssignmentOperation.Type.Or);
-    }
-
-    private Ruby.AssignmentOperation convertOpAsgn(Node first, Node second, String op, Ruby.AssignmentOperation.Type opType) {
-        if (second instanceof LocalAsgnNode) {
-            second = ((LocalAsgnNode) second).getValueNode();
-        }
-        return new Ruby.AssignmentOperation(
-                randomId(),
-                whitespace(),
-                Markers.EMPTY,
-                convert(first),
-                padLeft(sourceBefore(op), opType),
-                convert(second),
-                null
-        );
+        return convertOpAsgn(() -> convert(node.getFirstNode()), "||", node.getSecondNode());
     }
 
     @Override
     public J visitOpElementAsgnNode(OpElementAsgnNode node) {
-        return new J.AssignmentOperation(
-                randomId(),
-                whitespace(),
-                Markers.EMPTY,
-                convertArrayAccess(node.getReceiverNode(), node.getArgsNode(), null),
-                padLeft(sourceBefore(node.getOperatorName() + "="), convertAssignmentOpType(node.getOperatorName())),
-                convert(node.getValueNode()),
-                null
+        return convertOpAsgn(
+                () -> convertArrayAccess(node.getReceiverNode(), node.getArgsNode(), null),
+                node.getOperatorName(),
+                node.getValueNode()
         );
+    }
+
+    private Expression convertOpAsgn(Supplier<Expression> first, String op, Node second) {
+        Expression firstExpr = first.get();
+        Space prefix = firstExpr.getPrefix();
+        firstExpr = firstExpr.withPrefix(EMPTY);
+
+        Object opType = convertAssignmentOpType(op);
+
+        if (second instanceof LocalAsgnNode) {
+            second = ((LocalAsgnNode) second).getValueNode();
+        }
+
+        if (opType instanceof Ruby.AssignmentOperation.Type) {
+            return new Ruby.AssignmentOperation(
+                    randomId(),
+                    prefix,
+                    Markers.EMPTY,
+                    firstExpr,
+                    padLeft(sourceBefore(op + "="), (Ruby.AssignmentOperation.Type) opType),
+                    convert(second),
+                    null
+            );
+        } else {
+            return new J.AssignmentOperation(
+                    randomId(),
+                    prefix,
+                    Markers.EMPTY,
+                    firstExpr,
+                    padLeft(sourceBefore(op + "="), (J.AssignmentOperation.Type) opType),
+                    convert(second),
+                    null
+            );
+        }
     }
 
     @Override
@@ -1311,28 +1331,20 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         if (node.getValueNode() instanceof OperatorCallNode) {
             Space variablePrefix = whitespace();
             J.Identifier variable = getIdentifier(name);
-            Space opPrefix = whitespace();
             OperatorCallNode assignOp = (OperatorCallNode) node.getValueNode();
-
             if (source.charAt(cursor) == '=') {
-                skip("=");
                 return new J.Assignment(
                         randomId(),
                         variablePrefix,
                         Markers.EMPTY,
                         variable,
-                        padLeft(opPrefix, visitOperatorCallNode(assignOp)),
+                        padLeft(sourceBefore("="), visitOperatorCallNode(assignOp)),
                         null
                 );
             } else {
-                return new J.AssignmentOperation(
-                        randomId(),
-                        variablePrefix,
-                        Markers.EMPTY,
-                        variable,
-                        padLeft(opPrefix, convertAssignmentOpType(assignOp.getName().asJavaString())),
-                        convert(((ListNode) assignOp.getArgsNode()).get(0)),
-                        null
+                return convertOpAsgn(
+                        () -> variable,
+                        assignOp.getName().asJavaString(), ((ListNode) assignOp.getArgsNode()).get(0)
                 );
             }
         } else {
@@ -1352,32 +1364,27 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         }
     }
 
-    private J.AssignmentOperation.Type convertAssignmentOpType(String op) {
-        J.AssignmentOperation.Type type;
+    private Object convertAssignmentOpType(String op) {
         switch (op) {
             case "+":
-                type = J.AssignmentOperation.Type.Addition;
-                break;
+                return J.AssignmentOperation.Type.Addition;
             case "-":
-                type = J.AssignmentOperation.Type.Subtraction;
-                break;
+                return J.AssignmentOperation.Type.Subtraction;
             case "*":
-                type = J.AssignmentOperation.Type.Multiplication;
-                break;
+                return J.AssignmentOperation.Type.Multiplication;
             case "/":
-                type = J.AssignmentOperation.Type.Division;
-                break;
+                return J.AssignmentOperation.Type.Division;
             case "%":
-                type = J.AssignmentOperation.Type.Modulo;
-                break;
+                return J.AssignmentOperation.Type.Modulo;
             case "**":
-                type = J.AssignmentOperation.Type.Exponentiation;
-                break;
+                return J.AssignmentOperation.Type.Exponentiation;
+            case "&&":
+                return Ruby.AssignmentOperation.Type.And;
+            case "||":
+                return Ruby.AssignmentOperation.Type.Or;
             default:
                 throw new UnsupportedOperationException("Unsupported assignment operator " + op);
         }
-        skip(op + "=");
-        return type;
     }
 
     @Override
@@ -2092,7 +2099,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             }
         } else if (argsNode instanceof ArgsNode) {
             ArgsNode argsArgsNode = (ArgsNode) argsNode;
-            args = new ArrayList<>(argsArgsNode.getArgs().length);
+            args = new ArrayList<>(argsArgsNode.getArgs().length + 1);
             Collections.addAll(args, argsArgsNode.getArgs());
             if (argsArgsNode.getBlock() != null) {
                 args.add(argsArgsNode.getBlock());
@@ -2100,11 +2107,9 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             if (argsArgsNode.getRestArgNode() != null) {
                 args.add(argsArgsNode.getRestArgNode());
             }
-        } else if (argsNode instanceof INameNode) {
-            args = new ArrayList<>(1);
-            args.add(argsNode);
         } else {
-            throw new UnsupportedOperationException("Unexpected args node type " + argsNode.getClass().getSimpleName());
+            args = new ArrayList<>(2);
+            args.add(argsNode);
         }
 
         List<JRightPadded<J2>> mappedArgs = convertAll(args, n -> sourceBefore(","),

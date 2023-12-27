@@ -36,18 +36,6 @@ public class AssignmentTest implements RewriteTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"+=", "-=", "*=", "/=", "%=", "**="})
-    void assignmentOperators(String op) {
-        rewriteRun(
-          ruby(
-            """
-              a %s 1
-              """.formatted(op)
-          )
-        );
-    }
-
-    @ParameterizedTest
     @ValueSource(strings = {"foo, bar, baz", "foo,", "foo, *rest"})
     void multipleAssignment(String assign) {
         rewriteRun(

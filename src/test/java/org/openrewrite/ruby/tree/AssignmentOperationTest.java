@@ -15,6 +15,7 @@
  */
 package org.openrewrite.ruby.tree;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openrewrite.test.RewriteTest;
@@ -24,13 +25,35 @@ import static org.openrewrite.ruby.Assertions.ruby;
 public class AssignmentOperationTest implements RewriteTest {
 
     @ParameterizedTest
-    @ValueSource(strings = {"+=", "-=", "*=", "/="})
-    void assignOpsWithJavaEquivalent(String op) {
+    @ValueSource(strings = {"+=", "-=", "*=", "/=", "%=", "**="})
+    void assignmentOperatorsWithJavaEquivalents(String op) {
         rewriteRun(
           ruby(
             """
-              recv[index] %s value
+              a %s 1
               """.formatted(op)
+          )
+        );
+    }
+
+    @Test
+    void assignToElement() {
+        rewriteRun(
+          ruby(
+            """
+              recv[index] += value
+              """
+          )
+        );
+    }
+
+    @Test
+    void assignToAttribute() {
+        rewriteRun(
+          ruby(
+            """
+              recv.x += value
+              """
           )
         );
     }
@@ -42,6 +65,30 @@ public class AssignmentOperationTest implements RewriteTest {
           ruby(
             """
               recv %s value
+              """.formatted(op)
+          )
+        );
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"&&=", "||="})
+    void andOrAssignIndexed(String op) {
+        rewriteRun(
+          ruby(
+            """
+              recv[0] %s value
+              """.formatted(op)
+          )
+        );
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"+=", "-=", "*=", "/="})
+    void assignOpsWithJavaEquivalent(String op) {
+        rewriteRun(
+          ruby(
+            """
+              recv[index] %s value
               """.formatted(op)
           )
         );
