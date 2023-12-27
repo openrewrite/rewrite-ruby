@@ -15,7 +15,6 @@
  */
 package org.openrewrite.ruby;
 
-import org.jetbrains.annotations.NotNull;
 import org.jruby.RubySymbol;
 import org.jruby.ast.*;
 import org.jruby.ast.types.INameNode;
@@ -363,10 +362,14 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         }
     }
 
-    private J.ArrayAccess convertArrayAccess(CallNode node) {
+    private J.ArrayAccess convertArrayAccess(CallNode callNode) {
+        return convertArrayAccess(callNode.getReceiverNode(), callNode.getArgsNode(), callNode.getIterNode());
+    }
+
+    private J.ArrayAccess convertArrayAccess(Node receiverNode, Node argsNode, @Nullable Node iterNode) {
         Space prefix = whitespace();
-        Expression receiver = convert(node.getReceiverNode());
-        JContainer<J> args = convertArgs("[", node.getArgsNode(), node.getIterNode(), "]");
+        Expression receiver = convert(receiverNode);
+        JContainer<J> args = convertArgs("[", argsNode, iterNode, "]");
         List<J> argElems = args.getElements();
         if (argElems.size() == 2) {
             argElems = singletonList(new Ruby.SubArrayIndex(
@@ -966,6 +969,19 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitOpElementAsgnNode(OpElementAsgnNode node) {
+        return new J.AssignmentOperation(
+                randomId(),
+                whitespace(),
+                Markers.EMPTY,
+                convertArrayAccess(node.getReceiverNode(), node.getArgsNode(), null),
+                padLeft(sourceBefore(node.getOperatorName() + "="), convertAssignmentOpType(node.getOperatorName())),
+                convert(node.getValueNode()),
+                null
+        );
+    }
+
+    @Override
     public J visitRegexpNode(RegexpNode node) {
         DStrNode dstr = new DStrNode(0, node.getValue().getEncoding());
         dstr.add(new StrNode(node.getLine(), node.getValue()));
@@ -1309,37 +1325,12 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                         null
                 );
             } else {
-                String op = assignOp.getName().asJavaString();
-                J.AssignmentOperation.Type type;
-                switch (op) {
-                    case "+":
-                        type = J.AssignmentOperation.Type.Addition;
-                        break;
-                    case "-":
-                        type = J.AssignmentOperation.Type.Subtraction;
-                        break;
-                    case "*":
-                        type = J.AssignmentOperation.Type.Multiplication;
-                        break;
-                    case "/":
-                        type = J.AssignmentOperation.Type.Division;
-                        break;
-                    case "%":
-                        type = J.AssignmentOperation.Type.Modulo;
-                        break;
-                    case "**":
-                        type = J.AssignmentOperation.Type.Exponentiation;
-                        break;
-                    default:
-                        throw new UnsupportedOperationException("Unsupported assignment operator " + op);
-                }
-                skip(op + "=");
                 return new J.AssignmentOperation(
                         randomId(),
                         variablePrefix,
                         Markers.EMPTY,
                         variable,
-                        padLeft(opPrefix, type),
+                        padLeft(opPrefix, convertAssignmentOpType(assignOp.getName().asJavaString())),
                         convert(((ListNode) assignOp.getArgsNode()).get(0)),
                         null
                 );
@@ -1359,6 +1350,34 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     null
             );
         }
+    }
+
+    private J.AssignmentOperation.Type convertAssignmentOpType(String op) {
+        J.AssignmentOperation.Type type;
+        switch (op) {
+            case "+":
+                type = J.AssignmentOperation.Type.Addition;
+                break;
+            case "-":
+                type = J.AssignmentOperation.Type.Subtraction;
+                break;
+            case "*":
+                type = J.AssignmentOperation.Type.Multiplication;
+                break;
+            case "/":
+                type = J.AssignmentOperation.Type.Division;
+                break;
+            case "%":
+                type = J.AssignmentOperation.Type.Modulo;
+                break;
+            case "**":
+                type = J.AssignmentOperation.Type.Exponentiation;
+                break;
+            default:
+                throw new UnsupportedOperationException("Unsupported assignment operator " + op);
+        }
+        skip(op + "=");
+        return type;
     }
 
     @Override
@@ -2081,6 +2100,9 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             if (argsArgsNode.getRestArgNode() != null) {
                 args.add(argsArgsNode.getRestArgNode());
             }
+        } else if (argsNode instanceof INameNode) {
+            args = new ArrayList<>(1);
+            args.add(argsNode);
         } else {
             throw new UnsupportedOperationException("Unexpected args node type " + argsNode.getClass().getSimpleName());
         }

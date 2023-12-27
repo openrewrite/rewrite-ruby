@@ -24,8 +24,20 @@ import static org.openrewrite.ruby.Assertions.ruby;
 public class AssignmentOperationTest implements RewriteTest {
 
     @ParameterizedTest
+    @ValueSource(strings = {"+=", "-=", "*=", "/="})
+    void assignOpsWithJavaEquivalent(String op) {
+        rewriteRun(
+          ruby(
+            """
+              recv[index] %s value
+              """.formatted(op)
+          )
+        );
+    }
+
+    @ParameterizedTest
     @ValueSource(strings = {"&&=", "||="})
-    void opAssign(String op) {
+    void andOrAssign(String op) {
         rewriteRun(
           ruby(
             """
