@@ -399,7 +399,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     private List<JRightPadded<Statement>> convertBlockStatements(Node node, Function<Node, Space> suffix) {
         List<? extends Node> trees;
-        if (node instanceof ListNode && !(node instanceof DNode)) {
+        if (node instanceof ListNode && !(node instanceof DNode) && !(node instanceof ZArrayNode)) {
             trees = Arrays.asList(((ListNode) node).children());
         } else {
             trees = singletonList(node);
@@ -2104,6 +2104,17 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 sourceBefore("yield"),
                 Markers.EMPTY,
                 convertArgs("(", node.getArgsNode(), null, ")")
+        );
+    }
+
+    @Override
+    public J visitZArrayNode(ZArrayNode node) {
+        return new Ruby.Array(
+                randomId(),
+                sourceBefore("["),
+                Markers.EMPTY,
+                JContainer.<Expression>empty().withBefore(sourceBefore("]")),
+                null
         );
     }
 

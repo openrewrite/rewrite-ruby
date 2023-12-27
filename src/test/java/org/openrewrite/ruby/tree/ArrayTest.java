@@ -32,4 +32,15 @@ public class ArrayTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void emptyArray() {
+        rewriteRun(
+          ruby(
+            """
+              []
+              """
+          )
+        );
+    }
 }
