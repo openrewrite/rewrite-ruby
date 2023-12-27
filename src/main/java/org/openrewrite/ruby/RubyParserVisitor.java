@@ -857,6 +857,35 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitLambdaNode(LambdaNode node) {
+        Space prefix = sourceBefore("->");
+        Space parametersPrefix = whitespace();
+        JContainer<J> args = convertArgs("(", node.getArgsNode(), null, ")");
+        return new J.Lambda(
+                randomId(),
+                prefix,
+                Markers.EMPTY,
+                new J.Lambda.Parameters(
+                        randomId(),
+                        parametersPrefix,
+                        Markers.EMPTY,
+                        true,
+                        args.getPadding().getElements()
+                ),
+                EMPTY,
+                new J.Block(
+                        randomId(),
+                        sourceBefore("{"),
+                        Markers.EMPTY,
+                        JRightPadded.build(false),
+                        convertBlockStatements(node.getBodyNode(), n -> EMPTY),
+                        sourceBefore("}")
+                ),
+                null
+        );
+    }
+
+    @Override
     public J visitNilNode(NilNode node) {
         return new J.Empty(randomId(), EMPTY, Markers.EMPTY);
     }
@@ -943,29 +972,29 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 null
         );
 
-        if (method.getSimpleName().equals("lambda")) {
-            assert method.getArguments().size() == 2 : "lambda should have exactly one argument -- a block";
-            Expression lastArg = method.getArguments().get(1);
-            assert lastArg instanceof Ruby.Block : "lambda should have exactly one argument -- a block";
-
-            Ruby.Block block = (Ruby.Block) lastArg;
-            JContainer<J> parameters = block.getPadding().getParameters();
-            return new J.Lambda(
-                    method.getId(),
-                    method.getPrefix(),
-                    method.getMarkers(),
-                    new J.Lambda.Parameters(
-                            randomId(),
-                            EMPTY,
-                            Markers.EMPTY,
-                            false,
-                            parameters == null ? emptyList() : parameters.getPadding().getElements()
-                    ),
-                    method.getPadding().getArguments().getBefore(),
-                    block.getBody(),
-                    null
-            );
-        }
+//        if (method.getSimpleName().equals("lambda")) {
+//            assert method.getArguments().size() == 2 : "lambda should have exactly one argument -- a block";
+//            Expression lastArg = method.getArguments().get(1);
+//            assert lastArg instanceof Ruby.Block : "lambda should have exactly one argument -- a block";
+//
+//            Ruby.Block block = (Ruby.Block) lastArg;
+//            JContainer<J> parameters = block.getPadding().getParameters();
+//            return new J.Lambda(
+//                    method.getId(),
+//                    method.getPrefix(),
+//                    method.getMarkers(),
+//                    new J.Lambda.Parameters(
+//                            randomId(),
+//                            EMPTY,
+//                            Markers.EMPTY,
+//                            false,
+//                            parameters == null ? emptyList() : parameters.getPadding().getElements()
+//                    ),
+//                    method.getPadding().getArguments().getBefore(),
+//                    block.getBody(),
+//                    null
+//            );
+//        }
 
         return method;
     }

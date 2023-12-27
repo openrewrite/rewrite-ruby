@@ -732,18 +732,20 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         @Override
         public J visitLambda(J.Lambda lambda, PrintOutputCapture<P> p) {
             beforeSyntax(lambda, Space.Location.LAMBDA_PREFIX, p);
-            p.append("lambda");
-            visitSpace(lambda.getArrow(), Space.Location.LAMBDA_ARROW_PREFIX, p);
-            p.append("{");
+            p.append("->");
             if (!lambda.getParameters().getParameters().isEmpty()) {
                 beforeSyntax(lambda.getParameters(), Space.Location.LAMBDA_PARAMETERS_PREFIX, p);
-                p.append("|");
+                p.append("(");
                 visitRightPadded(lambda.getParameters().getPadding().getParams(),
                         JRightPadded.Location.LAMBDA_PARAM, ",", p);
-                p.append("|");
+                p.append(")");
                 afterSyntax(lambda.getParameters(), p);
             }
-            visit(lambda.getBody(), p);
+            J.Block body = (J.Block) lambda.getBody();
+            visitSpace(body.getPrefix(), Space.Location.BLOCK_PREFIX, p);
+            p.append("{");
+            visitRightPadded(body.getPadding().getStatements(), JRightPadded.Location.BLOCK_STATEMENT, "", p);
+            visitSpace(body.getEnd(), Space.Location.BLOCK_END, p);
             p.append("}");
             afterSyntax(lambda, p);
             return lambda;

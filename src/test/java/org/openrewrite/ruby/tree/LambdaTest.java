@@ -33,4 +33,15 @@ public class LambdaTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void lambdaNode() {
+        rewriteRun(
+          ruby(
+            """
+              add_one = ->(x){ x+1 }
+              """
+          )
+        );
+    }
 }
