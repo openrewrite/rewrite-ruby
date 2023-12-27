@@ -414,6 +414,9 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             if (!(stat.getElement() instanceof Statement)) {
                 stat = stat.withElement(new Ruby.ExpressionStatement(randomId(), (Expression) stat.getElement()));
             }
+            if (stat.getElement() instanceof J.Empty) {
+                continue;
+            }
             //noinspection ReassignedVariable,unchecked
             converted.add((JRightPadded<Statement>) (JRightPadded<?>) stat);
         }
@@ -618,15 +621,15 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitDefnNode(DefnNode node) {
-        return convertMethodDeclaration(node);
+        return convertDefNode(node);
     }
 
     @Override
     public J visitDefsNode(DefsNode node) {
-        return convertMethodDeclaration(node);
+        return convertDefNode(node);
     }
 
-    private Statement convertMethodDeclaration(MethodDefNode node) {
+    private Statement convertDefNode(MethodDefNode node) {
         Space prefix = sourceBefore("def");
 
         Expression classMethodReceiver = null;
@@ -818,197 +821,6 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         return visitDNode(node);
     }
 
-    @Override
-    public J visitEnsureNode(EnsureNode node) {
-        Ruby.Rescue rescue = convert(node.getBodyNode());
-        Space prefix;
-        if (rescue.getElse() == null) {
-            List<J.Try.Catch> catches = rescue.getTry().getCatches();
-            prefix = catches.get(catches.size() - 1).getBody().getEnd();
-            rescue = rescue.withTry(rescue.getTry().withCatches(ListUtils.mapLast(catches, c ->
-                    c.withBody(c.getBody().withEnd(EMPTY)))));
-        } else {
-            prefix = rescue.getElse().getEnd();
-            rescue = rescue.withElse(rescue.getElse().withEnd(EMPTY));
-        }
-
-        skip("ensure");
-        List<JRightPadded<Statement>> ensureBody;
-        if (node.getEnsureNode() instanceof BlockNode) {
-            ensureBody = convertAll(Arrays.asList(((BlockNode) node.getEnsureNode()).children()),
-                    n -> EMPTY, n -> EMPTY);
-        } else {
-            ensureBody = singletonList(padRight(convert(node.getEnsureNode()), EMPTY));
-        }
-
-        return rescue.withTry(rescue.getTry().withFinally(new J.Block(
-                randomId(),
-                prefix,
-                Markers.EMPTY,
-                JRightPadded.build(false),
-                ensureBody,
-                sourceBefore("end")
-        )));
-    }
-
-    @Override
-    public J visitInstAsgnNode(InstAsgnNode node) {
-        return visitAsgnNode(node, node.getName());
-    }
-
-    @Override
-    public J visitInstVarNode(InstVarNode node) {
-        return getIdentifier(node.getName());
-    }
-
-    @Override
-    public J visitLambdaNode(LambdaNode node) {
-        Space prefix = sourceBefore("->");
-        Space parametersPrefix = whitespace();
-        JContainer<J> args = convertArgs("(", node.getArgsNode(), null, ")");
-        return new J.Lambda(
-                randomId(),
-                prefix,
-                Markers.EMPTY,
-                new J.Lambda.Parameters(
-                        randomId(),
-                        parametersPrefix,
-                        Markers.EMPTY,
-                        true,
-                        args.getPadding().getElements()
-                ),
-                EMPTY,
-                new J.Block(
-                        randomId(),
-                        sourceBefore("{"),
-                        Markers.EMPTY,
-                        JRightPadded.build(false),
-                        convertBlockStatements(node.getBodyNode(), n -> EMPTY),
-                        sourceBefore("}")
-                ),
-                null
-        );
-    }
-
-    @Override
-    public J visitListNode(ListNode node) {
-        throw new UnsupportedOperationException("This is a base class of other node types, and " +
-                                                "the more specific node types are handled elsewhere.");
-    }
-
-    @Override
-    public J visitMatchNode(MatchNode node) {
-        return convert(node.getRegexpNode());
-    }
-
-    @Override
-    public J visitMatch2Node(Match2Node node) {
-        return convert(node.getReceiverNode());
-    }
-
-    @Override
-    public J visitMatch3Node(Match3Node node) {
-        return new Ruby.Binary(
-                randomId(),
-                whitespace(),
-                Markers.EMPTY,
-                convert(node.getReceiverNode()),
-                padLeft(sourceBefore("=~"), Ruby.Binary.Type.Match),
-                convert(node.getValueNode()),
-                null
-        );
-    }
-
-    @Override
-    public J visitNewlineNode(NewlineNode node) {
-        throw new UnsupportedOperationException("Newlines are handled elsewhere.");
-    }
-
-    @Override
-    public J visitNilNode(NilNode node) {
-        return new J.Empty(randomId(), EMPTY, Markers.EMPTY);
-    }
-
-    @Override
-    public J visitNthRefNode(NthRefNode node) {
-        return new J.Identifier(
-                randomId(),
-                sourceBefore("$" + node.getMatchNumber()),
-                Markers.EMPTY,
-                emptyList(),
-                "$" + node.getMatchNumber(),
-                null,
-                null
-        );
-    }
-
-    @Override
-    public J visitOpAsgnNode(OpAsgnNode node) {
-        return convertOpAsgn(() -> convert(node.getReceiverNode()), node.getOperatorName(), node.getValueNode()
-        );
-    }
-
-    @Override
-    public J visitOpAsgnAndNode(OpAsgnAndNode node) {
-        return convertOpAsgn(() -> convert(node.getFirstNode()), "&&", node.getSecondNode());
-    }
-
-    @Override
-    public J visitOpAsgnOrNode(OpAsgnOrNode node) {
-        return convertOpAsgn(() -> convert(node.getFirstNode()), "||", node.getSecondNode());
-    }
-
-    @Override
-    public J visitOpElementAsgnNode(OpElementAsgnNode node) {
-        return convertOpAsgn(
-                () -> convertArrayAccess(node.getReceiverNode(), node.getArgsNode(), null),
-                node.getOperatorName(),
-                node.getValueNode()
-        );
-    }
-
-    private Expression convertOpAsgn(Supplier<Expression> first, String op, Node second) {
-        Expression firstExpr = first.get();
-        Space prefix = firstExpr.getPrefix();
-        firstExpr = firstExpr.withPrefix(EMPTY);
-
-        Object opType = convertAssignmentOpType(op);
-
-        if (second instanceof LocalAsgnNode) {
-            second = ((LocalAsgnNode) second).getValueNode();
-        }
-
-        if (opType instanceof Ruby.AssignmentOperation.Type) {
-            return new Ruby.AssignmentOperation(
-                    randomId(),
-                    prefix,
-                    Markers.EMPTY,
-                    firstExpr,
-                    padLeft(sourceBefore(op + "="), (Ruby.AssignmentOperation.Type) opType),
-                    convert(second),
-                    null
-            );
-        } else {
-            return new J.AssignmentOperation(
-                    randomId(),
-                    prefix,
-                    Markers.EMPTY,
-                    firstExpr,
-                    padLeft(sourceBefore(op + "="), (J.AssignmentOperation.Type) opType),
-                    convert(second),
-                    null
-            );
-        }
-    }
-
-    @Override
-    public J visitRegexpNode(RegexpNode node) {
-        DStrNode dstr = new DStrNode(0, node.getValue().getEncoding());
-        dstr.add(new StrNode(node.getLine(), node.getValue()));
-        return this.<Ruby.DelimitedString>convert(dstr).withRegexpOptions(
-                convertRegexOptions(node.getOptions()));
-    }
-
     private Ruby.DelimitedString visitDNode(DNode node) {
         Space prefix = whitespace();
         String delimiter = "\"";
@@ -1049,6 +861,39 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         );
         skip(delimiter.substring(delimiter.length() - 1));
         return dString;
+    }
+
+    @Override
+    public J visitEnsureNode(EnsureNode node) {
+        Ruby.Rescue rescue = convert(node.getBodyNode());
+        Space prefix;
+        if (rescue.getElse() == null) {
+            List<J.Try.Catch> catches = rescue.getTry().getCatches();
+            prefix = catches.get(catches.size() - 1).getBody().getEnd();
+            rescue = rescue.withTry(rescue.getTry().withCatches(ListUtils.mapLast(catches, c ->
+                    c.withBody(c.getBody().withEnd(EMPTY)))));
+        } else {
+            prefix = rescue.getElse().getEnd();
+            rescue = rescue.withElse(rescue.getElse().withEnd(EMPTY));
+        }
+
+        skip("ensure");
+        List<JRightPadded<Statement>> ensureBody;
+        if (node.getEnsureNode() instanceof BlockNode) {
+            ensureBody = convertAll(Arrays.asList(((BlockNode) node.getEnsureNode()).children()),
+                    n -> EMPTY, n -> EMPTY);
+        } else {
+            ensureBody = singletonList(padRight(convert(node.getEnsureNode()), EMPTY));
+        }
+
+        return rescue.withTry(rescue.getTry().withFinally(new J.Block(
+                randomId(),
+                prefix,
+                Markers.EMPTY,
+                JRightPadded.build(false),
+                ensureBody,
+                sourceBefore("end")
+        )));
     }
 
     @Override
@@ -1287,6 +1132,16 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitInstAsgnNode(InstAsgnNode node) {
+        return visitAsgnNode(node, node.getName());
+    }
+
+    @Override
+    public J visitInstVarNode(InstVarNode node) {
+        return getIdentifier(node.getName());
+    }
+
+    @Override
     public J visitIterNode(IterNode node) {
         Space prefix = whitespace();
         J.Block body;
@@ -1315,6 +1170,41 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 parameters,
                 body
         );
+    }
+
+    @Override
+    public J visitLambdaNode(LambdaNode node) {
+        Space prefix = sourceBefore("->");
+        Space parametersPrefix = whitespace();
+        JContainer<J> args = convertArgs("(", node.getArgsNode(), null, ")");
+        return new J.Lambda(
+                randomId(),
+                prefix,
+                Markers.EMPTY,
+                new J.Lambda.Parameters(
+                        randomId(),
+                        parametersPrefix,
+                        Markers.EMPTY,
+                        true,
+                        args.getPadding().getElements()
+                ),
+                EMPTY,
+                new J.Block(
+                        randomId(),
+                        sourceBefore("{"),
+                        Markers.EMPTY,
+                        JRightPadded.build(false),
+                        convertBlockStatements(node.getBodyNode(), n -> EMPTY),
+                        sourceBefore("}")
+                ),
+                null
+        );
+    }
+
+    @Override
+    public J visitListNode(ListNode node) {
+        throw new UnsupportedOperationException("This is a base class of other node types, and " +
+                                                "the more specific node types are handled elsewhere.");
     }
 
     @Override
@@ -1393,6 +1283,29 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitMatchNode(MatchNode node) {
+        return convert(node.getRegexpNode());
+    }
+
+    @Override
+    public J visitMatch2Node(Match2Node node) {
+        return convert(node.getReceiverNode());
+    }
+
+    @Override
+    public J visitMatch3Node(Match3Node node) {
+        return new Ruby.Binary(
+                randomId(),
+                whitespace(),
+                Markers.EMPTY,
+                convert(node.getReceiverNode()),
+                padLeft(sourceBefore("=~"), Ruby.Binary.Type.Match),
+                convert(node.getValueNode()),
+                null
+        );
+    }
+
+    @Override
     public J visitMultipleAsgnNode(MultipleAsgnNode node) {
         Space prefix = whitespace();
         JContainer<Expression> assignments = convertArgs("(", node.getPre(), null, ")");
@@ -1438,6 +1351,11 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitNewlineNode(NewlineNode node) {
+        throw new UnsupportedOperationException("Newlines are handled elsewhere.");
+    }
+
+    @Override
     public J visitNextNode(NextNode node) {
         return new J.Continue(
                 randomId(),
@@ -1445,6 +1363,83 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 Markers.EMPTY,
                 null
         );
+    }
+
+    @Override
+    public J visitNilNode(NilNode node) {
+        return new J.Empty(randomId(), EMPTY, Markers.EMPTY);
+    }
+
+    @Override
+    public J visitNthRefNode(NthRefNode node) {
+        return new J.Identifier(
+                randomId(),
+                sourceBefore("$" + node.getMatchNumber()),
+                Markers.EMPTY,
+                emptyList(),
+                "$" + node.getMatchNumber(),
+                null,
+                null
+        );
+    }
+
+    @Override
+    public J visitOpAsgnNode(OpAsgnNode node) {
+        return convertOpAsgn(() -> convert(node.getReceiverNode()), node.getOperatorName(), node.getValueNode()
+        );
+    }
+
+    @Override
+    public J visitOpAsgnAndNode(OpAsgnAndNode node) {
+        return convertOpAsgn(() -> convert(node.getFirstNode()), "&&", node.getSecondNode());
+    }
+
+    @Override
+    public J visitOpAsgnOrNode(OpAsgnOrNode node) {
+        return convertOpAsgn(() -> convert(node.getFirstNode()), "||", node.getSecondNode());
+    }
+
+    @Override
+    public J visitOpElementAsgnNode(OpElementAsgnNode node) {
+        return convertOpAsgn(
+                () -> convertArrayAccess(node.getReceiverNode(), node.getArgsNode(), null),
+                node.getOperatorName(),
+                node.getValueNode()
+        );
+    }
+
+    private Expression convertOpAsgn(Supplier<Expression> first, String op, Node second) {
+        Expression firstExpr = first.get();
+        Space prefix = firstExpr.getPrefix();
+        firstExpr = firstExpr.withPrefix(EMPTY);
+
+        Object opType = convertAssignmentOpType(op);
+
+        if (second instanceof LocalAsgnNode) {
+            second = ((LocalAsgnNode) second).getValueNode();
+        }
+
+        if (opType instanceof Ruby.AssignmentOperation.Type) {
+            return new Ruby.AssignmentOperation(
+                    randomId(),
+                    prefix,
+                    Markers.EMPTY,
+                    firstExpr,
+                    padLeft(sourceBefore(op + "="), (Ruby.AssignmentOperation.Type) opType),
+                    convert(second),
+                    null
+            );
+        } else {
+            return new J.AssignmentOperation(
+                    randomId(),
+                    prefix,
+                    Markers.EMPTY,
+                    firstExpr,
+                    padLeft(sourceBefore(op + "="), (J.AssignmentOperation.Type) opType),
+                    convert(second),
+                    null
+            );
+        }
     }
 
     @Override
@@ -1637,6 +1632,14 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitRegexpNode(RegexpNode node) {
+        DStrNode dstr = new DStrNode(0, node.getValue().getEncoding());
+        dstr.add(new StrNode(node.getLine(), node.getValue()));
+        return this.<Ruby.DelimitedString>convert(dstr).withRegexpOptions(
+                convertRegexOptions(node.getOptions()));
+    }
+
+    @Override
     public J visitReturnNode(ReturnNode node) {
         Space prefix = sourceBefore("return");
         Expression returnValue = convert(node.getValueNode());
@@ -1717,22 +1720,6 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         return whileOrUntilNode(node.getConditionNode(), node.getBodyNode());
     }
 
-    @Override
-    public J visitYieldNode(YieldNode node) {
-        return new Ruby.Yield(
-                randomId(),
-                sourceBefore("yield"),
-                Markers.EMPTY,
-                convertArgs("(", node.getArgsNode(), null, ")")
-        );
-    }
-
-    private J.Identifier getIdentifier(RubySymbol name) {
-        String nameStr = name.asJavaString();
-        return new J.Identifier(randomId(), sourceBefore(nameStr), Markers.EMPTY, emptyList(),
-                nameStr, null, null);
-    }
-
     private J whileOrUntilNode(Node conditionNode, Node bodyNode) {
         Space prefix = whitespace();
 
@@ -1789,6 +1776,22 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             skip("while");
         }
         return markers;
+    }
+
+    @Override
+    public J visitYieldNode(YieldNode node) {
+        return new Ruby.Yield(
+                randomId(),
+                sourceBefore("yield"),
+                Markers.EMPTY,
+                convertArgs("(", node.getArgsNode(), null, ")")
+        );
+    }
+
+    private J.Identifier getIdentifier(RubySymbol name) {
+        String nameStr = name.asJavaString();
+        return new J.Identifier(randomId(), sourceBefore(nameStr), Markers.EMPTY, emptyList(),
+                nameStr, null, null);
     }
 
     @Override
@@ -1995,6 +1998,24 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 charsetBomMarked,
                 null,
                 convertBlockStatements(node.getBodyNode(), n -> whitespace())
+        );
+    }
+
+    @Override
+    public J visitSClassNode(SClassNode node) {
+        return new Ruby.OpenEigenclass(
+                randomId(),
+                sourceBefore("class"),
+                Markers.EMPTY,
+                padLeft(sourceBefore("<<"), convert(node.getReceiverNode())),
+                new J.Block(
+                        randomId(),
+                        whitespace(),
+                        Markers.EMPTY,
+                        JRightPadded.build(false),
+                        convertBlockStatements(node.getBodyNode(), n -> EMPTY),
+                        sourceBefore("end")
+                )
         );
     }
 

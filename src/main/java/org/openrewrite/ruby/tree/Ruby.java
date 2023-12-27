@@ -1142,6 +1142,93 @@ public interface Ruby extends J {
         }
     }
 
+    @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
+    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+    @RequiredArgsConstructor
+    @AllArgsConstructor(access = AccessLevel.PRIVATE)
+    final class OpenEigenclass implements Ruby, Statement, TypedTree {
+        @Nullable
+        @NonFinal
+        transient WeakReference<Padding> padding;
+
+        @Getter
+        @With
+        @EqualsAndHashCode.Include
+        UUID id;
+
+        @Getter
+        @With
+        Space prefix;
+
+        @Getter
+        @With
+        Markers markers;
+
+        JLeftPadded<Expression> eigenclass;
+
+        public Expression getEigenclass() {
+            return eigenclass.getElement();
+        }
+
+        public OpenEigenclass withEigenclass(Expression eigenclass) {
+            return getPadding().withEigenclass(this.eigenclass.withElement(eigenclass));
+        }
+
+        @Getter
+        @With
+        J.Block body;
+
+        @Override
+        public @Nullable JavaType getType() {
+            return eigenclass.getElement().getType();
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public OpenEigenclass withType(@Nullable JavaType type) {
+            return withEigenclass(eigenclass.getElement().withType(type));
+        }
+
+        @Override
+        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
+            return v.visitOpenEigenclass(this, p);
+        }
+
+        @Transient
+        @Override
+        public CoordinateBuilder.Statement getCoordinates() {
+            return new CoordinateBuilder.Statement(this);
+        }
+
+        public Padding getPadding() {
+            Padding p;
+            if (this.padding == null) {
+                p = new Padding(this);
+                this.padding = new WeakReference<>(p);
+            } else {
+                p = this.padding.get();
+                if (p == null || p.t != this) {
+                    p = new Padding(this);
+                    this.padding = new WeakReference<>(p);
+                }
+            }
+            return p;
+        }
+
+        @RequiredArgsConstructor
+        public static class Padding {
+            private final OpenEigenclass t;
+
+            public JLeftPadded<Expression> getEigenclass() {
+                return t.eigenclass;
+            }
+
+            public OpenEigenclass withEigenclass(JLeftPadded<Expression> eigenclass) {
+                return t.eigenclass == eigenclass ? t : new OpenEigenclass(t.id, t.prefix, t.markers, eigenclass, t.body);
+            }
+        }
+    }
+
     @Value
     @With
     @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)

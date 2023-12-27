@@ -309,6 +309,17 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     }
 
     @Override
+    public J visitOpenEigenclass(Ruby.OpenEigenclass openEigenclass, PrintOutputCapture<P> p) {
+        beforeSyntax(openEigenclass, RubySpace.Location.OPEN_EIGENCLASS_PREFIX, p);
+        p.append("class");
+        visitLeftPadded("<<", openEigenclass.getPadding().getEigenclass(), RubyLeftPadded.Location.OPEN_EIGENCLASS_IDENTIFIER, p);
+        visit(openEigenclass.getBody(), p);
+        p.append("end");
+        afterSyntax(openEigenclass, p);
+        return openEigenclass;
+    }
+
+    @Override
     public J visitRedo(Ruby.Redo redo, PrintOutputCapture<P> p) {
         beforeSyntax(redo, RubySpace.Location.REDO_PREFIX, p);
         p.append("redo");

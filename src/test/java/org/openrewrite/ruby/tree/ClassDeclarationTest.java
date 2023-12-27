@@ -169,4 +169,16 @@ public class ClassDeclarationTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void singletonClass() {
+        rewriteRun(
+          ruby(
+            """
+              class << recv
+              end
+              """
+          )
+        );
+    }
 }

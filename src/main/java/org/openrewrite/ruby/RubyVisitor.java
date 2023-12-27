@@ -20,10 +20,7 @@ import org.openrewrite.internal.ListUtils;
 import org.openrewrite.internal.lang.Nullable;
 import org.openrewrite.java.JavaVisitor;
 import org.openrewrite.java.tree.*;
-import org.openrewrite.ruby.tree.Ruby;
-import org.openrewrite.ruby.tree.RubyContainer;
-import org.openrewrite.ruby.tree.RubyRightPadded;
-import org.openrewrite.ruby.tree.RubySpace;
+import org.openrewrite.ruby.tree.*;
 
 @SuppressWarnings("unused")
 public class RubyVisitor<P> extends JavaVisitor<P> {
@@ -271,7 +268,7 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
 
     public J visitMultipleAssignment(Ruby.MultipleAssignment multipleAssignment, P p) {
         Ruby.MultipleAssignment m = multipleAssignment;
-        m = m.withPrefix(visitSpace(m.getPrefix(), RubySpace.Location.MULTIPLE_ASSIGNMENT, p));
+        m = m.withPrefix(visitSpace(m.getPrefix(), RubySpace.Location.MULTIPLE_ASSIGNMENT_PREFIX, p));
         m = m.withMarkers(visitMarkers(m.getMarkers(), p));
         Statement temp = (Statement) visitStatement(m, p);
         if (!(temp instanceof Ruby.MultipleAssignment)) {
@@ -284,6 +281,22 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         m = m.getPadding().withInitializers(visitContainer(m.getPadding().getAssignments(),
                 RubyContainer.Location.MULTIPLE_ASSIGNMENT_INITIALIZERS, p));
         return m;
+    }
+
+    public J visitOpenEigenclass(Ruby.OpenEigenclass openEigenclass, P p) {
+        Ruby.OpenEigenclass o = openEigenclass;
+        o = o.withPrefix(visitSpace(o.getPrefix(), RubySpace.Location.OPEN_EIGENCLASS_PREFIX, p));
+        o = o.withMarkers(visitMarkers(o.getMarkers(), p));
+        Statement temp = (Statement) visitStatement(o, p);
+        if (!(temp instanceof Ruby.OpenEigenclass)) {
+            return temp;
+        } else {
+            o = (Ruby.OpenEigenclass) temp;
+        }
+        o = o.getPadding().withEigenclass(visitLeftPadded(o.getPadding().getEigenclass(),
+                JLeftPadded.Location.LANGUAGE_EXTENSION, p));
+        o = o.withBody((J.Block) visit(o.getBody(), p));
+        return o;
     }
 
     public J visitRedo(Ruby.Redo redo, P p) {
