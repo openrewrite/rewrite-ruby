@@ -15,6 +15,7 @@
  */
 package org.openrewrite.ruby;
 
+import org.jetbrains.annotations.NotNull;
 import org.jruby.RubySymbol;
 import org.jruby.ast.*;
 import org.jruby.ast.types.INameNode;
@@ -886,8 +887,82 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitListNode(ListNode node) {
+        throw new UnsupportedOperationException("This is a base class of other node types, and " +
+                                                "the more specific node types are handled elsewhere.");
+    }
+
+    @Override
+    public J visitMatchNode(MatchNode node) {
+        return convert(node.getRegexpNode());
+    }
+
+    @Override
+    public J visitMatch2Node(Match2Node node) {
+        return convert(node.getReceiverNode());
+    }
+
+    @Override
+    public J visitMatch3Node(Match3Node node) {
+        return new Ruby.Binary(
+                randomId(),
+                whitespace(),
+                Markers.EMPTY,
+                convert(node.getReceiverNode()),
+                padLeft(sourceBefore("=~"), Ruby.Binary.Type.Match),
+                convert(node.getValueNode()),
+                null
+        );
+    }
+
+    @Override
+    public J visitNewlineNode(NewlineNode node) {
+        throw new UnsupportedOperationException("Newlines are handled elsewhere.");
+    }
+
+    @Override
     public J visitNilNode(NilNode node) {
         return new J.Empty(randomId(), EMPTY, Markers.EMPTY);
+    }
+
+    @Override
+    public J visitNthRefNode(NthRefNode node) {
+        return new J.Identifier(
+                randomId(),
+                sourceBefore("$" + node.getMatchNumber()),
+                Markers.EMPTY,
+                emptyList(),
+                "$" + node.getMatchNumber(),
+                null,
+                null
+        );
+    }
+
+    @Override
+    public J visitOpAsgnAndNode(OpAsgnAndNode node) {
+        return convertOpAsgn(node.getFirstNode(), node.getSecondNode(),
+                "&&=", Ruby.AssignmentOperation.Type.And);
+    }
+
+    @Override
+    public J visitOpAsgnOrNode(OpAsgnOrNode node) {
+        return convertOpAsgn(node.getFirstNode(), node.getSecondNode(),
+                "||=", Ruby.AssignmentOperation.Type.Or);
+    }
+
+    private Ruby.AssignmentOperation convertOpAsgn(Node first, Node second, String op, Ruby.AssignmentOperation.Type opType) {
+        if (second instanceof LocalAsgnNode) {
+            second = ((LocalAsgnNode) second).getValueNode();
+        }
+        return new Ruby.AssignmentOperation(
+                randomId(),
+                whitespace(),
+                Markers.EMPTY,
+                convert(first),
+                padLeft(sourceBefore(op), opType),
+                convert(second),
+                null
+        );
     }
 
     @Override
@@ -961,7 +1036,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     public J visitFCallNode(FCallNode node) {
         Space prefix = whitespace();
         J.Identifier name = getIdentifier(node.getName());
-        J.MethodInvocation method = new J.MethodInvocation(
+        return new J.MethodInvocation(
                 randomId(),
                 prefix,
                 Markers.EMPTY,
@@ -971,32 +1046,6 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 convertCallArgs(node),
                 null
         );
-
-//        if (method.getSimpleName().equals("lambda")) {
-//            assert method.getArguments().size() == 2 : "lambda should have exactly one argument -- a block";
-//            Expression lastArg = method.getArguments().get(1);
-//            assert lastArg instanceof Ruby.Block : "lambda should have exactly one argument -- a block";
-//
-//            Ruby.Block block = (Ruby.Block) lastArg;
-//            JContainer<J> parameters = block.getPadding().getParameters();
-//            return new J.Lambda(
-//                    method.getId(),
-//                    method.getPrefix(),
-//                    method.getMarkers(),
-//                    new J.Lambda.Parameters(
-//                            randomId(),
-//                            EMPTY,
-//                            Markers.EMPTY,
-//                            false,
-//                            parameters == null ? emptyList() : parameters.getPadding().getElements()
-//                    ),
-//                    method.getPadding().getArguments().getBefore(),
-//                    block.getBody(),
-//                    null
-//            );
-//        }
-
-        return method;
     }
 
     private <T extends BlockAcceptingNode & IArgumentNode> JContainer<Expression> convertCallArgs(T node) {

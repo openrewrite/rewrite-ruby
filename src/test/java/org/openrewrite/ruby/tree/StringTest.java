@@ -116,6 +116,18 @@ public class StringTest implements RewriteTest {
         );
     }
 
+    @Test
+    void nthMatch() {
+        rewriteRun(
+          ruby(
+            """
+              /h/.match("hello")
+              $1
+              """
+          )
+        );
+    }
+
     @Disabled
     @ParameterizedTest
     @ValueSource(strings = {"<<", "<<-"})

@@ -19,12 +19,9 @@ public class RubySpace {
     public enum Location {
         ALIAS_PREFIX,
         BEGIN_PREFIX,
-        BINARY_OPERATOR,
-        BINARY_PREFIX,
         BLOCK_ARGUMENT_PREFIX,
         BLOCK_PARAMETERS,
         BLOCK_PARAMETERS_SUFFIX,
-        BLOCK_PREFIX,
         CLASS_METHOD_DECLARATION_PARAMETERS,
         CLASS_METHOD_DECLARATION_PARAMETERS_SUFFIX,
         CLASS_METHOD_NAME_PREFIX,
@@ -56,7 +53,6 @@ public class RubySpace {
         STRUCT_EXTENDS_ARGUMENTS_SUFFIX,
         SUB_ARRAY_INDEX_PREFIX,
         SUB_ARRAY_LENGTH_PREFIX,
-        UNARY_PREFIX,
         YIELD,
         YIELD_DATA_SUFFIX,
     }

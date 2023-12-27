@@ -15,6 +15,7 @@
  */
 package org.openrewrite.ruby.tree;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openrewrite.test.RewriteTest;
@@ -94,6 +95,17 @@ public class BinaryTest implements RewriteTest {
                 puts "hello"
               end
               """.formatted(op)
+          )
+        );
+    }
+
+    @Test
+    void match3() {
+        rewriteRun(
+          ruby(
+            """
+              recv =~ /value/
+              """
           )
         );
     }

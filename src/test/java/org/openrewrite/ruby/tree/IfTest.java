@@ -95,4 +95,28 @@ public class IfTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void match() {
+        rewriteRun(
+          ruby(
+            """
+              if /lit/ then
+              end
+              """
+          )
+        );
+    }
+
+    @Test
+    void match2() {
+        rewriteRun(
+          ruby(
+            """
+              if /#{recv}/ then
+              end
+              """
+          )
+        );
+    }
 }

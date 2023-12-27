@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2023 the original author or authors.
  * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,20 +15,23 @@
  */
 package org.openrewrite.ruby.tree;
 
-import lombok.Getter;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.openrewrite.test.RewriteTest;
 
-public class RubyLeftPadded {
+import static org.openrewrite.ruby.Assertions.ruby;
 
-    @Getter
-    public enum Location {
-        CLASS_METHOD_NAME_PREFIX(RubySpace.Location.CLASS_METHOD_NAME_PREFIX),
-        KEY_VALUE_VALUE_PREFIX(RubySpace.Location.KEY_VALUE_VALUE_PREFIX),
-        SUB_ARRAY_LENGTH_PREFIX(RubySpace.Location.SUB_ARRAY_LENGTH_PREFIX);
+public class AssignmentOperationTest implements RewriteTest {
 
-        private final RubySpace.Location beforeLocation;
-
-        Location(RubySpace.Location beforeLocation) {
-            this.beforeLocation = beforeLocation;
-        }
+    @ParameterizedTest
+    @ValueSource(strings = {"&&=", "||="})
+    void opAssign(String op) {
+        rewriteRun(
+          ruby(
+            """
+              recv %s value
+              """.formatted(op)
+          )
+        );
     }
 }

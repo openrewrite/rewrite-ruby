@@ -88,6 +88,26 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     }
 
     @Override
+    public J visitAssignmentOperation(Ruby.AssignmentOperation assignOp, PrintOutputCapture<P> p) {
+        String keyword = "";
+        switch (assignOp.getOperator()) {
+            case And:
+                keyword = "&&=";
+                break;
+            case Or:
+                keyword = "||=";
+                break;
+        }
+        beforeSyntax(assignOp, Space.Location.ASSIGNMENT_OPERATION_PREFIX, p);
+        visit(assignOp.getVariable(), p);
+        visitSpace(assignOp.getPadding().getOperator().getBefore(), Space.Location.ASSIGNMENT_OPERATION_OPERATOR, p);
+        p.append(keyword);
+        visit(assignOp.getAssignment(), p);
+        afterSyntax(assignOp, p);
+        return assignOp;
+    }
+
+    @Override
     public J visitBegin(Ruby.Begin begin, PrintOutputCapture<P> p) {
         beforeSyntax(begin, RubySpace.Location.BEGIN_PREFIX, p);
         p.append("BEGIN");
@@ -119,13 +139,16 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
             case RangeExclusive:
                 keyword = "...";
                 break;
+            case Match:
+                keyword = "=~";
+                break;
             case Within:
                 keyword = "===";
                 break;
         }
-        beforeSyntax(binary, RubySpace.Location.BINARY_PREFIX, p);
+        beforeSyntax(binary, Space.Location.BINARY_PREFIX, p);
         visit(binary.getLeft(), p);
-        visitSpace(binary.getPadding().getOperator().getBefore(), RubySpace.Location.BINARY_OPERATOR, p);
+        visitSpace(binary.getPadding().getOperator().getBefore(), Space.Location.BINARY_OPERATOR, p);
         p.append(keyword);
         visit(binary.getRight(), p);
         afterSyntax(binary, p);
@@ -134,7 +157,7 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
 
     @Override
     public J visitBlock(Ruby.Block block, PrintOutputCapture<P> p) {
-        beforeSyntax(block, RubySpace.Location.BLOCK_PREFIX, p);
+        beforeSyntax(block, Space.Location.BLOCK_PREFIX, p);
         p.append(block.isInline() ? "{" : "do");
         visitContainer("|", block.getPadding().getParameters(), RubyContainer.Location.BLOCK_PARAMETERS, ",", "|", p);
         visit(block.getBody(), p);
@@ -381,7 +404,7 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
 
     @Override
     public J visitUnary(Ruby.Unary unary, PrintOutputCapture<P> p) {
-        beforeSyntax(unary, RubySpace.Location.UNARY_PREFIX, p);
+        beforeSyntax(unary, Space.Location.UNARY_PREFIX, p);
         p.append("defined?");
         visit(unary.getExpression(), p);
         afterSyntax(unary, p);
@@ -406,7 +429,22 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         beforeSyntax(j.getPrefix(), j.getMarkers(), loc, p);
     }
 
+    protected void beforeSyntax(J j, Space.Location loc, PrintOutputCapture<P> p) {
+        beforeSyntax(j.getPrefix(), j.getMarkers(), loc, p);
+    }
+
     protected void beforeSyntax(Space prefix, Markers markers, RubySpace.Location location, PrintOutputCapture<P> p) {
+        for (Marker marker : markers.getMarkers()) {
+            p.append(p.getMarkerPrinter().beforePrefix(marker, new Cursor(getCursor(), marker), MARKER_WRAPPER));
+        }
+        visitSpace(prefix, location, p);
+        visitMarkers(markers, p);
+        for (Marker marker : markers.getMarkers()) {
+            p.append(p.getMarkerPrinter().beforeSyntax(marker, new Cursor(getCursor(), marker), MARKER_WRAPPER));
+        }
+    }
+
+    protected void beforeSyntax(Space prefix, Markers markers, Space.Location location, PrintOutputCapture<P> p) {
         for (Marker marker : markers.getMarkers()) {
             p.append(p.getMarkerPrinter().beforePrefix(marker, new Cursor(getCursor(), marker), MARKER_WRAPPER));
         }

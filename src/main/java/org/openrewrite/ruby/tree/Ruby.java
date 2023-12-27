@@ -33,6 +33,9 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
 
+import static java.util.Collections.singletonList;
+
+@SuppressWarnings("unused")
 public interface Ruby extends J {
 
     @Override
@@ -389,6 +392,107 @@ public interface Ruby extends J {
         }
     }
 
+    @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
+    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+    @RequiredArgsConstructor
+    @AllArgsConstructor(access = AccessLevel.PRIVATE)
+    final class AssignmentOperation implements Ruby, Statement, Expression, TypedTree {
+        @Nullable
+        @NonFinal
+        transient WeakReference<Padding> padding;
+
+        @With
+        @EqualsAndHashCode.Include
+        @Getter
+        UUID id;
+
+        @With
+        @Getter
+        Space prefix;
+
+        @With
+        @Getter
+        Markers markers;
+
+        @With
+        @Getter
+        Expression variable;
+
+        JLeftPadded<Ruby.AssignmentOperation.Type> operator;
+
+        public Ruby.AssignmentOperation.Type getOperator() {
+            return operator.getElement();
+        }
+
+        public Ruby.AssignmentOperation withOperator(Ruby.AssignmentOperation.Type operator) {
+            return getPadding().withOperator(this.operator.withElement(operator));
+        }
+
+        @With
+        @Getter
+        Expression assignment;
+
+        @With
+        @Nullable
+        @Getter
+        JavaType type;
+
+        @Override
+        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
+            return v.visitAssignmentOperation(this, p);
+        }
+
+        @Override
+        @Transient
+        public CoordinateBuilder.Statement getCoordinates() {
+            return new CoordinateBuilder.Statement(this);
+        }
+
+        @Override
+        @Transient
+        public List<J> getSideEffects() {
+            return singletonList(this);
+        }
+
+        public enum Type {
+            And,
+            Or
+        }
+
+        public Padding getPadding() {
+            Padding p;
+            if (this.padding == null) {
+                p = new Padding(this);
+                this.padding = new WeakReference<>(p);
+            } else {
+                p = this.padding.get();
+                if (p == null || p.t != this) {
+                    p = new Padding(this);
+                    this.padding = new WeakReference<>(p);
+                }
+            }
+            return p;
+        }
+
+        @Override
+        public String toString() {
+            return withPrefix(Space.EMPTY).printTrimmed(new JavaPrinter<>());
+        }
+
+        @RequiredArgsConstructor
+        public static class Padding {
+            private final Ruby.AssignmentOperation t;
+
+            public JLeftPadded<Ruby.AssignmentOperation.Type> getOperator() {
+                return t.operator;
+            }
+
+            public Ruby.AssignmentOperation withOperator(JLeftPadded<Ruby.AssignmentOperation.Type> operator) {
+                return t.operator == operator ? t : new Ruby.AssignmentOperation(t.id, t.prefix, t.markers, t.variable, operator, t.assignment, t.type);
+            }
+        }
+    }
+
     @Value
     @With
     @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
@@ -470,8 +574,9 @@ public interface Ruby extends J {
         public enum Type {
             Comparison,
             Exponentiation,
-            FlipFlopInclusive,
             FlipFlopExclusive,
+            FlipFlopInclusive,
+            Match,
             RangeExclusive,
             RangeInclusive,
             Within,
@@ -887,15 +992,13 @@ public interface Ruby extends J {
         @With
         Expression key;
 
-        @Getter
-        @With
         JLeftPadded<Expression> value;
 
         public Expression getValue() {
             return value.getElement();
         }
 
-        public KeyValue withValue(@Nullable Expression value) {
+        public KeyValue withValue(Expression value) {
             return getPadding().withValue(JLeftPadded.withElement(this.value, value));
         }
 

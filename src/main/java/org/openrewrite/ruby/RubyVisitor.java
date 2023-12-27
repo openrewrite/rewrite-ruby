@@ -90,6 +90,29 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         return l;
     }
 
+    public J visitAssignmentOperation(Ruby.AssignmentOperation assignOp, P p) {
+        Ruby.AssignmentOperation a = assignOp;
+        a = a.withPrefix(visitSpace(a.getPrefix(), Space.Location.ASSIGNMENT_OPERATION_PREFIX, p));
+        a = a.withMarkers(visitMarkers(a.getMarkers(), p));
+        Statement temp = (Statement) visitStatement(a, p);
+        if (!(temp instanceof Ruby.AssignmentOperation)) {
+            return temp;
+        } else {
+            a = (Ruby.AssignmentOperation) temp;
+        }
+        Expression temp2 = (Expression) visitExpression(a, p);
+        if (!(temp2 instanceof Ruby.AssignmentOperation)) {
+            return temp2;
+        } else {
+            a = (Ruby.AssignmentOperation) temp2;
+        }
+        a = a.withVariable(visitAndCast(a.getVariable(), p));
+        a = a.getPadding().withOperator(visitLeftPadded(a.getPadding().getOperator(), JLeftPadded.Location.ASSIGNMENT_OPERATION_OPERATOR, p));
+        a = a.withAssignment(visitAndCast(a.getAssignment(), p));
+        a = a.withType(visitType(a.getType(), p));
+        return a;
+    }
+
     public J visitBegin(Ruby.Begin begin, P p) {
         Ruby.Begin b = begin;
         b = b.withPrefix(visitSpace(b.getPrefix(), RubySpace.Location.BEGIN_PREFIX, p));
@@ -100,7 +123,7 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
 
     public J visitBinary(Ruby.Binary binary, P p) {
         Ruby.Binary b = binary;
-        b = b.withPrefix(visitSpace(b.getPrefix(), RubySpace.Location.BINARY_PREFIX, p));
+        b = b.withPrefix(visitSpace(b.getPrefix(), Space.Location.BINARY_PREFIX, p));
         b = b.withMarkers(visitMarkers(b.getMarkers(), p));
         Expression temp = (Expression) visitExpression(b, p);
         if (!(temp instanceof Ruby.Binary)) {
@@ -117,7 +140,7 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
 
     public J visitBlock(Ruby.Block block, P p) {
         Ruby.Block b = block;
-        b = b.withPrefix(visitSpace(b.getPrefix(), RubySpace.Location.BLOCK_PREFIX, p));
+        b = b.withPrefix(visitSpace(b.getPrefix(), Space.Location.BLOCK_PREFIX, p));
         b = b.withMarkers(visitMarkers(b.getMarkers(), p));
         Expression temp = (Expression) visitExpression(b, p);
         if (!(temp instanceof Ruby.Block)) {
@@ -335,7 +358,7 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
 
     public J visitUnary(Ruby.Unary binary, P p) {
         Ruby.Unary b = binary;
-        b = b.withPrefix(visitSpace(b.getPrefix(), RubySpace.Location.UNARY_PREFIX, p));
+        b = b.withPrefix(visitSpace(b.getPrefix(), Space.Location.UNARY_PREFIX, p));
         b = b.withMarkers(visitMarkers(b.getMarkers(), p));
         Expression temp = (Expression) visitExpression(b, p);
         if (!(temp instanceof Ruby.Unary)) {
