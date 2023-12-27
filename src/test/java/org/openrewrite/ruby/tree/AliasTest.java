@@ -32,4 +32,16 @@ public class AliasTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void globalAlias() {
+        rewriteRun(
+          ruby(
+            """
+              $old = 42
+              alias $new $old
+              """
+          )
+        );
+    }
 }

@@ -153,7 +153,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitArgumentNode(ArgumentNode node) {
-        return getIdentifier(node.getName());
+        return convertIdentifier(node.getName());
     }
 
     @Override
@@ -273,7 +273,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 randomId(),
                 sourceBefore("&"),
                 Markers.EMPTY,
-                getIdentifier(node.getName())
+                convertIdentifier(node.getName())
         );
     }
 
@@ -336,7 +336,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         Space prefix = whitespace();
         J receiver = convert(node.getReceiverNode());
         Space beforeDot = sourceBefore(".");
-        J.Identifier name = getIdentifier(node.getName());
+        J.Identifier name = convertIdentifier(node.getName());
         if (name.getSimpleName().equals("new")) {
             return new J.NewClass(
                     randomId(),
@@ -514,7 +514,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     public J visitClassNode(ClassNode node) {
         Space prefix = whitespace();
         skip("class");
-        J.Identifier name = getIdentifier(node.getCPath().getName());
+        J.Identifier name = convertIdentifier(node.getCPath().getName());
 
         JLeftPadded<TypeTree> extendings = null;
         Node superNode = node.getSuperNode();
@@ -565,7 +565,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitClassVarNode(ClassVarNode node) {
-        return getIdentifier(node.getName());
+        return convertIdentifier(node.getName());
     }
 
     @Override
@@ -576,7 +576,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 Markers.EMPTY,
                 padRight(convert(node.getLeftNode()), sourceBefore("::")),
                 null,
-                padLeft(EMPTY, getIdentifier(node.getName())),
+                padLeft(EMPTY, convertIdentifier(node.getName())),
                 null,
                 null,
                 null
@@ -591,7 +591,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 Markers.EMPTY,
                 padRight(new J.Empty(randomId(), EMPTY, Markers.EMPTY), sourceBefore("::")),
                 null,
-                padLeft(EMPTY, getIdentifier(node.getName())),
+                padLeft(EMPTY, convertIdentifier(node.getName())),
                 null,
                 null,
                 null
@@ -605,7 +605,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitConstNode(ConstNode node) {
-        return getIdentifier(node.getName());
+        return convertIdentifier(node.getName());
     }
 
     @Override
@@ -640,7 +640,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         }
 
         J.MethodDeclaration.IdentifierWithAnnotations name = new J.MethodDeclaration.IdentifierWithAnnotations(
-                getIdentifier(node.getName()),
+                convertIdentifier(node.getName()),
                 emptyList()
         );
 
@@ -813,7 +813,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitDVarNode(DVarNode node) {
-        return getIdentifier(node.getName());
+        return convertIdentifier(node.getName());
     }
 
     @Override
@@ -916,7 +916,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     @Override
     public J visitFCallNode(FCallNode node) {
         Space prefix = whitespace();
-        J.Identifier name = getIdentifier(node.getName());
+        J.Identifier name = convertIdentifier(node.getName());
         return new J.MethodInvocation(
                 randomId(),
                 prefix,
@@ -1030,7 +1030,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitGlobalVarNode(GlobalVarNode node) {
-        return getIdentifier(node.getName());
+        return convertIdentifier(node.getName());
     }
 
     @Override
@@ -1138,7 +1138,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitInstVarNode(InstVarNode node) {
-        return getIdentifier(node.getName());
+        return convertIdentifier(node.getName());
     }
 
     @Override
@@ -1209,7 +1209,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitLiteralNode(LiteralNode node) {
-        return getIdentifier(node.getSymbolName());
+        return convertIdentifier(node.getSymbolName());
     }
 
     @Override
@@ -1220,7 +1220,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     private Expression visitAsgnNode(AssignableNode node, RubySymbol name) {
         if (node.getValueNode() instanceof OperatorCallNode) {
             Space variablePrefix = whitespace();
-            J.Identifier variable = getIdentifier(name);
+            J.Identifier variable = convertIdentifier(name);
             OperatorCallNode assignOp = (OperatorCallNode) node.getValueNode();
             if (source.charAt(cursor) == '=') {
                 return new J.Assignment(
@@ -1239,7 +1239,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             }
         } else {
             Space prefix = whitespace();
-            J.Identifier variable = getIdentifier(name);
+            J.Identifier variable = convertIdentifier(name);
             if (node.getValueNode() instanceof NilImplicitNode) {
                 return variable.withPrefix(prefix);
             }
@@ -1279,7 +1279,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitLocalVarNode(LocalVarNode node) {
-        return getIdentifier(node.getName());
+        return convertIdentifier(node.getName());
     }
 
     @Override
@@ -1576,7 +1576,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                         randomId(),
                         EMPTY,
                         Markers.EMPTY,
-                        getIdentifier(node.getName()),
+                        convertIdentifier(node.getName()),
                         emptyList(),
                         node.getValue() == null ?
                                 null :
@@ -1745,7 +1745,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             BlockNode body = (BlockNode) rescue.getBodyNode();
 
             // because the exceptionName is being assigned to $!
-            J.Identifier exceptionName = getIdentifier(((INameNode) body.get(0)).getName());
+            J.Identifier exceptionName = convertIdentifier(((INameNode) body.get(0)).getName());
             names.add(padRight(new J.VariableDeclarations.NamedVariable(
                     randomId(),
                     beforeExceptionNamePrefix,
@@ -1827,7 +1827,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                         randomId(),
                         EMPTY,
                         Markers.EMPTY,
-                        getIdentifier(node.getName()),
+                        convertIdentifier(node.getName()),
                         emptyList(),
                         null,
                         null
@@ -1997,7 +1997,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitSymbolNode(SymbolNode node) {
-        return getIdentifier(node.getName());
+        return convertIdentifier(node.getName());
     }
 
     @Override
@@ -2007,8 +2007,19 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitVAliasNode(VAliasNode node) {
+        return new Ruby.Alias(
+                randomId(),
+                sourceBefore("alias"),
+                Markers.EMPTY,
+                convertIdentifier(node.getNewName()),
+                convertIdentifier(node.getOldName())
+        );
+    }
+
+    @Override
     public J visitVCallNode(VCallNode node) {
-        return getIdentifier(node.getName());
+        return convertIdentifier(node.getName());
     }
 
     @Override
@@ -2096,7 +2107,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         );
     }
 
-    private J.Identifier getIdentifier(RubySymbol name) {
+    private J.Identifier convertIdentifier(RubySymbol name) {
         String nameStr = name.asJavaString();
         return new J.Identifier(randomId(), sourceBefore(nameStr), Markers.EMPTY, emptyList(),
                 nameStr, null, null);
