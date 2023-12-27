@@ -32,6 +32,9 @@ public final class DelimiterMatcher {
             // for the %[foo bar baz] case
             return matchBeginDelimiter(beginDelimiter.charAt(1), beginDelimiter.substring(1));
         }
+        if (beginDelimiter.equals("?")) {
+            return ""; // the character literal case
+        }
         return beginDelimiter;
     }
 

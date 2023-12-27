@@ -23,17 +23,6 @@ import static org.openrewrite.ruby.Assertions.ruby;
 public class LiteralTest implements RewriteTest {
 
     @Test
-    void characterLiteral() {
-        rewriteRun(
-          ruby(
-            """
-              ?A
-              """
-          )
-        );
-    }
-
-    @Test
     void bignum() {
         rewriteRun(
           ruby(

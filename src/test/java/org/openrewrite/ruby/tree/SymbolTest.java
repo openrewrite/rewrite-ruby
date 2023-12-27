@@ -20,7 +20,7 @@ import org.openrewrite.test.RewriteTest;
 
 import static org.openrewrite.ruby.Assertions.ruby;
 
-public class SymbolsTest implements RewriteTest {
+public class SymbolTest implements RewriteTest {
 
     @Test
     void literal() {

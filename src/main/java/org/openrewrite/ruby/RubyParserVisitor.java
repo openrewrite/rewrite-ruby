@@ -36,13 +36,11 @@ import org.openrewrite.ruby.marker.*;
 import org.openrewrite.ruby.tree.Ruby;
 
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
-import java.util.stream.StreamSupport;
 
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
@@ -161,11 +159,15 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     public J visitArrayNode(ArrayNode node) {
         Space prefix = whitespace();
 
-        if (!node.isEmpty() &&
-            (node.get(0) instanceof SymbolNode || node.get(0) instanceof DSymbolNode) &&
-            (source.startsWith("%i") || source.startsWith("%I"))) {
-            // this is a symbol array literal like %i[foo bar baz]
-            return convertSymbols(node.children()).withPrefix(prefix);
+        if (!node.isEmpty() && source.startsWith("%")) {
+            Node first = node.get(0);
+            if (first instanceof SymbolNode || first instanceof DSymbolNode) {
+                // this is a symbol array literal like %i[foo bar baz]
+                return convertSymbols(node.children()).withPrefix(prefix);
+            } else if (first instanceof StrNode || first instanceof DStrNode) {
+                // this is a string array literal like %w[foo bar baz]
+                return convertStrings(node.children()).withPrefix(prefix);
+            }
         }
 
         JContainer<Expression> elements = convertArgs("[", node, null, "]");
@@ -409,7 +411,9 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     private List<JRightPadded<Statement>> convertBlockStatements(Node node, Function<Node, Space> suffix) {
         List<? extends Node> trees;
         if (node instanceof ListNode && !(node instanceof DNode) && !(node instanceof ZArrayNode)) {
-            trees = Arrays.asList(((ListNode) node).children());
+            trees = isMultipleStatements((ListNode) node) ?
+                    Arrays.asList(((ListNode) node).children()) :
+                    singletonList(node);
         } else {
             trees = singletonList(node);
         }
@@ -430,6 +434,28 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             converted.add((JRightPadded<Statement>) (JRightPadded<?>) stat);
         }
         return converted;
+    }
+
+    /**
+     * We need a heuristic to tell whether a {@link ListNode} that is given as a block body represents
+     * a single statement (e.g. a {@link Ruby.Array}) or multiple statements. All we have is an imperfect
+     * heuristic right now, and seeking a better one.
+     *
+     * @param node A {@link ListNode} that serves as a block body.
+     * @return {@code true} if the {@link ListNode} contains more than one statement.
+     */
+    private boolean isMultipleStatements(ListNode node) {
+        if (node.size() <= 1) {
+            return true;
+        }
+        int line = node.children()[0].getLine();
+        Node[] children = node.children();
+        for (int i = 1; i < children.length; i++) {
+            if (children[i].getLine() != line) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -768,7 +794,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitDRegxNode(DRegexpNode node) {
-        return convertDNode(whitespace(), "/", node)
+        return ((Ruby.DelimitedString) convertStrings(node))
                 .withRegexpOptions(convertRegexOptions(node.getOptions()));
     }
 
@@ -829,7 +855,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitDStrNode(DStrNode node) {
-        return convertDNode(node);
+        return convertStrings(node);
     }
 
     @Override
@@ -844,49 +870,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitDXStrNode(DXStrNode node) {
-        return convertDNode(node);
-    }
-
-    private Ruby.DelimitedString convertDNode(DNode node) {
-        Space prefix = whitespace();
-        String delimiter = "\"";
-        if (source.charAt(cursor) == '%') {
-            switch (source.charAt(cursor + 1)) {
-                case 'Q':
-                case 'q':
-                case 'x':
-                case 'r':
-                    // ex: %Q<is a string>
-                    delimiter = source.substring(cursor, 3);
-                    break;
-                default:
-                    // ex: %<is a string>
-                    delimiter = source.substring(cursor, 2);
-                    break;
-            }
-        } else if (source.charAt(cursor) == '/') {
-            delimiter = "/";
-        }
-        return convertDNode(prefix, delimiter, node);
-    }
-
-    private Ruby.DelimitedString convertDNode(Space prefix, String delimiter, DNode node) {
-        skip(delimiter);
-        Ruby.DelimitedString dString = new Ruby.DelimitedString(
-                randomId(),
-                prefix,
-                Markers.EMPTY,
-                delimiter,
-                StreamSupport.stream(node.spliterator(), false)
-                        .filter(Objects::nonNull)
-                        .filter(n -> !(n instanceof StrNode) || !((StrNode) n).getValue().isEmpty())
-                        .map(n -> (J) convert(n))
-                        .collect(toList()),
-                emptyList(),
-                null
-        );
-        skip(DelimiterMatcher.end(delimiter));
-        return dString;
+        return convertStrings(node);
     }
 
     @Override
@@ -1699,10 +1683,8 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitRegexpNode(RegexpNode node) {
-        DStrNode dstr = new DStrNode(0, node.getValue().getEncoding());
-        dstr.add(new StrNode(node.getLine(), node.getValue()));
-        return this.<Ruby.DelimitedString>convert(dstr).withRegexpOptions(
-                convertRegexOptions(node.getOptions()));
+        return ((Ruby.DelimitedString) convertStrings(new StrNode(node.getLine(), node.getValue())))
+                .withRegexpOptions(convertRegexOptions(node.getOptions()));
     }
 
     @Override
@@ -1961,35 +1943,116 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitStrNode(StrNode node) {
-        String value = new String(node.getValue().bytes(), StandardCharsets.UTF_8);
-        Object parentValue = nodes.getParentOrThrow().getValue();
+        return convertStrings(node);
+    }
+
+    /**
+     * @param nodes An array of either {@link StrNode} or {@link DNode}.
+     * @return A {@link Ruby.DelimitedString}, {@link J.Literal}, or {@link Ruby.DelimitedArray} node.
+     */
+    public J convertStrings(Node... nodes) {
+        Object parentValue = this.nodes.getParentOrThrow().getValue();
         boolean inDString = parentValue instanceof DStrNode || parentValue instanceof DXStrNode ||
                             parentValue instanceof DRegexpNode;
         Space prefix = inDString ? EMPTY : whitespace();
         String delimiter = "";
         if (!inDString) {
             if (source.charAt(cursor) == '%') {
-                DStrNode dstr = new DStrNode(0, node.getValue().getEncoding());
-                dstr.add(node);
-                return convert(dstr).withPrefix(prefix);
+                switch (source.charAt(cursor + 1)) {
+                    case 'q':
+                    case 'Q':
+                    case 'w':
+                    case 'W':
+                    case 'x':
+                    case 'r':
+                        delimiter = source.substring(cursor, cursor + 3);
+                        break;
+                    default:
+                        // the solo % case
+                        delimiter = source.substring(cursor, cursor + 2);
+                }
+            } else {
+                delimiter = source.substring(cursor, cursor + 1);
             }
-            delimiter = source.substring(cursor, ++cursor);
         }
-        skip(value);
-        J.Literal literal = new J.Literal(
+        skip(delimiter);
+
+        J stringly;
+        if (delimiter.startsWith("%w") || delimiter.startsWith("%W")) {
+            List<JRightPadded<Expression>> strings = new ArrayList<>(nodes.length);
+            for (Node node : nodes) {
+                if (node instanceof StrNode) {
+                    strings.add(padRight(convertLiteral((StrNode) node, delimiter, true), whitespace()));
+                } else {
+                    strings.add(padRight(convertDelimitedString((DNode) nodes[0], ""), whitespace()));
+                }
+            }
+            stringly = new Ruby.DelimitedArray(
+                    randomId(),
+                    prefix,
+                    Markers.EMPTY,
+                    delimiter,
+                    JContainer.build(EMPTY, strings, Markers.EMPTY),
+                    null
+            );
+        } else if (nodes[0] instanceof StrNode) {
+            boolean isRegex = delimiter.startsWith("%r") || delimiter.startsWith("/");
+            stringly = convertLiteral((StrNode) nodes[0], isRegex || inDString ? "" : delimiter, false);
+            if (isRegex) {
+                stringly = new Ruby.DelimitedString(
+                        randomId(),
+                        EMPTY,
+                        Markers.EMPTY,
+                        delimiter,
+                        singletonList(stringly),
+                        emptyList(),
+                        null
+                );
+            }
+        } else if (nodes[0] instanceof DNode) {
+            stringly = convertDelimitedString((DNode) nodes[0], delimiter);
+        } else {
+            throw new UnsupportedOperationException("Unexpected string node type " + nodes[0].getClass().getSimpleName());
+        }
+
+        skip(DelimiterMatcher.end(delimiter));
+        return stringly.withPrefix(prefix);
+    }
+
+    private Ruby.DelimitedString convertDelimitedString(DNode node, String delimiter) {
+        List<J> strings = new ArrayList<>(node.size());
+        for (Node n : node) {
+            if (!(n instanceof StrNode) || !((StrNode) n).getValue().isEmpty()) {
+                strings.add(convert(n));
+            }
+        }
+        return new Ruby.DelimitedString(
                 randomId(),
-                prefix,
+                EMPTY,
+                Markers.EMPTY,
+                delimiter,
+                strings,
+                emptyList(),
+                null
+        );
+    }
+
+    private J.Literal convertLiteral(StrNode node, String delimiter, boolean inArrayLiteral) {
+        String value = node.getValue().toString();
+        skip(value);
+        String valueSource = !inArrayLiteral || delimiter.equals("?") ?
+                String.format("%s%s%s", delimiter, value,
+                        delimiter.equals("?") ? "" : DelimiterMatcher.end(delimiter)) :
+                value;
+        return new J.Literal(
+                randomId(),
+                EMPTY,
                 Markers.EMPTY,
                 value,
-                String.format("%s%s%s", delimiter, value,
-                        delimiter.equals("?") ? "" : delimiter),
+                valueSource,
                 null,
-                delimiter.equals("?") ? JavaType.Primitive.Char : JavaType.Primitive.String
+                JavaType.Primitive.String
         );
-        if (!inDString) {
-            skip(delimiter);
-        }
-        return literal;
     }
 
     @Override
@@ -2026,6 +2089,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         public Node setArgsNode(Node node) {
             throw new UnsupportedOperationException("Setter will never be called");
         }
+
     }
 
     @Override
@@ -2042,9 +2106,9 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     /**
      * @param nodes An array of either {@link SymbolNode} or {@link DSymbolNode}.
-     * @return A {@link Ruby.Symbols} node.
+     * @return A {@link Ruby.Symbol} or a {@link Ruby.DelimitedArray} node.
      */
-    public Ruby.Symbols convertSymbols(Node... nodes) {
+    public Expression convertSymbols(Node... nodes) {
         Space prefix = whitespace();
 
         String delimiter;
@@ -2063,7 +2127,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         skip(delimiter);
 
         List<JRightPadded<Expression>> nameNodes = new ArrayList<>(nodes.length);
-        if (delimiter.startsWith("%i")) {
+        if (delimiter.startsWith("%i") || delimiter.startsWith("%I")) {
             // whitespace is only trimmed around symbol array names
             for (Node node : nodes) {
                 nameNodes.add(padRight(
@@ -2082,14 +2146,25 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             skip(DelimiterMatcher.end(delimiter));
         }
 
-        return new Ruby.Symbols(
-                randomId(),
-                prefix,
-                Markers.EMPTY,
-                delimiter,
-                JContainer.build(EMPTY, nameNodes, Markers.EMPTY),
-                null
-        );
+        if (delimiter.startsWith("%i") || delimiter.startsWith("%I")) {
+            return new Ruby.DelimitedArray(
+                    randomId(),
+                    prefix,
+                    Markers.EMPTY,
+                    delimiter,
+                    JContainer.build(EMPTY, nameNodes, Markers.EMPTY),
+                    null
+            );
+        } else {
+            return new Ruby.Symbol(
+                    randomId(),
+                    prefix,
+                    Markers.EMPTY,
+                    delimiter,
+                    nameNodes.get(0).getElement(),
+                    null
+            );
+        }
     }
 
     @Override
@@ -2192,8 +2267,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     @Override
     public J visitXStrNode(XStrNode node) {
         Space prefix = whitespace();
-        String value = new String(node.getValue().getUnsafeBytes(),
-                node.getValue().getEncoding().getCharset());
+        String value = node.getValue().toString();
         String delimiter = source.charAt(cursor) == '`' ? "`" : source.substring(cursor, cursor + 3);
         skip(delimiter);
         skip(value);

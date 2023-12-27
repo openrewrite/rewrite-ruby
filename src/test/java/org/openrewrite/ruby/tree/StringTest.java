@@ -203,4 +203,29 @@ public class StringTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void characterLiteral() {
+        rewriteRun(
+          ruby(
+            """
+              ?A
+              """
+          )
+        );
+    }
+
+    /**
+     * Just to ensure we are grouping StrNode/DNode children of ArrayNode together correctly.
+     */
+    @Test
+    void stringArray() {
+        rewriteRun(
+          ruby(
+            """
+              ["a", "b", "c"]
+              """
+          )
+        );
+    }
 }

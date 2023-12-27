@@ -182,6 +182,22 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         return c;
     }
 
+    public J visitDelimitedArray(Ruby.DelimitedArray delimitedArray, P p) {
+        Ruby.DelimitedArray da = delimitedArray;
+        da = da.withPrefix(visitSpace(da.getPrefix(), RubySpace.Location.DELIMITED_ARRAY_PREFIX, p));
+        da = da.withMarkers(visitMarkers(da.getMarkers(), p));
+        Expression temp = (Expression) visitExpression(da, p);
+        if (!(temp instanceof Ruby.DelimitedArray)) {
+            return temp;
+        } else {
+            da = (Ruby.DelimitedArray) temp;
+        }
+        da = da.getPadding().withElements(visitContainer(da.getPadding().getElements(),
+                RubyContainer.Location.DELIMITED_ARRAY_ELEMENTS, p));
+        da = da.withType(visitType(da.getType(), p));
+        return da;
+    }
+
     public J visitDelimitedString(Ruby.DelimitedString delimitedString, P p) {
         Ruby.DelimitedString ds = delimitedString;
         ds = ds.withPrefix(visitSpace(ds.getPrefix(), RubySpace.Location.DELIMITED_STRING_PREFIX, p));
@@ -374,7 +390,7 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
 
     public J visitSubArrayIndex(Ruby.SubArrayIndex subArrayIndex, P p) {
         Ruby.SubArrayIndex s = subArrayIndex;
-        s = s.withPrefix(visitSpace(s.getPrefix(), RubySpace.Location.SYMBOL_PREFIX, p));
+        s = s.withPrefix(visitSpace(s.getPrefix(), RubySpace.Location.SUB_ARRAY_PREFIX, p));
         s = s.withMarkers(visitMarkers(s.getMarkers(), p));
         Expression temp = (Expression) visitExpression(s, p);
         if (!(temp instanceof Ruby.SubArrayIndex)) {
@@ -387,18 +403,17 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         return s;
     }
 
-    public J visitSymbol(Ruby.Symbols symbols, P p) {
-        Ruby.Symbols s = symbols;
+    public J visitSymbol(Ruby.Symbol symbol, P p) {
+        Ruby.Symbol s = symbol;
         s = s.withPrefix(visitSpace(s.getPrefix(), RubySpace.Location.SYMBOL_PREFIX, p));
         s = s.withMarkers(visitMarkers(s.getMarkers(), p));
         Expression temp = (Expression) visitExpression(s, p);
-        if (!(temp instanceof Ruby.Symbols)) {
+        if (!(temp instanceof Ruby.Symbol)) {
             return temp;
         } else {
-            s = (Ruby.Symbols) temp;
+            s = (Ruby.Symbol) temp;
         }
-        s = s.getPadding().withNames(visitContainer(s.getPadding().getNames(),
-                RubyContainer.Location.SYMBOLS_NAMES, p));
+        s = s.withName((Expression) visit(s.getName(), p));
         s = s.withType(visitType(s.getType(), p));
         return s;
     }

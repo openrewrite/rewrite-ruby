@@ -196,6 +196,17 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     }
 
     @Override
+    public J visitDelimitedArray(Ruby.DelimitedArray delimitedArray, PrintOutputCapture<P> p) {
+        beforeSyntax(delimitedArray, RubySpace.Location.DELIMITED_ARRAY_PREFIX, p);
+        p.append(delimitedArray.getDelimiter());
+        visitContainer("", delimitedArray.getPadding().getElements(), RubyContainer.Location.DELIMITED_ARRAY_ELEMENTS,
+                "", "", p);
+        p.append(DelimiterMatcher.end(delimitedArray.getDelimiter()));
+        afterSyntax(delimitedArray, p);
+        return delimitedArray;
+    }
+
+    @Override
     public J visitDelimitedString(Ruby.DelimitedString dString, PrintOutputCapture<P> p) {
         beforeSyntax(dString, RubySpace.Location.DELIMITED_STRING_VALUE_PREFIX, p);
         p.append(dString.getDelimiter());
@@ -427,17 +438,17 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     }
 
     @Override
-    public J visitSymbol(Ruby.Symbols symbols, PrintOutputCapture<P> p) {
-        beforeSyntax(symbols, RubySpace.Location.SYMBOL_PREFIX, p);
-        if (!symbols.getDelimiter().startsWith("%")) {
+    public J visitSymbol(Ruby.Symbol symbol, PrintOutputCapture<P> p) {
+        beforeSyntax(symbol, RubySpace.Location.SYMBOL_PREFIX, p);
+        boolean inArr = getCursor().getParentTreeCursor().getValue() instanceof Ruby.DelimitedArray;
+        if (!inArr && !symbol.getDelimiter().startsWith("%")) {
             p.append(":");
         }
-        p.append(symbols.getDelimiter());
-        visitContainer("", symbols.getPadding().getNames(), RubyContainer.Location.SYMBOLS_NAMES,
-                "", "", p);
-        p.append(DelimiterMatcher.end(symbols.getDelimiter()));
-        afterSyntax(symbols, p);
-        return symbols;
+        p.append(symbol.getDelimiter());
+        visit(symbol.getName(), p);
+        p.append(DelimiterMatcher.end(symbol.getDelimiter()));
+        afterSyntax(symbol, p);
+        return symbol;
     }
 
     @Override
@@ -536,9 +547,11 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         }
     }
 
-    protected void visitRightPadded(@Nullable JRightPadded<? extends J> rightPadded, RubyRightPadded.Location location,
+    protected void visitRightPadded(@Nullable JRightPadded<? extends J> rightPadded,
+                                    @SuppressWarnings("SameParameterValue") RubyRightPadded.Location location,
                                     @Nullable String suffix, PrintOutputCapture<P> p) {
         if (rightPadded != null) {
+            //noinspection DataFlowIssue
             beforeSyntax(Space.EMPTY, rightPadded.getMarkers(), (RubySpace.Location) null, p);
             visit(rightPadded.getElement(), p);
             afterSyntax(rightPadded.getMarkers(), p);
