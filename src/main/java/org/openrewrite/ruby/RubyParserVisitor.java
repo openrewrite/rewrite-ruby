@@ -2118,6 +2118,28 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         );
     }
 
+    @Override
+    public J visitZSuperNode(ZSuperNode node) {
+        return new J.MethodInvocation(
+                randomId(),
+                whitespace(),
+                Markers.EMPTY,
+                null,
+                null,
+                new J.Identifier(
+                        randomId(),
+                        sourceBefore("super"),
+                        Markers.EMPTY,
+                        emptyList(),
+                        "super",
+                        null,
+                        null
+                ),
+                JContainer.<Expression>empty().withMarkers(Markers.EMPTY.add(new OmitParentheses(randomId()))),
+                null
+        );
+    }
+
     private J.Identifier convertIdentifier(RubySymbol name) {
         String nameStr = name.asJavaString();
         return new J.Identifier(randomId(), sourceBefore(nameStr), Markers.EMPTY, emptyList(),

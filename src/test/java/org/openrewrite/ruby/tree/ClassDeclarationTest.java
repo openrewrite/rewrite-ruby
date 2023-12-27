@@ -131,6 +131,22 @@ public class ClassDeclarationTest implements RewriteTest {
     }
 
     @Test
+    void zeroLengthSuperCall() {
+        rewriteRun(
+          ruby(
+            """
+              class Point3D < Point2D
+                  def initialize(x,y,z)
+                      super
+                      @z = z
+                  end
+              end
+              """
+          )
+        );
+    }
+
+    @Test
     void classVariableAssignment() {
         rewriteRun(
           ruby(
