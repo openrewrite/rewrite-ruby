@@ -15,6 +15,14 @@
  */
 package org.openrewrite.ruby.tree;
 
+import org.openrewrite.java.tree.Comment;
+import org.openrewrite.java.tree.Space;
+import org.openrewrite.java.tree.TextComment;
+import org.openrewrite.marker.Markers;
+
+import java.util.ArrayList;
+import java.util.List;
+
 public class RubySpace {
     public enum Location {
         ALIAS_PREFIX,
@@ -64,5 +72,111 @@ public class RubySpace {
         SYMBOL_PREFIX,
         YIELD_DATA,
         YIELD_DATA_SUFFIX,
+    }
+
+    // FIXME many recipes use Space.format(..) directly. we will need to make this non-static and use a
+    // "service" much like we do for auto-format.
+    public static Space format(String formatting) {
+        return format(formatting, 0, formatting.length());
+    }
+
+    public static Space format(String formatting, int beginIndex, int toIndex) {
+        if (beginIndex == toIndex) {
+            return Space.EMPTY;
+        } else if (toIndex == beginIndex + 1 && ' ' == formatting.charAt(beginIndex)) {
+            return Space.SINGLE_SPACE;
+        } else {
+            rangeCheck(formatting.length(), beginIndex, toIndex);
+        }
+
+        StringBuilder prefix = new StringBuilder();
+        StringBuilder comment = new StringBuilder();
+        List<Comment> comments = new ArrayList<>(1);
+
+        boolean inSingleLineComment = false;
+        boolean inMultiLineComment = false;
+
+        for (int i = beginIndex; i < toIndex; i++) {
+            char c = formatting.charAt(i);
+            char next = i + 1 < toIndex ? formatting.charAt(i + 1) : '\0';
+            switch (c) {
+                case '#':
+                    if (inSingleLineComment) {
+                        comment.append(c);
+                    } else if (!inMultiLineComment) {
+                        inSingleLineComment = true;
+                        comment.setLength(0);
+                    }
+                    break;
+                case '\r':
+                case '\n':
+                    if (inSingleLineComment) {
+                        inSingleLineComment = false;
+                        comments.add(new RubyTextComment(false, comment.toString(), prefix.toString(), Markers.EMPTY));
+                        prefix.setLength(0);
+                        comment.setLength(0);
+                        prefix.append(c);
+                    } else if (inMultiLineComment) {
+                        if (next == '=' && formatting.startsWith("=end", i + 1)) {
+                            i += "=end".length();
+                            inMultiLineComment = false;
+                            comments.add(new RubyTextComment(true, comment.toString(), prefix.toString(), Markers.EMPTY));
+                            prefix.setLength(0);
+                            comment.setLength(0);
+                        } else {
+                            comment.append(c);
+                        }
+                    } else {
+                        if (next == '=' && formatting.startsWith("=begin", i + 1)) {
+                            i += "=begin".length();
+                            inMultiLineComment = true;
+                            comment.setLength(0);
+                        } else {
+                            prefix.append(c);
+                        }
+                    }
+                default:
+                    if (inSingleLineComment || inMultiLineComment) {
+                        comment.append(c);
+                    } else {
+                        prefix.append(c);
+                    }
+            }
+        }
+        // If a file ends with a single-line comment there may be no terminating newline
+        if (comment.length() > 0) {
+            comments.add(new RubyTextComment(false, comment.toString(), prefix.toString(), Markers.EMPTY));
+            prefix.setLength(0);
+        }
+
+        // Shift the whitespace on each comment forward to be a suffix of the comment before it, and the
+        // whitespace on the first comment to be the whitespace of the tree element. The remaining prefix is the suffix
+        // of the last comment.
+        String whitespace = prefix.toString();
+        if (!comments.isEmpty()) {
+            for (int i = comments.size() - 1; i >= 0; i--) {
+                Comment c = comments.get(i);
+                String next = c.getSuffix();
+                comments.set(i, c.withSuffix(whitespace));
+                whitespace = next;
+            }
+        }
+
+        return Space.build(whitespace, comments);
+    }
+
+    // FIXME maybe can be made public in Space so it isn't duplicated here, or put in some
+    // other utility class to not pollute API surface of Space
+    static void rangeCheck(int arrayLength, int fromIndex, int toIndex) {
+        if (fromIndex > toIndex) {
+            throw new IllegalArgumentException(
+                    "fromIndex(" + fromIndex + ") > toIndex(" + toIndex + ")");
+        }
+        if (fromIndex < 0) {
+            throw new StringIndexOutOfBoundsException(fromIndex);
+        }
+        if (toIndex > arrayLength) {
+            throw new StringIndexOutOfBoundsException(toIndex);
+        }
     }
 }

@@ -34,6 +34,7 @@ import org.openrewrite.marker.Markers;
 import org.openrewrite.ruby.internal.DelimiterMatcher;
 import org.openrewrite.ruby.marker.*;
 import org.openrewrite.ruby.tree.Ruby;
+import org.openrewrite.ruby.tree.RubySpace;
 
 import java.nio.charset.Charset;
 import java.nio.file.Path;
@@ -46,9 +47,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 import static org.openrewrite.Tree.randomId;
-import static org.openrewrite.internal.StringUtils.indexOfNextNonWhitespace;
 import static org.openrewrite.java.tree.Space.EMPTY;
-import static org.openrewrite.java.tree.Space.format;
 
 /**
  * For detailed descriptions of what every node type is, see
@@ -2479,7 +2478,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
         String prefix = source.substring(cursor, delimIndex);
         cursor += prefix.length() + untilDelim.length(); // advance past the delimiter
-        return Space.format(prefix);
+        return RubySpace.format(prefix);
     }
 
     private <T> JRightPadded<T> padRight(T tree, Space right) {
@@ -2532,7 +2531,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     private Space whitespace() {
         String prefix = source.substring(cursor, indexOfNextNonWhitespace(cursor, source));
         cursor += prefix.length();
-        return format(prefix);
+        return RubySpace.format(prefix);
     }
 
     private void skip(@Nullable String token) {
@@ -2543,5 +2542,39 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         if (source.startsWith(token, cursor)) {
             cursor += token.length();
         }
+    }
+
+    public static int indexOfNextNonWhitespace(int cursor, String source) {
+        boolean inMultiLineComment = false;
+        boolean inSingleLineComment = false;
+
+        int length = source.length();
+        for (; cursor < length; cursor++) {
+            char current = source.charAt(cursor);
+            if (inSingleLineComment) {
+                inSingleLineComment = current != '\n';
+                continue;
+            } else if (length > cursor + 1) {
+                if (current == '#') {
+                    inSingleLineComment = true;
+                    cursor++;
+                    continue;
+                } else if (cursor == 0 || source.charAt(cursor - 1) == '\n') {
+                    if (source.startsWith("=begin")) {
+                        inMultiLineComment = true;
+                        cursor++;
+                        continue;
+                    } else if (source.startsWith("=end")) {
+                        inMultiLineComment = false;
+                        cursor++;
+                        continue;
+                    }
+                }
+            }
+            if (!inMultiLineComment && !Character.isWhitespace(current)) {
+                break; // found it!
+            }
+        }
+        return cursor;
     }
 }

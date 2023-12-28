@@ -26,15 +26,6 @@ import org.openrewrite.marker.Markers;
 
 import java.util.function.UnaryOperator;
 
-
-/*
-
-
-<!--CLI_VERSION-->1.6.2<!--/CLI_VERSION-->
-
- */
-
-
 @Value
 public class RubyTextComment implements Comment {
 
@@ -78,7 +69,7 @@ public class RubyTextComment implements Comment {
         for (Marker marker : markers.getMarkers()) {
             p.append(p.getMarkerPrinter().beforeSyntax(marker, new Cursor(cursor, this), JAVA_MARKER_WRAPPER));
         }
-        p.append(multiline ? "=begin" + text + "=end" : "//" + text);
+        p.append(multiline ? "=begin" + text + "=end" : "#" + text);
         for (Marker marker : markers.getMarkers()) {
             p.append(p.getMarkerPrinter().afterSyntax(marker, new Cursor(cursor, this), JAVA_MARKER_WRAPPER));
         }
