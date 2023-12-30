@@ -2529,7 +2529,8 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     private Space whitespace() {
-        String prefix = source.substring(cursor, indexOfNextNonWhitespace(cursor, source));
+        int next = indexOfNextNonWhitespace(cursor, source);
+        String prefix = source.substring(cursor, next);
         cursor += prefix.length();
         return RubySpace.format(prefix);
     }
@@ -2559,14 +2560,15 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     inSingleLineComment = true;
                     cursor++;
                     continue;
-                } else if (cursor == 0 || source.charAt(cursor - 1) == '\n') {
-                    if (source.startsWith("=begin")) {
+                } else if (cursor == 0 || cursor == source.length() - "=end".length() ||
+                           source.charAt(cursor - 1) == '\n') {
+                    if (source.startsWith("=begin", cursor)) {
                         inMultiLineComment = true;
                         cursor++;
                         continue;
-                    } else if (source.startsWith("=end")) {
+                    } else if (source.startsWith("=end", cursor)) {
                         inMultiLineComment = false;
-                        cursor++;
+                        cursor += "=end".length() - 1; // the loop increment adds another 1
                         continue;
                     }
                 }

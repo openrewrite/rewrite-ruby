@@ -117,24 +117,23 @@ public class RubySpace {
                         comment.setLength(0);
                         prefix.append(c);
                     } else if (inMultiLineComment) {
+                        comment.append(c);
                         if (next == '=' && formatting.startsWith("=end", i + 1)) {
                             i += "=end".length();
                             inMultiLineComment = false;
                             comments.add(new RubyTextComment(true, comment.toString(), prefix.toString(), Markers.EMPTY));
                             prefix.setLength(0);
                             comment.setLength(0);
-                        } else {
-                            comment.append(c);
                         }
                     } else {
                         if (next == '=' && formatting.startsWith("=begin", i + 1)) {
                             i += "=begin".length();
                             inMultiLineComment = true;
                             comment.setLength(0);
-                        } else {
-                            prefix.append(c);
                         }
+                        prefix.append(c);
                     }
+                    break;
                 default:
                     if (inSingleLineComment || inMultiLineComment) {
                         comment.append(c);

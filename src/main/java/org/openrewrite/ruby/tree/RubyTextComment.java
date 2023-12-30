@@ -26,6 +26,15 @@ import org.openrewrite.marker.Markers;
 
 import java.util.function.UnaryOperator;
 
+
+/*
+
+
+<!--CLI_VERSION-->1.6.2<!--/CLI_VERSION-->
+
+ */
+
+
 @Value
 public class RubyTextComment implements Comment {
 
