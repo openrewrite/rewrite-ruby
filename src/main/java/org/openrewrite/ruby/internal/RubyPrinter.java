@@ -627,8 +627,8 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         @Override
         public J visit(@Nullable Tree tree, PrintOutputCapture<P> p) {
             if (tree instanceof Ruby) {
-                // re-route printing back up to groovy
-                return RubyPrinter.this.visit(tree, p);
+                // re-route printing back up to ruby
+                return RubyPrinter.this.visit(tree, p, getCursor());
             } else {
                 return super.visit(tree, p);
             }
