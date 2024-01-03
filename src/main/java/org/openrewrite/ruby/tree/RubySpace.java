@@ -170,6 +170,7 @@ public class RubySpace {
             }
         }
 
+        assert whitespace.matches("[\\s\\\\]*") : String.format("Invalid whitespace |%s|", whitespace);
         return Space.build(whitespace, comments);
     }
 

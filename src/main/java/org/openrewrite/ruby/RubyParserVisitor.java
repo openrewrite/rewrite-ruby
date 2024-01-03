@@ -29,6 +29,7 @@ import org.openrewrite.internal.ListUtils;
 import org.openrewrite.internal.lang.Nullable;
 import org.openrewrite.java.marker.ImplicitReturn;
 import org.openrewrite.java.marker.OmitParentheses;
+import org.openrewrite.java.marker.TrailingComma;
 import org.openrewrite.java.tree.*;
 import org.openrewrite.marker.Markers;
 import org.openrewrite.ruby.internal.DelimiterMatcher;
@@ -39,6 +40,7 @@ import org.openrewrite.ruby.tree.RubySpace;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
@@ -186,14 +188,22 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     @Override
     public J visitAttrAssignNode(AttrAssignNode node) {
         Space prefix = whitespace();
-        if (node.getName().asJavaString().equals("[]=")) {
+        String attrName = node.getName().asJavaString();
+        if (attrName.equals("[]=")) {
             return convertArrayAssignment(node, prefix);
         }
         return new J.Assignment(
                 randomId(),
                 prefix,
                 Markers.EMPTY,
-                convert(node.getReceiverNode()),
+                new J.FieldAccess(
+                        randomId(),
+                        EMPTY,
+                        Markers.EMPTY,
+                        convert(node.getReceiverNode()),
+                        padLeft(sourceBefore("."), convertIdentifier(attrName.substring(0, attrName.indexOf('=')))),
+                        null
+                ),
                 padLeft(sourceBefore("="), convert(node.getArgsNode())),
                 null
         );
@@ -343,12 +353,12 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         J receiver = convert(node.getReceiverNode());
         Space beforeDot = sourceBefore(".");
         J.Identifier name = convertIdentifier(node.getName());
-        if(!(receiver instanceof TypeTree)) {
+        if (!(receiver instanceof TypeTree)) {
             receiver = new Ruby.TypeReference(
                     randomId(),
                     receiver.getPrefix(),
                     Markers.EMPTY,
-                    (TypedTree) receiver.withPrefix(EMPTY)
+                    receiver.withPrefix(EMPTY)
             );
         }
 
@@ -1556,8 +1566,11 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         Space prefix = whitespace();
         JContainer<Expression> assignments = convertArgs("(", node.getPre(), null, ")");
         if (node.getRest() != null) {
+            Space lastComma = assignments.getMarkers().findFirst(TrailingComma.class)
+                    .map(TrailingComma::getSuffix).orElse(EMPTY);
+            assignments = assignments.withMarkers(assignments.getMarkers().removeByType(TrailingComma.class));
             assignments = assignments.getPadding().withElements(ListUtils.concat(
-                    ListUtils.mapLast(assignments.getPadding().getElements(), assign -> assign.withAfter(sourceBefore(","))),
+                    ListUtils.mapLast(assignments.getPadding().getElements(), assign -> assign.withAfter(lastComma)),
                     padRight(convert(node.getRest()), EMPTY)
             ));
         }
@@ -1652,6 +1665,8 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
         if (second instanceof LocalAsgnNode) {
             second = ((LocalAsgnNode) second).getValueNode();
+        } else if (second instanceof InstAsgnNode) {
+            second = ((InstAsgnNode) second).getValueNode();
         }
 
         if (opType instanceof Ruby.AssignmentOperation.Type) {
@@ -2280,6 +2295,16 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     null,
                     JavaType.Primitive.String
             );
+        } else if (node.getValue().isEmpty()) {
+            return new J.Literal(
+                    randomId(),
+                    EMPTY,
+                    Markers.EMPTY,
+                    value,
+                    String.format("%s%s%s", delimiter, value, endDelimiter),
+                    null,
+                    JavaType.Primitive.String
+            );
         }
 
         // deal with the possibility of implicit concatenations
@@ -2649,14 +2674,14 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     private <J2 extends J> JContainer<J2> convertArgs(String before, @Nullable Node argsNode,
                                                       @Nullable Node iterNode,
                                                       String after) {
-        Markers markers = Markers.EMPTY;
+        AtomicReference<Markers> markers = new AtomicReference<>(Markers.EMPTY);
         Space prefix = whitespace();
         boolean omitParentheses;
         if (source.startsWith(before, cursor)) {
             skip(before);
             omitParentheses = false;
         } else {
-            markers = markers.add(new OmitParentheses(randomId()));
+            markers.set(markers.get().add(new OmitParentheses(randomId())));
             omitParentheses = true;
         }
 
@@ -2686,8 +2711,17 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             args.add(argsNode);
         }
 
-        List<JRightPadded<J2>> mappedArgs = convertAll(args, n -> sourceBefore(","),
-                n -> omitParentheses ? EMPTY : sourceBefore(after));
+        List<JRightPadded<J2>> mappedArgs = convertAll(args, n -> sourceBefore(","), n -> {
+            int cursorBeforeWhitespace = cursor;
+            Space next = whitespace();
+            if (cursor < source.length() && source.charAt(cursor) == ',') {
+                markers.set(markers.get().add(new TrailingComma(randomId(), next)));
+                cursor++;
+            } else {
+                cursor = cursorBeforeWhitespace;
+            }
+            return omitParentheses ? EMPTY : sourceBefore(after);
+        });
 
         if (iterNode != null) {
             mappedArgs = ListUtils.concat(mappedArgs, padRight(convert(iterNode), EMPTY));
@@ -2696,7 +2730,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         return JContainer.build(
                 prefix,
                 mappedArgs,
-                markers
+                markers.get()
         );
     }
 

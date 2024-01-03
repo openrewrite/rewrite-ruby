@@ -25,6 +25,19 @@ import static org.openrewrite.ruby.Assertions.ruby;
 public class AssignmentTest implements RewriteTest {
 
     @Test
+    void instanceAssignmentOperation() {
+        rewriteRun(
+          ruby(
+            """
+              def common_dir
+                @common_dir ||= 1
+              end
+              """
+          )
+        );
+    }
+
+    @Test
     void localAssignment() {
         rewriteRun(
           ruby(
@@ -108,7 +121,7 @@ public class AssignmentTest implements RewriteTest {
         rewriteRun(
           ruby(
             """
-              a.b  = 1
+              a.b = 1
               """
           )
         );

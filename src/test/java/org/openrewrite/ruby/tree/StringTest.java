@@ -26,6 +26,17 @@ import static org.openrewrite.ruby.Assertions.ruby;
 public class StringTest implements RewriteTest {
 
     @Test
+    void empty() {
+        rewriteRun(
+          ruby(
+            """
+              ''
+              """
+          )
+        );
+    }
+
+    @Test
     void string() {
         rewriteRun(
           ruby(

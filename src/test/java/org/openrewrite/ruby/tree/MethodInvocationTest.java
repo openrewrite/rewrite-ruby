@@ -80,4 +80,15 @@ public class MethodInvocationTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void nested() {
+        rewriteRun(
+          ruby(
+            """
+              expect(map(&:name)).to
+              """
+          )
+        );
+    }
 }
