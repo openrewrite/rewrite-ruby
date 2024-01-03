@@ -1901,17 +1901,30 @@ public interface Ruby extends J {
         Space prefix;
         Markers markers;
 
-        TypedTree reference;
+        /**
+         * Must be an {@link Expression} or a {@link TypedTree}.
+         */
+        J reference;
 
         @Override
         public @Nullable JavaType getType() {
-            return reference.getType();
+            if (reference instanceof Expression) {
+                return ((Expression) reference).getType();
+            } else if (reference instanceof TypedTree) {
+                return ((TypedTree) reference).getType();
+            }
+            return null;
         }
 
         @SuppressWarnings("unchecked")
         @Override
         public TypeReference withType(@Nullable JavaType type) {
-            return withReference(reference.withType(type));
+            if (reference instanceof Expression) {
+                return withReference(((Expression) reference).withType(type));
+            } else if (reference instanceof TypedTree) {
+                return withReference(((TypedTree) reference).withType(type));
+            }
+            return this;
         }
 
         @Override

@@ -871,20 +871,36 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitDotNode(DotNode node) {
+        return maybeParenthesized(prefix -> {
+            Expression left = convert(node.getBeginNode());
+            Space opPrefix = whitespace();
+            String op = source.substring(cursor).startsWith("...") ? "..." : "..";
+            skip(op);
+            return new Ruby.Binary(
+                    randomId(),
+                    prefix,
+                    Markers.EMPTY,
+                    left,
+                    padLeft(opPrefix, op.equals("...") ? Ruby.Binary.Type.RangeExclusive : Ruby.Binary.Type.RangeInclusive),
+                    (Expression) node.getEndNode().accept(this),
+                    null
+            );
+        });
+    }
+
+    private J maybeParenthesized(Function<Space, J> insideParentheses) {
         Space prefix = whitespace();
-        Expression left = convert(node.getBeginNode());
-        Space opPrefix = whitespace();
-        String op = source.substring(cursor).startsWith("...") ? "..." : "..";
-        skip(op);
-        return new Ruby.Binary(
-                randomId(),
-                prefix,
-                Markers.EMPTY,
-                left,
-                padLeft(opPrefix, op.equals("...") ? Ruby.Binary.Type.RangeExclusive : Ruby.Binary.Type.RangeInclusive),
-                (Expression) node.getEndNode().accept(this),
-                null
-        );
+        if (source.startsWith("(", cursor)) {
+            skip("(");
+            J inside = maybeParenthesized(insideParentheses);
+            return new J.Parentheses<>(
+                    randomId(),
+                    prefix,
+                    Markers.EMPTY,
+                    padRight(inside, sourceBefore(")"))
+            );
+        }
+        return insideParentheses.apply(prefix);
     }
 
     @Override
