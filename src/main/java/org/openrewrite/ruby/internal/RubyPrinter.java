@@ -75,16 +75,25 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
 
     @Override
     public J visitArray(Ruby.Array array, PrintOutputCapture<P> p) {
-        beforeSyntax(array, RubySpace.Location.LIST_LITERAL, p);
+        beforeSyntax(array, RubySpace.Location.ARRAY_PREFIX, p);
         if (array.getPadding().getElements().getMarkers().findFirst(OmitParentheses.class).isPresent()) {
-            visitContainer("", array.getPadding().getElements(), RubyContainer.Location.LIST_LITERAL_ELEMENTS,
+            visitContainer("", array.getPadding().getElements(), RubyContainer.Location.ARRAY_ELEMENTS,
                     ",", "", p);
         } else {
-            visitContainer("[", array.getPadding().getElements(), RubyContainer.Location.LIST_LITERAL_ELEMENTS,
+            visitContainer("[", array.getPadding().getElements(), RubyContainer.Location.ARRAY_ELEMENTS,
                     ",", "]", p);
         }
         afterSyntax(array, p);
         return array;
+    }
+
+    @Override
+    public J visitArrayPattern(Ruby.ArrayPattern arrayPattern, PrintOutputCapture<P> p) {
+        beforeSyntax(arrayPattern, RubySpace.Location.ARRAY_PATTERN_PREFIX, p);
+        visit(arrayPattern.getConstant(), p);
+        visit(arrayPattern.getArray(), p);
+        afterSyntax(arrayPattern, p);
+        return arrayPattern;
     }
 
     @Override
@@ -329,7 +338,7 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
 
     @Override
     public J visitMultipleAssignment(Ruby.MultipleAssignment multipleAssignment, PrintOutputCapture<P> p) {
-        beforeSyntax(multipleAssignment, RubySpace.Location.LIST_LITERAL, p);
+        beforeSyntax(multipleAssignment, RubySpace.Location.ARRAY_PREFIX, p);
         visitContainer("", multipleAssignment.getPadding().getAssignments(), RubyContainer.Location.MULTIPLE_ASSIGNMENT_ASSIGNMENTS,
                 ",", "", p);
         visitContainer("=", multipleAssignment.getPadding().getInitializers(), RubyContainer.Location.MULTIPLE_ASSIGNMENT_INITIALIZERS,
@@ -980,7 +989,9 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
             p.append('.');
             visitSpace(newClass.getNew(), Space.Location.NEW_PREFIX, p);
             p.append("new");
-            if (!newClass.getPadding().getArguments().getMarkers().findFirst(OmitParentheses.class).isPresent()) {
+            if (newClass.getPadding().getArguments().getMarkers().findFirst(OmitParentheses.class).isPresent()) {
+                visitContainer("", newClass.getPadding().getArguments(), JContainer.Location.NEW_CLASS_ARGUMENTS, ",", "", p);
+            } else {
                 visitContainer("(", newClass.getPadding().getArguments(), JContainer.Location.NEW_CLASS_ARGUMENTS, ",", ")", p);
             }
             afterSyntax(newClass, p);

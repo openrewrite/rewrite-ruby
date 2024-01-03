@@ -392,6 +392,49 @@ public interface Ruby extends J {
         }
     }
 
+    @Value
+    @With
+    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+    class ArrayPattern implements Ruby, Expression {
+        @EqualsAndHashCode.Include
+        UUID id;
+
+        Space prefix;
+        Markers markers;
+
+        /**
+         * Is non-null when doing array pattern matching on structs. In this case, it will be
+         * the struct name. For example:
+         * {@code in Point[..5, ..5] then "matched"}
+         */
+        @Nullable
+        Identifier constant;
+
+        Array array;
+
+        @Override
+        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
+            return v.visitArrayPattern(this, p);
+        }
+
+        @Override
+        public @Nullable JavaType getType() {
+            return array.getType();
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public ArrayPattern withType(@Nullable JavaType type) {
+            return withArray(array.withType(type));
+        }
+
+        @Override
+        public CoordinateBuilder.Expression getCoordinates() {
+            return new CoordinateBuilder.Expression(this);
+        }
+    }
+
+
     @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
     @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
     @RequiredArgsConstructor

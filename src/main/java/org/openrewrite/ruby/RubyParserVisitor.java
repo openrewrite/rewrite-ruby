@@ -15,7 +15,6 @@
  */
 package org.openrewrite.ruby;
 
-import org.jetbrains.annotations.NotNull;
 import org.jruby.RubySymbol;
 import org.jruby.ast.*;
 import org.jruby.ast.types.INameNode;
@@ -162,7 +161,13 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitArrayPatternNode(ArrayPatternNode node) {
-        return convert(node.getPreArgs());
+        return new Ruby.ArrayPattern(
+                randomId(),
+                whitespace(),
+                Markers.EMPTY,
+                convert(node.getConstant()),
+                convert(node.getPreArgs())
+        );
     }
 
     @Override

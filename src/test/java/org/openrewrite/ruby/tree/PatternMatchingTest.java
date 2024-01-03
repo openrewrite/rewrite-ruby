@@ -171,4 +171,19 @@ public class PatternMatchingTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void structs() {
+        rewriteRun(
+          ruby(
+            """
+              Point = Struct.new :x, :y
+              case Point[1, 2]
+                in Point[..5, ..5] then "matched"
+                else "unmatched"
+              end
+              """
+          )
+        );
+    }
 }

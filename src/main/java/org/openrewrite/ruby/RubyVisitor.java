@@ -74,7 +74,7 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
 
     public J visitArray(Ruby.Array array, P p) {
         Ruby.Array l = array;
-        l = l.withPrefix(visitSpace(l.getPrefix(), RubySpace.Location.LIST_LITERAL, p));
+        l = l.withPrefix(visitSpace(l.getPrefix(), RubySpace.Location.ARRAY_PREFIX, p));
         l = l.withMarkers(visitMarkers(l.getMarkers(), p));
         Expression temp = (Expression) visitExpression(l, p);
         if (!(temp instanceof Ruby.Array)) {
@@ -82,7 +82,23 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         } else {
             l = (Ruby.Array) temp;
         }
-        l = l.getPadding().withElements(visitContainer(l.getPadding().getElements(), RubyContainer.Location.LIST_LITERAL_ELEMENTS, p));
+        l = l.getPadding().withElements(visitContainer(l.getPadding().getElements(), RubyContainer.Location.ARRAY_ELEMENTS, p));
+        l = l.withType(visitType(l.getType(), p));
+        return l;
+    }
+
+    public J visitArrayPattern(Ruby.ArrayPattern arrayPattern, P p) {
+        Ruby.ArrayPattern l = arrayPattern;
+        l = l.withPrefix(visitSpace(l.getPrefix(), RubySpace.Location.ARRAY_PATTERN_PREFIX, p));
+        l = l.withMarkers(visitMarkers(l.getMarkers(), p));
+        Expression temp = (Expression) visitExpression(l, p);
+        if (!(temp instanceof Ruby.ArrayPattern)) {
+            return temp;
+        } else {
+            l = (Ruby.ArrayPattern) temp;
+        }
+        l = l.withConstant((J.Identifier) visit(l.getConstant(), p));
+        l = l.withType((JavaType) visit(l.getArray(), p));
         l = l.withType(visitType(l.getType(), p));
         return l;
     }

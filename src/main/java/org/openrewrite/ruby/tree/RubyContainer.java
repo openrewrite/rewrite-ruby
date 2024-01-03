@@ -21,14 +21,14 @@ public class RubyContainer {
 
     @Getter
     public enum Location {
+        ARRAY_ELEMENTS(RubySpace.Location.ARRAY_ELEMENTS, RubyRightPadded.Location.ARRAY_ELEMENTS_SUFFIX),
         BLOCK_PARAMETERS(RubySpace.Location.BLOCK_PARAMETERS, RubyRightPadded.Location.BLOCK_PARAMETERS_SUFFIX),
         CLASS_METHOD_DECLARATION_PARAMETERS(RubySpace.Location.CLASS_METHOD_DECLARATION_PARAMETERS, RubyRightPadded.Location.CLASS_METHOD_DECLARATION_PARAMETERS_SUFFIX),
-        HASH_ELEMENTS(RubySpace.Location.HASH, RubyRightPadded.Location.HASH_ELEMENTS_SUFFIX),
-        LIST_LITERAL_ELEMENTS(RubySpace.Location.LIST_LITERAL, RubyRightPadded.Location.LIST_LITERAL_SUFFIX),
-        MULTIPLE_ASSIGNMENT_ASSIGNMENTS(RubySpace.Location.MULTIPLE_ASSIGNMENT_PREFIX, RubyRightPadded.Location.MULTIPLE_ASSIGNMENT_SUFFIX),
+        DELIMITED_ARRAY_ELEMENTS(RubySpace.Location.DELIMITED_ARRAY_ELEMENTS, RubyRightPadded.Location.DELIMITED_ARRAY_ELEMENT_SUFFIX),
+        HASH_ELEMENTS(RubySpace.Location.HASH_ELEMENTS, RubyRightPadded.Location.HASH_ELEMENTS_SUFFIX),
+        MULTIPLE_ASSIGNMENT_ASSIGNMENTS(RubySpace.Location.MULTIPLE_ASSIGNMENT_ASSIGNMENTS, RubyRightPadded.Location.MULTIPLE_ASSIGNMENT_SUFFIX),
         MULTIPLE_ASSIGNMENT_INITIALIZERS(RubySpace.Location.MULTIPLE_ASSIGNMENT_INITIALIZERS, RubyRightPadded.Location.MULTIPLE_ASSIGNMENT_INITIALIZERS_SUFFIX),
-        YIELD_DATA(RubySpace.Location.YIELD_DATA, RubyRightPadded.Location.YIELD_DATA_SUFFIX),
-        DELIMITED_ARRAY_ELEMENTS(RubySpace.Location.DELIMITED_ARRAY_ELEMENTS, RubyRightPadded.Location.DELIMITED_ARRAY_ELEMENT_SUFFIX);
+        YIELD_DATA(RubySpace.Location.YIELD_DATA, RubyRightPadded.Location.YIELD_DATA_SUFFIX);
 
         private final RubySpace.Location beforeLocation;
         private final RubyRightPadded.Location elementLocation;

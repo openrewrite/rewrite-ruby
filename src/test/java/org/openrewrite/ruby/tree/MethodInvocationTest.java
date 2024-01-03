@@ -57,4 +57,15 @@ public class MethodInvocationTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void noParens() {
+        rewriteRun(
+          ruby(
+            """
+              Struct.new :x, :y
+              """
+          )
+        );
+    }
 }
