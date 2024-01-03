@@ -16,39 +16,47 @@
 package org.openrewrite.ruby.tree;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.openrewrite.test.RewriteTest;
 
 import static org.openrewrite.ruby.Assertions.ruby;
 
 /**
- * See <a href="https://stackoverflow.com/a/8198831">this explanation</a> for why
- * there are two different key-value delimiters for hashes in Ruby.
+ * For a comprehensive summary of the history of pattern matching in Ruby, see
+ * <a href="https://www.alchemists.io/articles/ruby_pattern_matching">this blog post</a>.
  */
-public class HashTest implements RewriteTest {
+public class PatternMatchingTest implements RewriteTest {
 
-    @ParameterizedTest
-    @ValueSource(strings = {"=>", ":"})
-    void hash(String delimiter) {
+    @Test
+    void booleanCheck() {
         rewriteRun(
           ruby(
             """
-              {a%s 1}
-              """.formatted(delimiter)
+              basket = [{kind: "apple", quantity: 1}, {kind: "peach", quantity: 5}]
+                            
+              basket.any? { |fruit| fruit in {kind: /app/}}      # true
+              basket.any? { |fruit| fruit in {kind: /berry/}}  # false
+              """
           )
         );
     }
 
     @Test
-    void hashIter() {
+    void hash() {
         rewriteRun(
           ruby(
             """
-              hash = {:a=>1, :b=>2, :c=>3}
-              hash.each do |key,value|
-                  puts "#{key} => #{value}"
-              end
+              { foo: 1, bar: 2 } in { foo: f }
+              """
+          )
+        );
+    }
+
+    @Test
+    void rightwardAssignment() {
+        rewriteRun(
+          ruby(
+            """
+              value => Numeric
               """
           )
         );

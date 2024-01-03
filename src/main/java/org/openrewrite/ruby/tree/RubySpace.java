@@ -17,7 +17,6 @@ package org.openrewrite.ruby.tree;
 
 import org.openrewrite.java.tree.Comment;
 import org.openrewrite.java.tree.Space;
-import org.openrewrite.java.tree.TextComment;
 import org.openrewrite.marker.Markers;
 
 import java.util.ArrayList;
@@ -30,6 +29,8 @@ public class RubySpace {
         BLOCK_ARGUMENT_PREFIX,
         BLOCK_PARAMETERS,
         BLOCK_PARAMETERS_SUFFIX,
+        BOOLEAN_CHECK_IN_PREFIX,
+        BOOLEAN_CHECK_PREFIX,
         CLASS_METHOD_DECLARATION_PARAMETERS,
         CLASS_METHOD_DECLARATION_PARAMETER_SUFFIX,
         CLASS_METHOD_NAME_PREFIX,
@@ -48,7 +49,7 @@ public class RubySpace {
         HASH_ELEMENTS_SUFFIX,
         HASH_PREFIX,
         KEY_VALUE_PREFIX,
-        KEY_VALUE_VALUE_PREFIX,
+        KEY_VALUE_SEPARATOR_PREFIX,
         LIST_LITERAL,
         LIST_LITERAL_SUFFIX,
         MULTIPLE_ASSIGNMENT_INITIALIZERS,
@@ -64,6 +65,7 @@ public class RubySpace {
         RESCUE_PREFIX,
         RESCUE_TYPE_SUFFIX,
         RETRY_PREFIX,
+        RIGHTWARD_ASSIGNMENT_PREFIX,
         SPLAT_PREFIX,
         STRUCT_EXTENDS_ARGUMENTS,
         STRUCT_EXTENDS_ARGUMENTS_SUFFIX,

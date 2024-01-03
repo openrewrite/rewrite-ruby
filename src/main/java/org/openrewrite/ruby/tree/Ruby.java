@@ -611,6 +611,36 @@ public interface Ruby extends J {
         }
     }
 
+    /**
+     * This is structurally the same as a {@link RightwardAssignment} but with different semantics.
+     */
+    @Value
+    @With
+    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+    class BooleanCheck implements Ruby, Expression, TypedTree {
+        @EqualsAndHashCode.Include
+        UUID id;
+
+        Space prefix;
+        Markers markers;
+        Expression left;
+        J.Case pattern;
+
+        @Nullable
+        JavaType type;
+
+        @Override
+        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
+            return v.visitBooleanCheck(this, p);
+        }
+
+        @Transient
+        @Override
+        public CoordinateBuilder.Expression getCoordinates() {
+            return new CoordinateBuilder.Expression(this);
+        }
+    }
+
     @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
     @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
     @RequiredArgsConstructor
@@ -1009,15 +1039,19 @@ public interface Ruby extends J {
         @With
         Expression key;
 
-        JLeftPadded<Expression> value;
+        JLeftPadded<Separator> separator;
 
-        public Expression getValue() {
-            return value.getElement();
+        public Separator getSeparator() {
+            return separator.getElement();
         }
 
-        public KeyValue withValue(Expression value) {
-            return getPadding().withValue(JLeftPadded.withElement(this.value, value));
+        public KeyValue withSeparator(Separator separator) {
+            return getPadding().withSeparator(JLeftPadded.withElement(this.separator, separator));
         }
+
+        @Getter
+        @With
+        Expression value;
 
         @Getter
         @With
@@ -1054,13 +1088,18 @@ public interface Ruby extends J {
         public static class Padding {
             private final KeyValue t;
 
-            public JLeftPadded<Expression> getValue() {
-                return t.value;
+            public JLeftPadded<Separator> getSeparator() {
+                return t.separator;
             }
 
-            public KeyValue withValue(JLeftPadded<Expression> value) {
-                return t.value == value ? t : new KeyValue(t.id, t.prefix, t.markers, t.key, value, t.type);
+            public KeyValue withSeparator(JLeftPadded<Separator> separator) {
+                return t.separator == separator ? t : new KeyValue(t.id, t.prefix, t.markers, t.key, separator, t.value, t.type);
             }
+        }
+
+        public enum Separator {
+            Rocket,
+            Colon
         }
     }
 
@@ -1443,6 +1482,36 @@ public interface Ruby extends J {
         @Transient
         public CoordinateBuilder.Statement getCoordinates() {
             return new CoordinateBuilder.Statement(this);
+        }
+    }
+
+    /**
+     * This is structurally the same as a {@link BooleanCheck} but with different semantics.
+     */
+    @Value
+    @With
+    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+    class RightwardAssignment implements Ruby, Expression, TypedTree {
+        @EqualsAndHashCode.Include
+        UUID id;
+
+        Space prefix;
+        Markers markers;
+        Expression left;
+        J.Case pattern;
+
+        @Nullable
+        JavaType type;
+
+        @Override
+        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
+            return v.visitRightwardAssignment(this, p);
+        }
+
+        @Transient
+        @Override
+        public CoordinateBuilder.Expression getCoordinates() {
+            return new CoordinateBuilder.Expression(this);
         }
     }
 

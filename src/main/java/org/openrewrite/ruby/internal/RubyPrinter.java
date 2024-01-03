@@ -47,7 +47,7 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     public J visit(@Nullable Tree tree, PrintOutputCapture<P> p) {
         if (!(tree instanceof Ruby)) {
             // re-route printing to the java printer
-            return delegate.visit(tree, p);
+            return delegate.visit(tree, p, getCursor());
         } else {
             return super.visit(tree, p);
         }
@@ -173,6 +173,15 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         visit(blockArgument.getArgument(), p);
         afterSyntax(blockArgument, p);
         return blockArgument;
+    }
+
+    @Override
+    public J visitBooleanCheck(Ruby.BooleanCheck booleanCheck, PrintOutputCapture<P> p) {
+        beforeSyntax(booleanCheck, RubySpace.Location.BOOLEAN_CHECK_PREFIX, p);
+        visit(booleanCheck.getLeft(), p);
+        visit(booleanCheck.getPattern(), p);
+        afterSyntax(booleanCheck, p);
+        return booleanCheck;
     }
 
     @Override
@@ -303,7 +312,13 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     public J visitKeyValue(Ruby.KeyValue keyValue, PrintOutputCapture<P> p) {
         beforeSyntax(keyValue, RubySpace.Location.KEY_VALUE_PREFIX, p);
         visit(keyValue.getKey(), p);
-        visitLeftPadded("=>", keyValue.getPadding().getValue(), RubyLeftPadded.Location.KEY_VALUE_VALUE_PREFIX, p);
+
+        JLeftPadded<Ruby.KeyValue.Separator> separator = keyValue.getPadding().getSeparator();
+        beforeSyntax(separator.getBefore(), separator.getMarkers(), RubyLeftPadded.Location.KEY_VALUE_SEPARATOR_PREFIX.getBeforeLocation(), p);
+        p.append(keyValue.getSeparator() == Ruby.KeyValue.Separator.Rocket ? "=>" : ":");
+        afterSyntax(separator.getMarkers(), p);
+
+        visit(keyValue.getValue(), p);
         afterSyntax(keyValue, p);
         return keyValue;
     }
@@ -420,6 +435,15 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     }
 
     @Override
+    public J visitRightwardAssignment(Ruby.RightwardAssignment rightwardAssignment, PrintOutputCapture<P> p) {
+        beforeSyntax(rightwardAssignment, RubySpace.Location.RIGHTWARD_ASSIGNMENT_PREFIX, p);
+        visit(rightwardAssignment.getLeft(), p);
+        visit(rightwardAssignment.getPattern(), p);
+        afterSyntax(rightwardAssignment, p);
+        return rightwardAssignment;
+    }
+
+    @Override
     public J visitSplat(Ruby.Splat splat, PrintOutputCapture<P> p) {
         beforeSyntax(splat, RubySpace.Location.SPLAT_PREFIX, p);
         p.append("*");
@@ -440,8 +464,13 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     @Override
     public J visitSymbol(Ruby.Symbol symbol, PrintOutputCapture<P> p) {
         beforeSyntax(symbol, RubySpace.Location.SYMBOL_PREFIX, p);
-        boolean inArr = getCursor().getParentTreeCursor().getValue() instanceof Ruby.DelimitedArray;
-        if (!inArr && !symbol.getDelimiter().startsWith("%")) {
+
+        J parentValue = getCursor().getParentTreeCursor().getValue();
+        boolean inArr = parentValue instanceof Ruby.DelimitedArray;
+        boolean inHashKeyValue = parentValue instanceof Ruby.KeyValue &&
+                                 ((Ruby.KeyValue) parentValue).getSeparator() == Ruby.KeyValue.Separator.Colon;
+
+        if (!inHashKeyValue && !inArr && !symbol.getDelimiter().startsWith("%")) {
             p.append(":");
         }
         p.append(symbol.getDelimiter());
@@ -733,9 +762,15 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
             if (aCase.getExpressions().isEmpty()) {
                 p.append("else");
             } else {
-                p.append(aCase.getMarkers().findFirst(PatternCase.class)
-                        .map(pc -> "in")
-                        .orElse("when"));
+                Object parent = getCursor().getParentTreeCursor().getValue();
+                if (parent instanceof Ruby.RightwardAssignment) {
+                    p.append("=>");
+                } else if (aCase.getMarkers().findFirst(PatternCase.class).isPresent() ||
+                           parent instanceof Ruby.BooleanCheck) {
+                    p.append("in");
+                } else {
+                    p.append("when");
+                }
                 visitContainer("", aCase.getPadding().getExpressions(), JContainer.Location.CASE_EXPRESSION,
                         ",", "", p);
             }

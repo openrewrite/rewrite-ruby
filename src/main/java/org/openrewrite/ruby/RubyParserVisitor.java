@@ -407,7 +407,10 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         );
     }
 
-    private List<JRightPadded<Statement>> convertBlockStatements(Node node, Function<Node, Space> suffix) {
+    private List<JRightPadded<Statement>> convertBlockStatements(@Nullable Node node, Function<Node, Space> suffix) {
+        if (node == null) {
+            return emptyList();
+        }
         List<? extends Node> trees;
         if (node instanceof ListNode && !(node instanceof DNode) && !(node instanceof ZArrayNode)) {
             trees = isMultipleStatements((ListNode) node) ?
@@ -462,9 +465,50 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         return convertCase(node.getCaseNode(), node.getCases(), node.getElseNode(), false);
     }
 
-    private J.Switch convertCase(Node caseNode, ListNode cases, @Nullable Node elseNode,
-                                 boolean patternCase) {
-        Space prefix = sourceBefore("case");
+    private J convertCase(Node caseNode, ListNode cases, @Nullable Node elseNode,
+                          boolean patternCase) {
+        Space prefix = whitespace();
+        if (source.startsWith("case", cursor)) {
+            return convertRubyCaseStatement(caseNode, cases, elseNode, patternCase)
+                    .withPrefix(prefix);
+        } else {
+            List<Node> groupedCases = new ArrayList<>(cases.size());
+            cases.forEach(groupedCases::add);
+            Expression left = convert(caseNode);
+
+            Space casePrefix = whitespace();
+
+            boolean booleanCheck = source.startsWith("in", cursor);
+            skip(booleanCheck ? "in" : "=>");
+            J.Case pattern = ((J.Case) convertCases(groupedCases, true).getElement())
+                    .withStatements(emptyList())
+                    .withPrefix(casePrefix);
+
+            if (booleanCheck) {
+                return new Ruby.BooleanCheck(
+                        randomId(),
+                        prefix,
+                        Markers.EMPTY,
+                        left,
+                        pattern,
+                        null
+                );
+            } else {
+                return new Ruby.RightwardAssignment(
+                        randomId(),
+                        prefix,
+                        Markers.EMPTY,
+                        left,
+                        pattern,
+                        null
+                );
+            }
+        }
+    }
+
+    private J.Switch convertRubyCaseStatement(Node caseNode, ListNode cases, @Nullable Node elseNode,
+                                              boolean patternCase) {
+        skip("case");
         J.ControlParentheses<Expression> selector = new J.ControlParentheses<>(
                 randomId(),
                 EMPTY,
@@ -479,12 +523,19 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             }
         }
 
+        List<JRightPadded<Statement>> mappedCases = new ArrayList<>(groupedWhen.size());
+        for (List<Node> c : groupedWhen.values()) {
+            Space prefix = sourceBefore(patternCase ? "in" : "when");
+            JRightPadded<Statement> mapped = convertCases(c, patternCase);
+            mappedCases.add(mapped.withElement(mapped.getElement().withPrefix(prefix)));
+        }
+
         J.Block caseBlock = new J.Block(
                 randomId(),
                 EMPTY,
                 Markers.EMPTY,
                 JRightPadded.build(false),
-                groupedWhen.values().stream().map(c -> convertCases(c, patternCase)).collect(toList()),
+                mappedCases,
                 elseNode == null ? sourceBefore("end") : EMPTY
         );
 
@@ -510,7 +561,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
         return new J.Switch(
                 randomId(),
-                prefix,
+                EMPTY,
                 Markers.EMPTY,
                 selector,
                 caseBlock
@@ -518,9 +569,6 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     private JRightPadded<Statement> convertCases(List<Node> cases, boolean patternCase) {
-        assert !cases.isEmpty();
-        Space prefix = sourceBefore(patternCase ? "in" : "when");
-
         List<Node> expressionNodes = new ArrayList<>();
         for (Node node : cases) {
             if (patternCase) {
@@ -557,7 +605,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
         return padRight(new J.Case(
                 randomId(),
-                prefix,
+                EMPTY,
                 markers,
                 J.Case.Type.Statement,
                 expressions,
@@ -1089,14 +1137,27 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         List<KeyValuePair<Node, Node>> nodePairs = node.getPairs();
         for (int i = 0; i < nodePairs.size(); i++) {
             KeyValuePair<Node, Node> kv = nodePairs.get(i);
+            Space kvPrefix = whitespace();
+            Expression key = convert(kv.getKey());
+            Space separatorPrefix = whitespace();
+            Ruby.KeyValue.Separator separator;
+            if (source.startsWith("=>", cursor)) {
+                separator = Ruby.KeyValue.Separator.Rocket;
+                skip("=>");
+            } else {
+                separator = Ruby.KeyValue.Separator.Colon;
+                skip(":");
+            }
             pairs.add(padRight(new Ruby.KeyValue(
                     randomId(),
-                    whitespace(),
+                    kvPrefix,
                     Markers.EMPTY,
-                    convert(kv.getKey()),
-                    padLeft(sourceBefore("=>"), convert(kv.getValue())),
+                    key,
+                    padLeft(separatorPrefix, separator),
+                    convert(kv.getValue()),
                     null
             ), i == nodePairs.size() - 1 ? sourceBefore("}") : sourceBefore(",")));
+
         }
 
         return new Ruby.Hash(
@@ -1106,6 +1167,11 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 JContainer.build(EMPTY, pairs, Markers.EMPTY),
                 null
         );
+    }
+
+    @Override
+    public J visitHashPatternNode(HashPatternNode node) {
+        return convert(node.getKeywordArgs());
     }
 
     @Override
@@ -1667,7 +1733,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitPatternCaseNode(PatternCaseNode node) {
-        return convertCase(node.getCaseNode(), node.getCases(), node.getElseNode(), true);
+        return convertCase(node.getCaseNode(), node.getCases(), null, true);
     }
 
     @Override
@@ -2132,7 +2198,6 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         public Node setArgsNode(Node node) {
             throw new UnsupportedOperationException("Setter will never be called");
         }
-
     }
 
     @Override

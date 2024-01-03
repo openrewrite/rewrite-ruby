@@ -166,6 +166,22 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         return b;
     }
 
+    public J visitBooleanCheck(Ruby.BooleanCheck booleanCheck, P p) {
+        Ruby.BooleanCheck b = booleanCheck;
+        b = b.withPrefix(visitSpace(b.getPrefix(), RubySpace.Location.BOOLEAN_CHECK_PREFIX, p));
+        b = b.withMarkers(visitMarkers(b.getMarkers(), p));
+        Expression temp = (Expression) visitExpression(b, p);
+        if (!(temp instanceof Ruby.BooleanCheck)) {
+            return temp;
+        } else {
+            b = (Ruby.BooleanCheck) temp;
+        }
+        b = b.withLeft((Expression) visit(b.getLeft(), p));
+        b = b.withPattern((J.Case) visit(b.getPattern(), p));
+        b = b.withType(visitType(b.getType(), p));
+        return b;
+    }
+
     public J visitClassMethod(Ruby.ClassMethod classMethod, P p) {
         Ruby.ClassMethod c = classMethod;
         c = c.withPrefix(visitSpace(c.getPrefix(), RubySpace.Location.CLASS_METHOD_PREFIX, p));
@@ -279,7 +295,9 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
             k = (Ruby.KeyValue) temp;
         }
         k = k.withKey((Expression) visit(k.getKey(), p));
-        k = k.getPadding().withValue(visitLeftPadded(k.getPadding().getValue(), JLeftPadded.Location.LANGUAGE_EXTENSION, p));
+        k = k.getPadding().withSeparator(visitLeftPadded(k.getPadding().getSeparator(),
+                JLeftPadded.Location.LANGUAGE_EXTENSION, p));
+        k = k.withValue((Expression) visit(k.getValue(), p));
         k = k.withType(visitType(k.getType(), p));
         return k;
     }
@@ -370,6 +388,22 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         } else {
             r = (Ruby.Retry) temp;
         }
+        return r;
+    }
+
+    public J visitRightwardAssignment(Ruby.RightwardAssignment rightwardAssignment, P p) {
+        Ruby.RightwardAssignment r = rightwardAssignment;
+        r = r.withPrefix(visitSpace(r.getPrefix(), RubySpace.Location.RIGHTWARD_ASSIGNMENT_PREFIX, p));
+        r = r.withMarkers(visitMarkers(r.getMarkers(), p));
+        Expression temp = (Expression) visitExpression(r, p);
+        if (!(temp instanceof Ruby.RightwardAssignment)) {
+            return temp;
+        } else {
+            r = (Ruby.RightwardAssignment) temp;
+        }
+        r = r.withLeft((Expression) visit(r.getLeft(), p));
+        r = r.withPattern((J.Case) visit(r.getPattern(), p));
+        r = r.withType(visitType(r.getType(), p));
         return r;
     }
 
