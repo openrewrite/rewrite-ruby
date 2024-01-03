@@ -15,6 +15,7 @@
  */
 package org.openrewrite.ruby;
 
+import org.jetbrains.annotations.NotNull;
 import org.jruby.RubySymbol;
 import org.jruby.ast.*;
 import org.jruby.ast.types.INameNode;
@@ -156,27 +157,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitArrayNode(ArrayNode node) {
-        Space prefix = whitespace();
-
-        if (!node.isEmpty() && source.startsWith("%", cursor)) {
-            Node first = node.get(0);
-            if (first instanceof SymbolNode || first instanceof DSymbolNode) {
-                // this is a symbol array literal like %i[foo bar baz]
-                return convertSymbols(node.children()).withPrefix(prefix);
-            } else if (first instanceof StrNode || first instanceof DStrNode) {
-                // this is a string array literal like %w[foo bar baz]
-                return convertStrings(node.children()).withPrefix(prefix);
-            }
-        }
-
-        JContainer<Expression> elements = convertArgs("[", node, null, "]");
-        return new Ruby.Array(
-                randomId(),
-                prefix,
-                Markers.EMPTY,
-                elements,
-                null
-        );
+        return visitListNode(node);
     }
 
     @Override
@@ -591,6 +572,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 Markers.EMPTY
         );
 
+        Space beforeBody = whitespace();
         Node body = cases.get(0) instanceof WhenNode ?
                 ((WhenNode) cases.get(0)).getBodyNode() :
                 ((InNode) cases.get(0)).getBody();
@@ -598,6 +580,13 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         Markers markers = Markers.EMPTY;
         if (patternCase) {
             markers = markers.add(new PatternCase(randomId()));
+        }
+
+        if (source.startsWith("then", cursor)) {
+            expressions = expressions.withMarkers(expressions.getMarkers().add(new ExplicitThen(randomId())));
+            expressions = expressions.getPadding().withElements(ListUtils.mapLast(
+                    expressions.getPadding().getElements(), last -> last.withAfter(beforeBody)));
+            skip("then");
         }
 
         return padRight(new J.Case(
@@ -1141,9 +1130,17 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitHashNode(HashNode node) {
-        Space prefix = sourceBefore("{");
+        return convertHash(node, null);
+    }
 
-        List<JRightPadded<Ruby.KeyValue>> pairs = new ArrayList<>(node.getPairs().size());
+    private Ruby.Hash convertHash(HashNode node, @Nullable Node restArg) {
+        Space prefix = whitespace();
+        boolean omitBrackets = source.charAt(cursor) != '{';
+        if (!omitBrackets) {
+            skip("{");
+        }
+
+        List<JRightPadded<Expression>> pairs = new ArrayList<>(node.getPairs().size());
         List<KeyValuePair<Node, Node>> nodePairs = node.getPairs();
         for (int i = 0; i < nodePairs.size(); i++) {
             KeyValuePair<Node, Node> kv = nodePairs.get(i);
@@ -1166,14 +1163,25 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     padLeft(separatorPrefix, separator),
                     convert(kv.getValue()),
                     null
-            ), i == nodePairs.size() - 1 ? sourceBefore("}") : sourceBefore(",")));
+            ), i == nodePairs.size() - 1 && restArg == null ? EMPTY : sourceBefore(",")));
+        }
+        if (restArg != null) {
+            pairs.add(padRight(convert(restArg), EMPTY));
+        }
+        if (nodePairs.isEmpty() && restArg == null) {
+            pairs.add(padRight(new J.Empty(randomId(), EMPTY, Markers.EMPTY), EMPTY));
+        }
 
+        if (!omitBrackets) {
+            pairs = ListUtils.mapLast(pairs, last -> last.withAfter(sourceBefore("}")));
         }
 
         return new Ruby.Hash(
                 randomId(),
                 prefix,
-                Markers.EMPTY,
+                omitBrackets ?
+                        Markers.EMPTY.add(new OmitParentheses(randomId())) :
+                        Markers.EMPTY,
                 JContainer.build(EMPTY, pairs, Markers.EMPTY),
                 null
         );
@@ -1181,7 +1189,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitHashPatternNode(HashPatternNode node) {
-        return convert(node.getKeywordArgs());
+        return convertHash(node.getKeywordArgs(), node.getRestArg());
     }
 
     @Override
@@ -1332,8 +1340,27 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitListNode(ListNode node) {
-        throw new UnsupportedOperationException("This is a base class of other node types, and " +
-                                                "the more specific node types are handled elsewhere.");
+        Space prefix = whitespace();
+
+        if (!node.isEmpty() && source.startsWith("%", cursor)) {
+            Node first = node.get(0);
+            if (first instanceof SymbolNode || first instanceof DSymbolNode) {
+                // this is a symbol array literal like %i[foo bar baz]
+                return convertSymbols(node.children()).withPrefix(prefix);
+            } else if (first instanceof StrNode || first instanceof DStrNode) {
+                // this is a string array literal like %w[foo bar baz]
+                return convertStrings(node.children()).withPrefix(prefix);
+            }
+        }
+
+        JContainer<Expression> elements = convertArgs("[", node, null, "]");
+        return new Ruby.Array(
+                randomId(),
+                prefix,
+                Markers.EMPTY,
+                elements,
+                null
+        );
     }
 
     @Override
@@ -1511,7 +1538,15 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitNilNode(NilNode node) {
-        return new J.Empty(randomId(), EMPTY, Markers.EMPTY);
+        Space prefix = whitespace();
+        return source.startsWith("nil", cursor) ?
+                convertIdentifier("nil").withPrefix(prefix) :
+                new J.Empty(randomId(), prefix, Markers.EMPTY);
+    }
+
+    @Override
+    public J visitNilRestArgNode(NilRestArgNode node) {
+        return convertIdentifier("**nil");
     }
 
     @Override

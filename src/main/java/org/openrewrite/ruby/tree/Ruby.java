@@ -902,13 +902,13 @@ public interface Ruby extends J {
         @With
         Markers markers;
 
-        JContainer<KeyValue> elements;
+        JContainer<Expression> elements;
 
-        public List<KeyValue> getElements() {
+        public List<Expression> getElements() {
             return elements.getElements();
         }
 
-        public Hash withElements(List<KeyValue> elements) {
+        public Hash withElements(List<Expression> elements) {
             return getPadding().withElements(JContainer.withElements(this.elements, elements));
         }
 
@@ -947,11 +947,11 @@ public interface Ruby extends J {
         public static class Padding {
             private final Hash t;
 
-            public JContainer<KeyValue> getElements() {
+            public JContainer<Expression> getElements() {
                 return t.elements;
             }
 
-            public Hash withElements(JContainer<KeyValue> elements) {
+            public Hash withElements(JContainer<Expression> elements) {
                 return t.elements == elements ? t : new Hash(t.id, t.prefix, t.markers, elements, t.type);
             }
         }

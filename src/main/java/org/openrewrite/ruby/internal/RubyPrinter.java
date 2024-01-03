@@ -303,7 +303,11 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     @Override
     public J visitHash(Ruby.Hash hash, PrintOutputCapture<P> p) {
         beforeSyntax(hash, RubySpace.Location.HASH_PREFIX, p);
-        visitContainer("{", hash.getPadding().getElements(), RubyContainer.Location.HASH_ELEMENTS, ",", "}", p);
+        if (hash.getMarkers().findFirst(OmitParentheses.class).isPresent()) {
+            visitContainer("", hash.getPadding().getElements(), RubyContainer.Location.HASH_ELEMENTS, ",", "", p);
+        } else {
+            visitContainer("{", hash.getPadding().getElements(), RubyContainer.Location.HASH_ELEMENTS, ",", "}", p);
+        }
         afterSyntax(hash, p);
         return hash;
     }
@@ -773,7 +777,11 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
                 }
                 visitContainer("", aCase.getPadding().getExpressions(), JContainer.Location.CASE_EXPRESSION,
                         ",", "", p);
+                if (aCase.getPadding().getExpressions().getMarkers().findFirst(ExplicitThen.class).isPresent()) {
+                    p.append("then");
+                }
             }
+
             visitContainer("", aCase.getPadding().getStatements(), JContainer.Location.CASE,
                     "", "", p);
             afterSyntax(aCase, p);

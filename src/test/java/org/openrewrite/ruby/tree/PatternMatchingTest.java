@@ -156,4 +156,19 @@ public class PatternMatchingTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void voids() {
+        rewriteRun(
+          ruby(
+            """
+              case {a: 1, b: 2}
+                in {a: Integer, **nil} then %(matched "a" part)
+                in {a: Integer, b: Integer, **nil} then "matched whole hash"
+                else "unmatched"
+              end
+              """
+          )
+        );
+    }
 }
