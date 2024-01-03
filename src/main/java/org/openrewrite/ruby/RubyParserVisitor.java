@@ -45,6 +45,7 @@ import java.util.regex.Pattern;
 
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
+import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 import static org.openrewrite.Tree.randomId;
 import static org.openrewrite.java.tree.Space.EMPTY;
@@ -2185,7 +2186,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             List<JRightPadded<Expression>> strings = new ArrayList<>(nodes.length);
             for (Node node : nodes) {
                 if (node instanceof StrNode) {
-                    strings.add(padRight(convertLiteral((StrNode) node, delimiter, true), whitespace()));
+                    strings.add(padRight(convertStringLiteral((StrNode) node, delimiter, true), whitespace()));
                 } else {
                     strings.add(padRight(convertDelimitedString((DNode) nodes[0], ""), whitespace()));
                 }
@@ -2200,7 +2201,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             );
         } else if (nodes[0] instanceof StrNode) {
             boolean isRegex = delimiter.startsWith("%r") || delimiter.startsWith("/");
-            stringly = convertLiteral((StrNode) nodes[0], isRegex || inDString ? "" : delimiter, false);
+            stringly = convertStringLiteral((StrNode) nodes[0], isRegex || inDString ? "" : delimiter, false);
             if (isRegex) {
                 stringly = new Ruby.DelimitedString(
                         randomId(),
@@ -2240,22 +2241,97 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         );
     }
 
-    private J.Literal convertLiteral(StrNode node, String delimiter, boolean inArrayLiteral) {
+    /**
+     * @param node           The string node to convert.
+     * @param delimiter      A delimiter for this string. The cursor has already advanced beyond this delimiter.
+     * @param inArrayLiteral If we are in an array literal, there may be no delimiter use.
+     * @return Either a {@link J.Literal} or a {@link Ruby.Binary} with an implicit concatenation type.
+     */
+    private Expression convertStringLiteral(StrNode node, String delimiter, boolean inArrayLiteral) {
         String value = node.getValue().toString();
-        skip(value);
-        String valueSource = !inArrayLiteral || delimiter.equals("?") ?
-                String.format("%s%s%s", delimiter, value,
-                        delimiter.equals("?") ? "" : DelimiterMatcher.end(delimiter)) :
-                value;
-        return new J.Literal(
-                randomId(),
-                EMPTY,
-                Markers.EMPTY,
-                value,
-                valueSource,
-                null,
-                JavaType.Primitive.String
-        );
+        String endDelimiter = DelimiterMatcher.end(delimiter);
+        if (delimiter.equals("?")) {
+            return new J.Literal(
+                    randomId(),
+                    EMPTY,
+                    Markers.EMPTY,
+                    value,
+                    "?" + value,
+                    null,
+                    JavaType.Primitive.String
+            );
+        } else if (inArrayLiteral || endDelimiter.isEmpty()) {
+            skip(value);
+            return new J.Literal(
+                    randomId(),
+                    EMPTY,
+                    Markers.EMPTY,
+                    value,
+                    value,
+                    null,
+                    JavaType.Primitive.String
+            );
+        }
+
+        // deal with the possibility of implicit concatenations
+        char endDelimiterChar = endDelimiter.charAt(0);
+        Map<J.Literal, Space> strings = new LinkedHashMap<>(1);
+        Space beforeOperator = null;
+        StringBuilder valueSrc = new StringBuilder();
+        char[] valueArr = value.toCharArray();
+        for (int i = 0; i < valueArr.length; ) {
+            char c = source.charAt(cursor);
+            char last = source.charAt(cursor - 1);
+            cursor++;
+            if (c == endDelimiterChar && last != '\'') {
+                strings.put(new J.Literal(
+                        randomId(),
+                        EMPTY,
+                        Markers.EMPTY,
+                        valueSrc,
+                        String.format("%s%s%s", delimiter, valueSrc, endDelimiter),
+                        null,
+                        JavaType.Primitive.String
+                ), beforeOperator);
+                beforeOperator = sourceBefore(delimiter);
+                valueSrc.setLength(0);
+            } else {
+                valueSrc.append(c);
+                i++;
+                if (i == valueArr.length) {
+                    strings.put(new J.Literal(
+                            randomId(),
+                            EMPTY,
+                            Markers.EMPTY,
+                            valueSrc,
+                            String.format("%s%s%s", delimiter, valueSrc, endDelimiter),
+                            null,
+                            JavaType.Primitive.String
+                    ), beforeOperator);
+                    break;
+                }
+            }
+        }
+
+        Expression combined = null;
+        for (Map.Entry<J.Literal, Space> literal : strings.entrySet()) {
+            if (combined == null) {
+                combined = literal.getKey();
+            } else {
+                combined = new Ruby.Binary(
+                        randomId(),
+                        combined.getPrefix(),
+                        Markers.EMPTY,
+                        combined.withPrefix(EMPTY),
+                        JLeftPadded.build(Ruby.Binary.Type.ImplicitStringConcatenation)
+                                .withBefore(literal.getValue()),
+                        literal.getKey(),
+                        null
+                );
+            }
+        }
+
+        return requireNonNull(combined);
     }
 
     @Override

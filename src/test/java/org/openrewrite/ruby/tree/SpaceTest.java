@@ -18,12 +18,26 @@ package org.openrewrite.ruby.tree;
 import org.junit.jupiter.api.Test;
 import org.openrewrite.test.RewriteTest;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.openrewrite.ruby.Assertions.ruby;
 
-public class CommentTest implements RewriteTest {
+public class SpaceTest implements RewriteTest {
 
     @Test
-    void singleLine() {
+    void newlineEscape() {
+        rewriteRun(
+          ruby(
+            """
+              a = 1 \\
+                + 2
+              """,
+            spec -> spec.afterRecipe(cu -> assertThat(cu.getStatements()).hasSize(1))
+          )
+        );
+    }
+
+    @Test
+    void singleLineComment() {
         rewriteRun(
           ruby(
             """
@@ -48,7 +62,7 @@ public class CommentTest implements RewriteTest {
     }
 
     @Test
-    void multiLine() {
+    void multiLineComment() {
         rewriteRun(
           ruby(
             """

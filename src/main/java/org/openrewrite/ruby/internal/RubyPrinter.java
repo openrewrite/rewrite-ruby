@@ -139,6 +139,9 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
             case RangeExclusive:
                 keyword = "...";
                 break;
+            case ImplicitStringConcatenation:
+                keyword = "";
+                break;
             case Match:
                 keyword = "=~";
                 break;

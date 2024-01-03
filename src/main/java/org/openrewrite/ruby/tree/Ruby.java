@@ -576,6 +576,7 @@ public interface Ruby extends J {
             Exponentiation,
             FlipFlopExclusive,
             FlipFlopInclusive,
+            ImplicitStringConcatenation,
             Match,
             RangeExclusive,
             RangeInclusive,

@@ -228,4 +228,17 @@ public class StringTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void implicitConcatenation() {
+        rewriteRun(
+          ruby(
+            """
+              DIGITS = 'AB' \\
+                       'ab' \\
+                       '01'
+              """
+          )
+        );
+    }
 }
