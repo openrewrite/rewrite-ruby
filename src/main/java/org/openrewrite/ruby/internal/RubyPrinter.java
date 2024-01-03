@@ -319,6 +319,17 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     }
 
     @Override
+    public J visitModule(Ruby.Module module, PrintOutputCapture<P> p) {
+        beforeSyntax(module, RubySpace.Location.MODULE_PREFIX, p);
+        p.append("module");
+        visit(module.getName(), p);
+        visit(module.getBlock(), p);
+        p.append("end");
+        afterSyntax(module, p);
+        return module;
+    }
+
+    @Override
     public J visitMultipleAssignment(Ruby.MultipleAssignment multipleAssignment, PrintOutputCapture<P> p) {
         beforeSyntax(multipleAssignment, RubySpace.Location.ARRAY_PREFIX, p);
         visitContainer("", multipleAssignment.getPadding().getAssignments(), RubyContainer.Location.MULTIPLE_ASSIGNMENT_ASSIGNMENTS,

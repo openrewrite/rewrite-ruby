@@ -1078,6 +1078,8 @@ public interface Ruby extends J {
 
         Space prefix;
         Markers markers;
+        Identifier name;
+        J.Block block;
 
         @Override
         public <P> J acceptRuby(RubyVisitor<P> v, P p) {

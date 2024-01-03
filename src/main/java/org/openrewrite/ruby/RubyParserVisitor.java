@@ -703,7 +703,8 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 randomId(),
                 whitespace(),
                 Markers.EMPTY,
-                padRight(new J.Empty(randomId(), EMPTY, Markers.EMPTY), sourceBefore("::")),
+                padRight(new J.Empty(randomId(), EMPTY, Markers.EMPTY),
+                        source.startsWith("::", cursor) ? sourceBefore("::") : EMPTY),
                 null,
                 padLeft(EMPTY, convertIdentifier(node.getName())),
                 null,
@@ -1519,6 +1520,24 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 padLeft(sourceBefore("=~"), Ruby.Binary.Type.Match),
                 convert(node.getValueNode()),
                 null
+        );
+    }
+
+    @Override
+    public J visitModuleNode(ModuleNode node) {
+        return new Ruby.Module(
+                randomId(),
+                sourceBefore("module"),
+                Markers.EMPTY,
+                convertIdentifier(node.getCPath().getName()),
+                new J.Block(
+                        randomId(),
+                        whitespace(),
+                        Markers.EMPTY,
+                        JRightPadded.build(false),
+                        convertBlockStatements(node.getBodyNode(), n -> EMPTY),
+                        sourceBefore("end")
+                )
         );
     }
 

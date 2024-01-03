@@ -291,7 +291,18 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
     }
 
     public J visitModule(Ruby.Module module, P p) {
-        return null;
+        Ruby.Module m = module;
+        m = m.withPrefix(visitSpace(m.getPrefix(), RubySpace.Location.MODULE_PREFIX, p));
+        m = m.withMarkers(visitMarkers(m.getMarkers(), p));
+        Statement temp = (Statement) visitStatement(m, p);
+        if (!(temp instanceof Ruby.Module)) {
+            return temp;
+        } else {
+            m = (Ruby.Module) temp;
+        }
+        m = m.withName((J.Identifier) visit(m.getName(), p));
+        m = m.withBlock((J.Block) visit(m.getBlock(), p));
+        return m;
     }
 
     public J visitMultipleAssignment(Ruby.MultipleAssignment multipleAssignment, P p) {
