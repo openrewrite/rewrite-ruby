@@ -1069,6 +1069,27 @@ public interface Ruby extends J {
         }
     }
 
+    @Value
+    @With
+    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+    class Module implements Ruby, Statement {
+        @EqualsAndHashCode.Include
+        UUID id;
+
+        Space prefix;
+        Markers markers;
+
+        @Override
+        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
+            return v.visitModule(this, p);
+        }
+
+        @Override
+        public CoordinateBuilder.Statement getCoordinates() {
+            return new CoordinateBuilder.Statement(this);
+        }
+    }
+
     @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
     @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
     @RequiredArgsConstructor

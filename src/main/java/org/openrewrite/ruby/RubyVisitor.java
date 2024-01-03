@@ -290,6 +290,10 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         return k;
     }
 
+    public J visitModule(Ruby.Module module, P p) {
+        return null;
+    }
+
     public J visitMultipleAssignment(Ruby.MultipleAssignment multipleAssignment, P p) {
         Ruby.MultipleAssignment m = multipleAssignment;
         m = m.withPrefix(visitSpace(m.getPrefix(), RubySpace.Location.MULTIPLE_ASSIGNMENT_PREFIX, p));
@@ -485,4 +489,5 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
                 RubyContainer.Location.YIELD_DATA, p));
         return y;
     }
+
 }

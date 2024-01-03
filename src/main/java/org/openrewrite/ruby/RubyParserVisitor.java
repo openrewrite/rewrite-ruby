@@ -1891,7 +1891,10 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitRescueNode(RescueNode node) {
-        Space prefix = sourceBefore("begin");
+        Space prefix = whitespace();
+        if (source.startsWith("begin", cursor)) {
+            skip("begin");
+        }
         Space bodyPrefix = whitespace();
         J.Block body = visitBlock(node.getBodyNode());
         List<J.Try.Catch> catches = convertCatches(node.getRescueNode(), emptyList());
