@@ -2740,7 +2740,15 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         });
 
         if (iterNode != null) {
-            mappedArgs = ListUtils.concat(mappedArgs, padRight(convert(iterNode), EMPTY));
+            J2 blockPass = convert(iterNode);
+            Space suffix = EMPTY;
+            if(blockPass instanceof Ruby.BlockArgument) {
+                suffix = omitParentheses ? EMPTY : sourceBefore(after);
+            }
+            mappedArgs = ListUtils.concat(
+                    mappedArgs,
+                    padRight(blockPass, suffix)
+            );
         }
 
         return JContainer.build(
