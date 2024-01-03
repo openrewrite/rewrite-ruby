@@ -1886,6 +1886,45 @@ public interface Ruby extends J {
         }
     }
 
+    /**
+     * Type references can take forms that aren't {@link TypeTree} in
+     * the base {@link J} LST. For example:
+     * {@code Gem::Specification.new ..}
+     */
+    @Value
+    @With
+    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+    class TypeReference implements Ruby, Expression, TypeTree {
+        @EqualsAndHashCode.Include
+        UUID id;
+
+        Space prefix;
+        Markers markers;
+
+        TypedTree reference;
+
+        @Override
+        public @Nullable JavaType getType() {
+            return reference.getType();
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public TypeReference withType(@Nullable JavaType type) {
+            return withReference(reference.withType(type));
+        }
+
+        @Override
+        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
+            return v.visitTypeReference(this, p);
+        }
+
+        @Override
+        public CoordinateBuilder.Expression getCoordinates() {
+            return new CoordinateBuilder.Expression(this);
+        }
+    }
+
     @Value
     @With
     @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)

@@ -28,6 +28,7 @@ import org.openrewrite.tree.ParseError;
 import org.openrewrite.tree.ParsingEventListener;
 import org.openrewrite.tree.ParsingExecutionContextView;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.stream.Stream;
@@ -62,6 +63,9 @@ public class RubyParser implements Parser {
 
     @Override
     public boolean accept(Path path) {
+        if (Files.isDirectory(path)) {
+            return false;
+        }
         String fileName = path.toFile().getName();
         String ext = fileName.substring(fileName.lastIndexOf('.') + 1);
         return ext.equals("rb") ||

@@ -519,6 +519,14 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     }
 
     @Override
+    public J visitTypeReference(Ruby.TypeReference typeReference, PrintOutputCapture<P> p) {
+        beforeSyntax(typeReference, RubySpace.Location.TYPE_REFERENCE_PREFIX, p);
+        visit(typeReference.getReference(), p);
+        afterSyntax(typeReference, p);
+        return typeReference;
+    }
+
+    @Override
     public J visitUnary(Ruby.Unary unary, PrintOutputCapture<P> p) {
         beforeSyntax(unary, Space.Location.UNARY_PREFIX, p);
         p.append("defined?");

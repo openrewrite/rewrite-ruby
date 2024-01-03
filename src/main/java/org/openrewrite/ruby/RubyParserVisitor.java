@@ -343,6 +343,15 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         J receiver = convert(node.getReceiverNode());
         Space beforeDot = sourceBefore(".");
         J.Identifier name = convertIdentifier(node.getName());
+        if(!(receiver instanceof TypeTree)) {
+            receiver = new Ruby.TypeReference(
+                    randomId(),
+                    receiver.getPrefix(),
+                    Markers.EMPTY,
+                    (TypedTree) receiver.withPrefix(EMPTY)
+            );
+        }
+
         if (name.getSimpleName().equals("new")) {
             return new J.NewClass(
                     randomId(),
@@ -2620,10 +2629,15 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             return null;
         }
         nodes = new Cursor(nodes, t);
-        //noinspection unchecked
-        J2 j = (J2) t.accept(this);
-        nodes = nodes.getParentOrThrow();
-        return j;
+        //noinspection CaughtExceptionImmediatelyRethrown
+        try {
+            //noinspection unchecked
+            J2 j = (J2) t.accept(this);
+            nodes = nodes.getParentOrThrow();
+            return j;
+        } catch (Throwable ex) {
+            throw ex; // nice debug breakpoint
+        }
     }
 
     private <J2 extends J> JRightPadded<J2> convert(Node t, Function<Node, Space> suffix) {

@@ -68,4 +68,16 @@ public class MethodInvocationTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void memberReferenceNewClass() {
+        rewriteRun(
+          ruby(
+            """
+              Gem::Specification.new do |spec|
+              end
+              """
+          )
+        );
+    }
 }

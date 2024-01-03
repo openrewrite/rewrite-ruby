@@ -471,19 +471,34 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         return s;
     }
 
+    public J visitTypeReference(Ruby.TypeReference typeReference, P p) {
+        Ruby.TypeReference t = typeReference;
+        t = t.withPrefix(visitSpace(t.getPrefix(), RubySpace.Location.TYPE_REFERENCE_PREFIX, p));
+        t = t.withMarkers(visitMarkers(t.getMarkers(), p));
+        Expression temp = (Expression) visitExpression(t, p);
+        if (!(temp instanceof Ruby.TypeReference)) {
+            return temp;
+        } else {
+            t = (Ruby.TypeReference) temp;
+        }
+        t = t.withReference((TypedTree) visit(t.getReference(), p));
+        t = t.withType(visitType(t.getType(), p));
+        return t;
+    }
+
     public J visitUnary(Ruby.Unary binary, P p) {
-        Ruby.Unary b = binary;
-        b = b.withPrefix(visitSpace(b.getPrefix(), Space.Location.UNARY_PREFIX, p));
-        b = b.withMarkers(visitMarkers(b.getMarkers(), p));
-        Expression temp = (Expression) visitExpression(b, p);
+        Ruby.Unary u = binary;
+        u = u.withPrefix(visitSpace(u.getPrefix(), Space.Location.UNARY_PREFIX, p));
+        u = u.withMarkers(visitMarkers(u.getMarkers(), p));
+        Expression temp = (Expression) visitExpression(u, p);
         if (!(temp instanceof Ruby.Unary)) {
             return temp;
         } else {
-            b = (Ruby.Unary) temp;
+            u = (Ruby.Unary) temp;
         }
-        b = b.withExpression((Expression) visit(b.getExpression(), p));
-        b = b.withType(visitType(b.getType(), p));
-        return b;
+        u = u.withExpression((Expression) visit(u.getExpression(), p));
+        u = u.withType(visitType(u.getType(), p));
+        return u;
     }
 
     public J visitYield(Ruby.Yield yield, P p) {
@@ -500,5 +515,4 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
                 RubyContainer.Location.YIELD_DATA, p));
         return y;
     }
-
 }
