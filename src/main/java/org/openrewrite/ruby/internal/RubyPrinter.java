@@ -284,15 +284,6 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     }
 
     @Override
-    public J visitExpansion(Ruby.Expansion expansion, PrintOutputCapture<P> p) {
-        beforeSyntax(expansion, RubySpace.Location.EXPANSION_PREFIX, p);
-        p.append("*");
-        visit(expansion.getTree(), p);
-        afterSyntax(expansion, p);
-        return expansion;
-    }
-
-    @Override
     public J visitExpressionTypeTree(Ruby.ExpressionTypeTree expressionTypeTree, PrintOutputCapture<P> p) {
         beforeSyntax(expressionTypeTree, RubySpace.Location.EXPRESSION_TYPE_TREE_PREFIX, p);
         visit(expressionTypeTree.getNewType(), p);

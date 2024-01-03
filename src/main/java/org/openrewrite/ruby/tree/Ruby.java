@@ -837,40 +837,6 @@ public interface Ruby extends J {
         }
     }
 
-    @Value
-    @With
-    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
-    class Expansion implements Ruby, Expression {
-        @EqualsAndHashCode.Include
-        UUID id;
-
-        Space prefix;
-        Markers markers;
-        TypedTree tree;
-
-        @Override
-        @Nullable
-        public JavaType getType() {
-            return tree.getType();
-        }
-
-        @Override
-        public <T extends J> T withType(@Nullable JavaType type) {
-            return tree.withType(type);
-        }
-
-        @Override
-        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
-            return v.visitExpansion(this, p);
-        }
-
-        @Override
-        @Transient
-        public CoordinateBuilder.Expression getCoordinates() {
-            return new CoordinateBuilder.Expression(this);
-        }
-    }
-
     /**
      * Unlike Java, Ruby allows expressions to appear anywhere Statements do.
      * Rather than re-define versions of the many J types that implement Expression to also implement Statement,

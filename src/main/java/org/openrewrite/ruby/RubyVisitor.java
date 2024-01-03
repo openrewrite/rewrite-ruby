@@ -20,7 +20,10 @@ import org.openrewrite.internal.ListUtils;
 import org.openrewrite.internal.lang.Nullable;
 import org.openrewrite.java.JavaVisitor;
 import org.openrewrite.java.tree.*;
-import org.openrewrite.ruby.tree.*;
+import org.openrewrite.ruby.tree.Ruby;
+import org.openrewrite.ruby.tree.RubyContainer;
+import org.openrewrite.ruby.tree.RubyRightPadded;
+import org.openrewrite.ruby.tree.RubySpace;
 
 @SuppressWarnings("unused")
 public class RubyVisitor<P> extends JavaVisitor<P> {
@@ -242,21 +245,6 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         e = e.withPrefix(visitSpace(e.getPrefix(), RubySpace.Location.END_PREFIX, p));
         e = e.withMarkers(visitMarkers(e.getMarkers(), p));
         e = e.withBlock((J.Block) visit(e.getBlock(), p));
-        return e;
-    }
-
-    public J visitExpansion(Ruby.Expansion expansion, P p) {
-        Ruby.Expansion e = expansion;
-        e = e.withPrefix(visitSpace(e.getPrefix(), RubySpace.Location.EXPANSION_PREFIX, p));
-        e = e.withMarkers(visitMarkers(e.getMarkers(), p));
-        Expression temp = (Expression) visitExpression(e, p);
-        if (!(temp instanceof Ruby.Expansion)) {
-            return temp;
-        } else {
-            e = (Ruby.Expansion) temp;
-        }
-        e = e.withTree((TypedTree) visit(e.getTree(), p));
-        e = e.withType(visitType(e.getType(), p));
         return e;
     }
 

@@ -48,11 +48,6 @@ public class RubyIsoVisitor<P> extends RubyVisitor<P> {
     }
 
     @Override
-    public Ruby.Expansion visitExpansion(Ruby.Expansion expansion, P p) {
-        return (Ruby.Expansion) super.visitExpansion(expansion, p);
-    }
-
-    @Override
     public Ruby.Hash visitHash(Ruby.Hash hash, P p) {
         return (Ruby.Hash) super.visitHash(hash, p);
     }

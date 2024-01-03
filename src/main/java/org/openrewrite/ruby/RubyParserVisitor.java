@@ -1529,15 +1529,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         if (node.getRest() != null) {
             assignments = assignments.getPadding().withElements(ListUtils.concat(
                     ListUtils.mapLast(assignments.getPadding().getElements(), assign -> assign.withAfter(sourceBefore(","))),
-                    padRight(
-                            new Ruby.Expansion(
-                                    randomId(),
-                                    sourceBefore("*"),
-                                    Markers.EMPTY,
-                                    convert(node.getRest())
-                            ),
-                            EMPTY
-                    )
+                    padRight(convert(node.getRest()), EMPTY)
             ));
         }
         Space initializerPrefix = sourceBefore("=");
@@ -2127,13 +2119,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitStarNode(StarNode node) {
-        if (nodes.getParentTreeCursor().getValue() instanceof MultipleAsgnNode) {
-            // The star is parsed in visitMultipleAsgnNode. In cases where there is a variable after the
-            // star, a StarNode is not created by the compiler.
-            return new J.Empty(randomId(), EMPTY, Markers.EMPTY);
-        } else {
-            return convertIdentifier("*");
-        }
+        return convertIdentifier("*");
     }
 
     @Override

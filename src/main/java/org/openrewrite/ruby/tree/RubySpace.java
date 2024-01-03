@@ -45,7 +45,6 @@ public class RubySpace {
         DELIMITED_STRING_VALUE_PREFIX,
         DELIMITED_STRING_VALUE_SUFFIX,
         END_PREFIX,
-        EXPANSION_PREFIX,
         EXPRESSION_TYPE_TREE_PREFIX,
         HASH,
         HASH_ELEMENTS,
