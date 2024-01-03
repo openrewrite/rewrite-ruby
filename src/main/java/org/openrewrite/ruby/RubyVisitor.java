@@ -87,22 +87,6 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         return l;
     }
 
-    public J visitArrayPattern(Ruby.ArrayPattern arrayPattern, P p) {
-        Ruby.ArrayPattern l = arrayPattern;
-        l = l.withPrefix(visitSpace(l.getPrefix(), RubySpace.Location.ARRAY_PATTERN_PREFIX, p));
-        l = l.withMarkers(visitMarkers(l.getMarkers(), p));
-        Expression temp = (Expression) visitExpression(l, p);
-        if (!(temp instanceof Ruby.ArrayPattern)) {
-            return temp;
-        } else {
-            l = (Ruby.ArrayPattern) temp;
-        }
-        l = l.withConstant((J.Identifier) visit(l.getConstant(), p));
-        l = l.withType((JavaType) visit(l.getArray(), p));
-        l = l.withType(visitType(l.getType(), p));
-        return l;
-    }
-
     public J visitAssignmentOperation(Ruby.AssignmentOperation assignOp, P p) {
         Ruby.AssignmentOperation a = assignOp;
         a = a.withPrefix(visitSpace(a.getPrefix(), Space.Location.ASSIGNMENT_OPERATION_PREFIX, p));
@@ -434,6 +418,22 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
             s = (Ruby.Splat) temp;
         }
         s = s.withValue((Expression) visitNonNull(s.getValue(), p));
+        s = s.withType(visitType(s.getType(), p));
+        return s;
+    }
+
+    public J visitStructPattern(Ruby.StructPattern structPattern, P p) {
+        Ruby.StructPattern s = structPattern;
+        s = s.withPrefix(visitSpace(s.getPrefix(), RubySpace.Location.STRUCT_PATTERN_PREFIX, p));
+        s = s.withMarkers(visitMarkers(s.getMarkers(), p));
+        Expression temp = (Expression) visitExpression(s, p);
+        if (!(temp instanceof Ruby.StructPattern)) {
+            return temp;
+        } else {
+            s = (Ruby.StructPattern) temp;
+        }
+        s = s.withConstant((J.Identifier) visit(s.getConstant(), p));
+        s = s.withType((JavaType) visit(s.getPattern(), p));
         s = s.withType(visitType(s.getType(), p));
         return s;
     }

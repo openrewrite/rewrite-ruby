@@ -173,13 +173,28 @@ public class PatternMatchingTest implements RewriteTest {
     }
 
     @Test
-    void structs() {
+    void structArrayMatching() {
         rewriteRun(
           ruby(
             """
               Point = Struct.new :x, :y
               case Point[1, 2]
                 in Point[..5, ..5] then "matched"
+                else "unmatched"
+              end
+              """
+          )
+        );
+    }
+
+    @Test
+    void structHashMatching() {
+        rewriteRun(
+          ruby(
+            """
+              Point = Struct.new :x, :y
+              case Point[1, 2]
+                in Point(x: ..5, y: ..5) then "matched"
                 else "unmatched"
               end
               """

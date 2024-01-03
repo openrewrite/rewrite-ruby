@@ -392,49 +392,6 @@ public interface Ruby extends J {
         }
     }
 
-    @Value
-    @With
-    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
-    class ArrayPattern implements Ruby, Expression {
-        @EqualsAndHashCode.Include
-        UUID id;
-
-        Space prefix;
-        Markers markers;
-
-        /**
-         * Is non-null when doing array pattern matching on structs. In this case, it will be
-         * the struct name. For example:
-         * {@code in Point[..5, ..5] then "matched"}
-         */
-        @Nullable
-        Identifier constant;
-
-        Array array;
-
-        @Override
-        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
-            return v.visitArrayPattern(this, p);
-        }
-
-        @Override
-        public @Nullable JavaType getType() {
-            return array.getType();
-        }
-
-        @SuppressWarnings("unchecked")
-        @Override
-        public ArrayPattern withType(@Nullable JavaType type) {
-            return withArray(array.withType(type));
-        }
-
-        @Override
-        public CoordinateBuilder.Expression getCoordinates() {
-            return new CoordinateBuilder.Expression(this);
-        }
-    }
-
-
     @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
     @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
     @RequiredArgsConstructor
@@ -858,6 +815,62 @@ public interface Ruby extends J {
         }
     }
 
+    @Value
+    @With
+    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+    class End implements Ruby, Statement {
+        @EqualsAndHashCode.Include
+        UUID id;
+
+        Space prefix;
+        Markers markers;
+        J.Block block;
+
+        @Override
+        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
+            return v.visitEnd(this, p);
+        }
+
+        @Override
+        public CoordinateBuilder.Statement getCoordinates() {
+            return new CoordinateBuilder.Statement(this);
+        }
+    }
+
+    @Value
+    @With
+    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+    class Expansion implements Ruby, Expression {
+        @EqualsAndHashCode.Include
+        UUID id;
+
+        Space prefix;
+        Markers markers;
+        TypedTree tree;
+
+        @Override
+        @Nullable
+        public JavaType getType() {
+            return tree.getType();
+        }
+
+        @Override
+        public <T extends J> T withType(@Nullable JavaType type) {
+            return tree.withType(type);
+        }
+
+        @Override
+        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
+            return v.visitExpansion(this, p);
+        }
+
+        @Override
+        @Transient
+        public CoordinateBuilder.Expression getCoordinates() {
+            return new CoordinateBuilder.Expression(this);
+        }
+    }
+
     /**
      * Unlike Java, Ruby allows expressions to appear anywhere Statements do.
      * Rather than re-define versions of the many J types that implement Expression to also implement Statement,
@@ -997,62 +1010,6 @@ public interface Ruby extends J {
             public Hash withElements(JContainer<Expression> elements) {
                 return t.elements == elements ? t : new Hash(t.id, t.prefix, t.markers, elements, t.type);
             }
-        }
-    }
-
-    @Value
-    @With
-    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
-    class End implements Ruby, Statement {
-        @EqualsAndHashCode.Include
-        UUID id;
-
-        Space prefix;
-        Markers markers;
-        J.Block block;
-
-        @Override
-        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
-            return v.visitEnd(this, p);
-        }
-
-        @Override
-        public CoordinateBuilder.Statement getCoordinates() {
-            return new CoordinateBuilder.Statement(this);
-        }
-    }
-
-    @Value
-    @With
-    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
-    class Expansion implements Ruby, Expression {
-        @EqualsAndHashCode.Include
-        UUID id;
-
-        Space prefix;
-        Markers markers;
-        TypedTree tree;
-
-        @Override
-        @Nullable
-        public JavaType getType() {
-            return tree.getType();
-        }
-
-        @Override
-        public <T extends J> T withType(@Nullable JavaType type) {
-            return tree.withType(type);
-        }
-
-        @Override
-        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
-            return v.visitExpansion(this, p);
-        }
-
-        @Override
-        @Transient
-        public CoordinateBuilder.Expression getCoordinates() {
-            return new CoordinateBuilder.Expression(this);
         }
     }
 
@@ -1759,6 +1716,112 @@ public interface Ruby extends J {
 
             public Ruby.SubArrayIndex withLength(JLeftPadded<Expression> length) {
                 return t.length == length ? t : new Ruby.SubArrayIndex(t.id, t.prefix, t.markers, t.startIndex, length);
+            }
+        }
+    }
+
+    @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
+    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+    @RequiredArgsConstructor
+    @AllArgsConstructor(access = AccessLevel.PRIVATE)
+    final class StructPattern implements Ruby, Expression {
+        @Nullable
+        @NonFinal
+        transient WeakReference<Padding> padding;
+
+        @Getter
+        @With
+        @EqualsAndHashCode.Include
+        UUID id;
+
+        @Getter
+        @With
+        Space prefix;
+
+        @Getter
+        @With
+        Markers markers;
+
+        /**
+         * Is non-null when doing array pattern matching on structs. In this case, it will be
+         * the struct name. For example:
+         * {@code in Point[..5, ..5] then "matched"}
+         */
+        @Getter
+        @With
+        @Nullable
+        Identifier constant;
+
+        /**
+         * For struct pattern matching "[]" and "()" are equally acceptable regardless of whether
+         * the pattern is an {@link Array} or {@link Hash}.
+         */
+        @Getter
+        @With
+        String delimiter;
+
+        /**
+         * Contains a single element {@link Array} or {@link Hash}. The container exists
+         * to hold the space around the delimiter. The internal array or hash must be devoid
+         * of start and end delimiters.
+         */
+        JContainer<Expression> pattern;
+
+        public Expression getPattern() {
+            return pattern.getElements().get(0);
+        }
+
+        public StructPattern withPattern(Expression expression) {
+            return getPattern() == expression ? this :
+                    getPadding().withPattern(JContainer.withElements(this.pattern, singletonList(expression)));
+        }
+
+        @Override
+        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
+            return v.visitStructPattern(this, p);
+        }
+
+        @Override
+        public @Nullable JavaType getType() {
+            return pattern.getElements().get(0).getType();
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public StructPattern withType(@Nullable JavaType type) {
+            return withPattern(getPattern().withType(type));
+        }
+
+        @Override
+        public CoordinateBuilder.Expression getCoordinates() {
+            return new CoordinateBuilder.Expression(this);
+        }
+
+        public Padding getPadding() {
+            Padding p;
+            if (this.padding == null) {
+                p = new Padding(this);
+                this.padding = new WeakReference<>(p);
+            } else {
+                p = this.padding.get();
+                if (p == null || p.t != this) {
+                    p = new Padding(this);
+                    this.padding = new WeakReference<>(p);
+                }
+            }
+            return p;
+        }
+
+        @RequiredArgsConstructor
+        public static class Padding {
+            private final StructPattern t;
+
+            public JContainer<Expression> getPattern() {
+                return t.pattern;
+            }
+
+            public StructPattern withPattern(JContainer<Expression> pattern) {
+                return t.pattern == pattern ? t : new StructPattern(t.id, t.prefix, t.markers, t.constant, t.delimiter, pattern);
             }
         }
     }

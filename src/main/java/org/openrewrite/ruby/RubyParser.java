@@ -62,7 +62,60 @@ public class RubyParser implements Parser {
 
     @Override
     public boolean accept(Path path) {
-        return path.toString().endsWith(".rb");
+        String fileName = path.toFile().getName();
+        String ext = fileName.substring(fileName.lastIndexOf('.') + 1);
+        return ext.equals("rb") ||
+               ext.equals("arb") ||
+               ext.equals("axlsx") ||
+               ext.equals("builder") ||
+               ext.equals("fcgi") ||
+               ext.equals("gemfile") ||
+               ext.equals("gemspec") ||
+               ext.equals("god") ||
+               ext.equals("jb") ||
+               ext.equals("jbuilder") ||
+               ext.equals("mspec") ||
+               ext.equals("opal") ||
+               ext.equals("pluginspec") ||
+               ext.equals("podspec") ||
+               ext.equals("rabl") ||
+               ext.equals("rake") ||
+               ext.equals("rbuild") ||
+               ext.equals("rbw") ||
+               ext.equals("rbx") ||
+               ext.equals("ru") ||
+               ext.equals("ruby") ||
+               ext.equals("schema") ||
+               ext.equals("spec") ||
+               ext.equals("thor") ||
+               ext.equals("watchr") ||
+               fileName.equals(".irbrc") ||
+               fileName.equals(".pryrc") ||
+               fileName.equals(".simplecov") ||
+               fileName.equals("buildfile") ||
+               fileName.equals("Appraisals") ||
+               fileName.equals("Berksfile") ||
+               fileName.equals("Brewfile") ||
+               fileName.equals("Buildfile") ||
+               fileName.equals("Capfile") ||
+               fileName.equals("Cheffile") ||
+               fileName.equals("Dangerfile") ||
+               fileName.equals("Deliverfile") ||
+               fileName.endsWith("Fastfile") ||
+               fileName.equals("Gemfile") ||
+               fileName.equals("Guardfile") ||
+               fileName.equals("Jarfile") ||
+               fileName.equals("Mavenfile") ||
+               fileName.equals("Podfile") ||
+               fileName.equals("Puppetfile") ||
+               fileName.equals("Rakefile") ||
+               fileName.equals("rakefile") ||
+               fileName.equals("Schemafile") ||
+               fileName.equals("Snapfile") ||
+               fileName.equals("Steepfile") ||
+               fileName.equals("Thorfile") ||
+               fileName.equals("Vagabondfile") ||
+               fileName.equals("Vagrantfile");
     }
 
     @Override

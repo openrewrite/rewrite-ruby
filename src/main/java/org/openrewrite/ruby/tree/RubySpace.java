@@ -26,7 +26,6 @@ public class RubySpace {
     public enum Location {
         ALIAS_PREFIX,
         ARRAY_ELEMENTS,
-        ARRAY_PATTERN_PREFIX,
         ARRAY_PREFIX,
         BEGIN_PREFIX,
         BLOCK_ARGUMENT_PREFIX,
@@ -73,6 +72,9 @@ public class RubySpace {
         SPLAT_PREFIX,
         STRUCT_EXTENDS_ARGUMENTS,
         STRUCT_EXTENDS_ARGUMENTS_SUFFIX,
+        STRUCT_PATTERN_ELEMENT,
+        STRUCT_PATTERN_ELEMENT_SUFFIX,
+        STRUCT_PATTERN_PREFIX,
         SUB_ARRAY_LENGTH_PREFIX,
         SUB_ARRAY_PREFIX,
         SYMBOL_PREFIX,

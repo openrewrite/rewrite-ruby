@@ -161,13 +161,25 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitArrayPatternNode(ArrayPatternNode node) {
-        return new Ruby.ArrayPattern(
-                randomId(),
-                whitespace(),
-                Markers.EMPTY,
-                convert(node.getConstant()),
-                convert(node.getPreArgs())
-        );
+        Space prefix = whitespace();
+        if (node.getConstant() != null) {
+            J.Identifier constant = convert(node.getConstant());
+            String delimiter = source.substring(cursor, cursor + 1);
+            return new Ruby.StructPattern(
+                    randomId(),
+                    prefix,
+                    Markers.EMPTY,
+                    constant,
+                    delimiter,
+                    JContainer.build(
+                            sourceBefore(delimiter),
+                            singletonList(padRight((Expression) convert(node.getPreArgs()), sourceBefore(DelimiterMatcher.end(delimiter)))),
+                            Markers.EMPTY
+                    )
+            );
+        } else {
+            return convert(node.getPreArgs());
+        }
     }
 
     @Override
@@ -1194,7 +1206,26 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitHashPatternNode(HashPatternNode node) {
-        return convertHash(node.getKeywordArgs(), node.getRestArg());
+        Space prefix = whitespace();
+        if (node.getConstant() != null) {
+            J.Identifier constant = convert(node.getConstant());
+            String delimiter = source.substring(cursor, cursor + 1);
+            return new Ruby.StructPattern(
+                    randomId(),
+                    prefix,
+                    Markers.EMPTY,
+                    constant,
+                    delimiter,
+                    JContainer.build(
+                            sourceBefore(delimiter),
+                            singletonList(padRight(convertHash(node.getKeywordArgs(), node.getRestArg()),
+                                    sourceBefore(DelimiterMatcher.end(delimiter)))),
+                            Markers.EMPTY
+                    )
+            );
+        } else {
+            return convertHash(node.getKeywordArgs(), node.getRestArg());
+        }
     }
 
     @Override

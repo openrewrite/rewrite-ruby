@@ -88,15 +88,6 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     }
 
     @Override
-    public J visitArrayPattern(Ruby.ArrayPattern arrayPattern, PrintOutputCapture<P> p) {
-        beforeSyntax(arrayPattern, RubySpace.Location.ARRAY_PATTERN_PREFIX, p);
-        visit(arrayPattern.getConstant(), p);
-        visit(arrayPattern.getArray(), p);
-        afterSyntax(arrayPattern, p);
-        return arrayPattern;
-    }
-
-    @Override
     public J visitAssignmentOperation(Ruby.AssignmentOperation assignOp, PrintOutputCapture<P> p) {
         String keyword = "";
         switch (assignOp.getOperator()) {
@@ -463,6 +454,17 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         visit(splat.getValue(), p);
         afterSyntax(splat, p);
         return splat;
+    }
+
+    @Override
+    public J visitStructPattern(Ruby.StructPattern structPattern, PrintOutputCapture<P> p) {
+        beforeSyntax(structPattern, RubySpace.Location.STRUCT_PATTERN_PREFIX, p);
+        visit(structPattern.getConstant(), p);
+        visitContainer(structPattern.getDelimiter(), structPattern.getPadding().getPattern(),
+                RubyContainer.Location.STRUCT_PATTERN_ELEMENT, "",
+                DelimiterMatcher.end(structPattern.getDelimiter()), p);
+        afterSyntax(structPattern, p);
+        return structPattern;
     }
 
     @Override

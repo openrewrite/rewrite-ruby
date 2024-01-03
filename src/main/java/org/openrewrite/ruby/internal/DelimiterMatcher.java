@@ -35,6 +35,9 @@ public final class DelimiterMatcher {
         if (beginDelimiter.equals("?")) {
             return ""; // the character literal case
         }
+        if (beginDelimiter.length() == 1) {
+            return matchBeginDelimiter(beginDelimiter.charAt(0), beginDelimiter);
+        }
         return beginDelimiter;
     }
 
