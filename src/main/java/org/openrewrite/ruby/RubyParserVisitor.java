@@ -589,6 +589,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 Markers.EMPTY
         );
 
+        int cursorBeforeBodyWhitespace = cursor;
         Space beforeBody = whitespace();
         Node body = cases.get(0) instanceof WhenNode ?
                 ((WhenNode) cases.get(0)).getBodyNode() :
@@ -604,6 +605,8 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             expressions = expressions.getPadding().withElements(ListUtils.mapLast(
                     expressions.getPadding().getElements(), last -> last.withAfter(beforeBody)));
             skip("then");
+        } else {
+            cursor = cursorBeforeBodyWhitespace;
         }
 
         return padRight(new J.Case(
@@ -1178,7 +1181,11 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     Markers.EMPTY,
                     key,
                     padLeft(separatorPrefix, separator),
-                    convert(kv.getValue()),
+                    kv.getValue() instanceof LocalAsgnNode ?
+                            // in hash pattern matching you can match on {sym:} with no value
+                            // to the right of the symbol. not valid in hash literals
+                            new J.Empty(randomId(), EMPTY, Markers.EMPTY) :
+                            convert(kv.getValue()),
                     null
             ), i == nodePairs.size() - 1 && restArg == null ? EMPTY : sourceBefore(",")));
         }

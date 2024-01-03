@@ -52,6 +52,19 @@ public class PatternMatchingTest implements RewriteTest {
     }
 
     @Test
+    void hashWithEmptyValue() {
+        rewriteRun(
+          ruby(
+            """
+              if user in {role: 'admin', login:}
+                puts "Granting admin scope: #{login}"
+              end
+              """
+          )
+        );
+    }
+
+    @Test
     void array() {
         rewriteRun(
           ruby(
@@ -109,8 +122,7 @@ public class PatternMatchingTest implements RewriteTest {
               end
                             
               case {a: 1, b: 2, c: 3}
-                in {a: Integer} then "matche
-              "      # With braces.
+                in {a: Integer} then "matched"      # With braces.
                 else "unmatched"
               end
                             
