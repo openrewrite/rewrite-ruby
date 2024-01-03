@@ -1212,17 +1212,27 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 separator = Ruby.KeyValue.Separator.Colon;
                 skip(":");
             }
+
+            int cursorBeforeWhitespace = cursor;
+            Space valuePrefix = whitespace();
+            Expression value;
+            if (kv.getValue() instanceof LocalAsgnNode &&
+                source.startsWith(((LocalAsgnNode) kv.getValue()).getName().asJavaString())) {
+                // in hash pattern matching you can match on {sym:} with no value
+                // to the right of the symbol. not valid in hash literals
+                value = new J.Empty(randomId(), EMPTY, Markers.EMPTY);
+                cursor = cursorBeforeWhitespace;
+            } else {
+                value = convert(kv.getValue()).withPrefix(valuePrefix);
+            }
+
             pairs.add(padRight(new Ruby.KeyValue(
                     randomId(),
                     kvPrefix,
                     Markers.EMPTY,
                     key,
                     padLeft(separatorPrefix, separator),
-                    kv.getValue() instanceof LocalAsgnNode ?
-                            // in hash pattern matching you can match on {sym:} with no value
-                            // to the right of the symbol. not valid in hash literals
-                            new J.Empty(randomId(), EMPTY, Markers.EMPTY) :
-                            convert(kv.getValue()),
+                    value,
                     null
             ), i == nodePairs.size() - 1 && restArg == null ? EMPTY : sourceBefore(",")));
         }
