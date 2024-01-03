@@ -180,6 +180,11 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitArrayPatternNode(ArrayPatternNode node) {
+        return convert(node.getPreArgs());
+    }
+
+    @Override
     public J visitAttrAssignNode(AttrAssignNode node) {
         Space prefix = whitespace();
         if (node.getName().asJavaString().equals("[]=")) {
@@ -246,15 +251,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitBackRefNode(BackRefNode node) {
-        return new J.Identifier(
-                randomId(),
-                sourceBefore("$" + node.getType()),
-                Markers.EMPTY,
-                emptyList(),
-                "$" + node.getType(),
-                null,
-                null
-        );
+        return convertIdentifier("$" + node.getType());
     }
 
     @Override
@@ -948,15 +945,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitEncodingNode(EncodingNode node) {
-        return new J.Identifier(
-                randomId(),
-                sourceBefore("__ENCODING__"),
-                Markers.EMPTY,
-                emptyList(),
-                "__ENCODING__",
-                null,
-                null
-        );
+        return convertIdentifier("__ENCODING__");
     }
 
     @Override
@@ -1027,6 +1016,27 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     private <T extends BlockAcceptingNode & IArgumentNode> JContainer<Expression> convertCallArgs(T node) {
         return convertArgs("(", node.getArgsNode(), node.getIterNode(), ")");
+    }
+
+    @Override
+    public J visitFindPatternNode(FindPatternNode node) {
+        Space prefix = whitespace();
+        ArrayNode allArgs = new ArrayNode(0);
+        if (node.getPreRestArg() != null) {
+            allArgs.add(node.getPreRestArg());
+        }
+        allArgs.addAll(node.getArgs());
+        if (node.getPostRestArg() != null) {
+            allArgs.add(node.getPostRestArg());
+        }
+        JContainer<Expression> elements = convertArgs("[", allArgs, null, "]");
+        return new Ruby.Array(
+                randomId(),
+                prefix,
+                Markers.EMPTY,
+                elements,
+                null
+        );
     }
 
     @Override
@@ -1333,7 +1343,17 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitLocalAsgnNode(LocalAsgnNode node) {
-        return visitAsgnNode(node, node.getName());
+        Space prefix = whitespace();
+        boolean namedSingleSplat = source.startsWith("*" + node.getName().asJavaString(), cursor);
+        if (namedSingleSplat) {
+            skip("*");
+        }
+        Expression assignment = visitAsgnNode(node, node.getName());
+        if (namedSingleSplat) {
+            J.Identifier named = (J.Identifier) assignment;
+            assignment = named.withSimpleName("*" + named.getSimpleName());
+        }
+        return assignment.withPrefix(prefix);
     }
 
     private Expression visitAsgnNode(AssignableNode node, RubySymbol name) {
@@ -1496,15 +1516,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitNthRefNode(NthRefNode node) {
-        return new J.Identifier(
-                randomId(),
-                sourceBefore("$" + node.getMatchNumber()),
-                Markers.EMPTY,
-                emptyList(),
-                "$" + node.getMatchNumber(),
-                null,
-                null
-        );
+        return convertIdentifier("$" + node.getMatchNumber());
     }
 
     @Override
@@ -2022,15 +2034,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitSelfNode(SelfNode node) {
-        return new J.Identifier(
-                randomId(),
-                sourceBefore("self"),
-                Markers.EMPTY,
-                emptyList(),
-                "self",
-                null,
-                null
-        );
+        return convertIdentifier("self");
     }
 
     @Override
@@ -2045,9 +2049,13 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitStarNode(StarNode node) {
-        // The star is parsed in visitMultipleAsgnNode. In cases where there is a variable after the
-        // star, a StarNode is not created by the compiler.
-        return new J.Empty(randomId(), EMPTY, Markers.EMPTY);
+        if (nodes.getParentTreeCursor().getValue() instanceof MultipleAsgnNode) {
+            // The star is parsed in visitMultipleAsgnNode. In cases where there is a variable after the
+            // star, a StarNode is not created by the compiler.
+            return new J.Empty(randomId(), EMPTY, Markers.EMPTY);
+        } else {
+            return convertIdentifier("*");
+        }
     }
 
     @Override
@@ -2172,15 +2180,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 Markers.EMPTY,
                 null,
                 null,
-                new J.Identifier(
-                        randomId(),
-                        sourceBefore("super"),
-                        Markers.EMPTY,
-                        emptyList(),
-                        "super",
-                        null,
-                        null
-                ),
+                convertIdentifier("super"),
                 convertCallArgs(new SuperArgsNode(node)),
                 null
         );
@@ -2430,24 +2430,26 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 Markers.EMPTY,
                 null,
                 null,
-                new J.Identifier(
-                        randomId(),
-                        sourceBefore("super"),
-                        Markers.EMPTY,
-                        emptyList(),
-                        "super",
-                        null,
-                        null
-                ),
+                convertIdentifier("super"),
                 JContainer.<Expression>empty().withMarkers(Markers.EMPTY.add(new OmitParentheses(randomId()))),
                 null
         );
     }
 
     private J.Identifier convertIdentifier(RubySymbol name) {
-        String nameStr = name.asJavaString();
-        return new J.Identifier(randomId(), sourceBefore(nameStr), Markers.EMPTY, emptyList(),
-                nameStr, null, null);
+        return convertIdentifier(name.asJavaString());
+    }
+
+    private J.Identifier convertIdentifier(String name) {
+        return new J.Identifier(
+                randomId(),
+                sourceBefore(name),
+                Markers.EMPTY,
+                emptyList(),
+                name,
+                null,
+                null
+        );
     }
 
     private <J2 extends J> J2 convert(@Nullable Node t) {

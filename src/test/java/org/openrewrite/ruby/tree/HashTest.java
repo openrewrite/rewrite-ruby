@@ -53,4 +53,15 @@ public class HashTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void empty() {
+        rewriteRun(
+          ruby(
+            """
+              {}
+              """
+          )
+        );
+    }
 }

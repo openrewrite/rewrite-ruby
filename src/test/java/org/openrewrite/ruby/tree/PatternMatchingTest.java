@@ -52,11 +52,106 @@ public class PatternMatchingTest implements RewriteTest {
     }
 
     @Test
+    void array() {
+        rewriteRun(
+          ruby(
+            """
+              [1, 2, 3] in [ Integer, Integer, Integer ]
+              """
+          )
+        );
+    }
+
+    @Test
+    void findPattern() {
+        rewriteRun(
+          ruby(
+            """
+              [1, 2, 3] in [ *, a, * ]
+              """
+          )
+        );
+    }
+
+    @Test
+    void namedSingleSplats() {
+        rewriteRun(
+          ruby(
+            """
+              [1, 2, 3] in [ *first, a, *last ]
+              """
+          )
+        );
+    }
+
+    @Test
     void rightwardAssignment() {
         rewriteRun(
           ruby(
             """
               value => Numeric
+              """
+          )
+        );
+    }
+
+    /**
+     * Only optional in case statements, not in standalone patterns
+     */
+    @Test
+    void optionalBracketsAndBraces() {
+        rewriteRun(
+          ruby(
+            """
+              case [1, 2, 3]
+                in [Integer, Integer] then "match"  # With brackets.
+                else "unmatched"
+              end
+                            
+              case {a: 1, b: 2, c: 3}
+                in {a: Integer} then "matche
+              "      # With braces.
+                else "unmatched"
+              end
+                            
+              # Without brackets and braces.
+              case [1, 2, 3]
+                in Integer, Integer then "match"   # Without brackets.
+                else "unmatched"
+              end
+                            
+              case {a: 1, b: 2, c: 3}
+                in a: Integer then "matched"       # Without braces.
+                else "unmatched"
+              end
+              """
+          )
+        );
+    }
+
+    @Test
+    void arraySplats() {
+        rewriteRun(
+          ruby(
+            """
+              case [:a, 1, :b, :c, 2]
+                in *, Symbol, Symbol, * then "matched"
+                else "unmatched"
+              end
+              """
+          )
+        );
+    }
+
+    @Test
+    void emptyHash() {
+        rewriteRun(
+          ruby(
+            """
+              case {}
+                in {} then "matched"
+                else "unmatched"
+              end
               """
           )
         );
