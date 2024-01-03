@@ -1366,7 +1366,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         boolean inline = source.charAt(cursor) == '{';
         if (inline) {
             skip("{");
-            if (!node.getArgsNode().isEmpty()) {
+            if (!node.getArgsNode().isEmpty() || node.getArgsNode().getBlock() != null) {
                 parameters = convertArgs("|", node.getArgsNode(), null, "|");
             }
             body = visitBlock(node.getBodyNode());
