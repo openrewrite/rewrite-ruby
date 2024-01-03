@@ -1649,8 +1649,21 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitOpAsgnNode(OpAsgnNode node) {
-        return convertOpAsgn(() -> convert(node.getReceiverNode()), node.getOperatorName(), node.getValueNode()
-        );
+        Supplier<Expression> receiver = () -> {
+            Expression r = convert(node.getReceiverNode());
+            if (node.getVariableName() != null) {
+                r = new J.FieldAccess(
+                        randomId(),
+                        r.getPrefix(),
+                        Markers.EMPTY,
+                        r.withPrefix(EMPTY),
+                        padLeft(sourceBefore("."), convertIdentifier(node.getVariableName())),
+                        null
+                );
+            }
+            return r;
+        };
+        return convertOpAsgn(receiver, node.getOperatorName(), node.getValueNode());
     }
 
     @Override
@@ -1875,7 +1888,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitPatternCaseNode(PatternCaseNode node) {
-        return convertCase(node.getCaseNode(), node.getCases(), null, true);
+        return convertCase(node.getCaseNode(), node.getCases(), node.getElseNode(), true);
     }
 
     @Override
@@ -2742,7 +2755,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         if (iterNode != null) {
             J2 blockPass = convert(iterNode);
             Space suffix = EMPTY;
-            if(blockPass instanceof Ruby.BlockArgument) {
+            if (blockPass instanceof Ruby.BlockArgument) {
                 suffix = omitParentheses ? EMPTY : sourceBefore(after);
             }
             mappedArgs = ListUtils.concat(
