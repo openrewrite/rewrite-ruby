@@ -1414,6 +1414,30 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitKeywordArgNode(KeywordArgNode node) {
+        LocalAsgnNode assignable = (LocalAsgnNode) node.getAssignable();
+        return new J.VariableDeclarations(
+                randomId(),
+                whitespace(),
+                Markers.EMPTY,
+                emptyList(),
+                emptyList(),
+                null,
+                null,
+                emptyList(),
+                singletonList(padRight(new J.VariableDeclarations.NamedVariable(
+                        randomId(),
+                        EMPTY,
+                        Markers.EMPTY,
+                        convertIdentifier(assignable.getName()),
+                        emptyList(),
+                        padLeft(sourceBefore(":"), convert(assignable.getValueNode())),
+                        null
+                ), EMPTY))
+        );
+    }
+
+    @Override
     public J visitKeywordRestArgNode(KeywordRestArgNode node) {
         return new J.VariableDeclarations(
                 randomId(),
@@ -2000,7 +2024,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitRequiredKeywordArgumentValueNode(RequiredKeywordArgumentValueNode node) {
-        throw new UnsupportedOperationException("This is only used in the event of syntax errors.");
+        return new J.Empty(randomId(), EMPTY, Markers.EMPTY);
     }
 
     @Override
@@ -2504,7 +2528,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 RubySymbol firstName = ((SymbolNode) nodes[0]).getName();
                 delimiter = source.startsWith(firstName.asJavaString(), cursor) ?
                         "" : source.substring(cursor, cursor + 1);
-            } else if(!(nodes[0].childNodes().get(0) instanceof StrNode)) {
+            } else if (!(nodes[0].childNodes().get(0) instanceof StrNode)) {
                 delimiter = source.substring(cursor, cursor + 1);
             } else {
                 delimiter = "";

@@ -1025,6 +1025,24 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         }
 
         @Override
+        public J visitVariable(J.VariableDeclarations.NamedVariable variable, PrintOutputCapture<P> p) {
+            beforeSyntax(variable, Space.Location.VARIABLE_PREFIX, p);
+            visit(variable.getName(), p);
+            for (JLeftPadded<Space> dimension : variable.getDimensionsAfterName()) {
+                visitSpace(dimension.getBefore(), Space.Location.DIMENSION_PREFIX, p);
+                p.append('[');
+                visitSpace(dimension.getElement(), Space.Location.DIMENSION, p);
+                p.append(']');
+            }
+            // if this is a method parameter, it is a keyword argument
+            String separator = getCursor().getParentTreeCursor().getParentTreeCursor().getValue() instanceof J.MethodDeclaration ?
+                    ":" : "=";
+            visitLeftPadded(separator, variable.getPadding().getInitializer(), JLeftPadded.Location.VARIABLE_INITIALIZER, p);
+            afterSyntax(variable, p);
+            return variable;
+        }
+
+        @Override
         public J visitNewClass(J.NewClass newClass, PrintOutputCapture<P> p) {
             beforeSyntax(newClass, Space.Location.NEW_CLASS_PREFIX, p);
             visit(newClass.getClazz(), p);

@@ -155,4 +155,20 @@ public class MethodDeclarationTest implements RewriteTest {
           )
         );
     }
+
+    /**
+     * In Ruby 2.1, required keyword arguments were added. In Ruby 2.0, keyword
+     * arguments must have default values.
+     */
+    @Test
+    void keywordArguments() {
+        rewriteRun(
+          ruby(
+            """
+              def render_video(video, subscriber: false, has_access:)
+              end
+              """
+          )
+        );
+    }
 }
