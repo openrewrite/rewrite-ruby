@@ -798,7 +798,19 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 emptyList()
         );
 
-        JContainer<J> args = convertArgs("(", node.getArgsNode(), null, ")");
+        boolean isDelegation = false;
+        for (String variable : node.getScope().getVariables()) {
+            if (variable.equals("...")) {
+                isDelegation = true;
+                break;
+            }
+        }
+
+        JContainer<J> args = isDelegation ?
+                JContainer.build(sourceBefore("("), singletonList(padRight(convertIdentifier("..."),
+                        sourceBefore(")"))), Markers.EMPTY) :
+                convertArgs("(", node.getArgsNode(), null, ")");
+
         args = JContainer.withElements(args, ListUtils.map(args.getElements(), arg -> {
             if (arg instanceof J.Identifier) {
                 return new J.VariableDeclarations(
@@ -1055,6 +1067,18 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     public J visitFCallNode(FCallNode node) {
         Space prefix = whitespace();
         J.Identifier name = convertIdentifier(node.getName());
+
+        int cursorBeforeParen = cursor;
+        skip("(");
+        whitespace();
+        boolean isDelegation = source.startsWith("...", cursor);
+        cursor = cursorBeforeParen;
+
+        JContainer<Expression> args = isDelegation ?
+                JContainer.build(sourceBefore("("), singletonList(padRight(convertIdentifier("..."),
+                        sourceBefore(")"))), Markers.EMPTY) :
+                convertCallArgs(node);
+
         return new J.MethodInvocation(
                 randomId(),
                 prefix,
@@ -1062,7 +1086,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 null,
                 null,
                 name,
-                convertCallArgs(node),
+                args,
                 null
         );
     }
