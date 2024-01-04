@@ -2504,8 +2504,10 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 RubySymbol firstName = ((SymbolNode) nodes[0]).getName();
                 delimiter = source.startsWith(firstName.asJavaString(), cursor) ?
                         "" : source.substring(cursor, cursor + 1);
-            } else {
+            } else if(!(nodes[0].childNodes().get(0) instanceof StrNode)) {
                 delimiter = source.substring(cursor, cursor + 1);
+            } else {
+                delimiter = "";
             }
         }
         skip(delimiter);

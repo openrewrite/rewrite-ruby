@@ -56,6 +56,17 @@ public class SymbolTest implements RewriteTest {
     }
 
     @Test
+    void delimitedHashKeyWhichIsImplicitlyASymbol() {
+        rewriteRun(
+          ruby(
+            """
+              { "modules.v1": "/v1/modules/" }
+              """
+          )
+        );
+    }
+
+    @Test
     void arbitraryDelimiter() {
         rewriteRun(
           ruby(
