@@ -75,4 +75,15 @@ public class HashTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void keywordArg() {
+        rewriteRun(
+          ruby(
+            """
+              expect(**kw)
+              """
+          )
+        );
+    }
 }

@@ -890,6 +890,18 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         }
 
         @Override
+        public J visitIdentifier(J.Identifier ident, PrintOutputCapture<P> p) {
+            visit(ident.getAnnotations(), p);
+            beforeSyntax(ident, Space.Location.IDENTIFIER_PREFIX, p);
+            if (ident.getMarkers().findFirst(KeywordRestArgument.class).isPresent()) {
+                p.append("**");
+            }
+            p.append(ident.getSimpleName());
+            afterSyntax(ident, p);
+            return ident;
+        }
+
+        @Override
         public J visitIf(J.If iff, PrintOutputCapture<P> p) {
             beforeSyntax(iff, Space.Location.IF_PREFIX, p);
 

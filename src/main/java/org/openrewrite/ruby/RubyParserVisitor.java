@@ -1194,6 +1194,12 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitHashNode(HashNode node) {
+        if (node.hasOnlyRestKwargs()) {
+            Space prefix = sourceBefore("**");
+            return convert(node.getPairs().get(0).getValue())
+                    .withPrefix(prefix)
+                    .withMarkers(Markers.EMPTY.add(new KeywordRestArgument(randomId())));
+        }
         return convertHash(node, null);
     }
 

@@ -138,4 +138,21 @@ public class MethodDeclarationTest implements RewriteTest {
           )
         );
     }
+
+    /**
+     * Search for "delegation" in <a href="https://www.ruby-lang.org/en/news/2019/12/12/separation-of-positional-and-keyword-arguments-in-ruby-3-0/">this blog</a>
+     * for more explanation.
+     */
+    @Test
+    void delegation() {
+        rewriteRun(
+          ruby(
+            """
+              def foo(...)
+                  target(...)
+              end
+              """
+          )
+        );
+    }
 }
