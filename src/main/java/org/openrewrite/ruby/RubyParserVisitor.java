@@ -462,6 +462,13 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
      * @return {@code true} if the {@link ListNode} contains more than one statement.
      */
     private boolean isMultipleStatements(ListNode node) {
+        int cursorBeforeWhitespace = cursor;
+        whitespace();
+        if (source.startsWith("[", cursor)) {
+            cursor = cursorBeforeWhitespace;
+            return false;
+        }
+
         if (node.size() <= 1) {
             return true;
         }
@@ -1243,8 +1250,9 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             pairs.add(padRight(new J.Empty(randomId(), EMPTY, Markers.EMPTY), EMPTY));
         }
 
+        AtomicReference<Markers> markers = new AtomicReference<>(Markers.EMPTY);
         if (!omitBrackets) {
-            pairs = ListUtils.mapLast(pairs, last -> last.withAfter(sourceBefore("}")));
+            pairs = ListUtils.mapLast(pairs, last -> last.withAfter(maybeTrailingComma(markers, "}")));
         }
 
         return new Ruby.Hash(
@@ -1253,7 +1261,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 omitBrackets ?
                         Markers.EMPTY.add(new OmitParentheses(randomId())) :
                         Markers.EMPTY,
-                JContainer.build(EMPTY, pairs, Markers.EMPTY),
+                JContainer.build(EMPTY, pairs, markers.get()),
                 null
         );
     }
@@ -2754,17 +2762,8 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             args.add(argsNode);
         }
 
-        List<JRightPadded<J2>> mappedArgs = convertAll(args, n -> sourceBefore(","), n -> {
-            int cursorBeforeWhitespace = cursor;
-            Space next = whitespace();
-            if (cursor < source.length() && source.charAt(cursor) == ',') {
-                markers.set(markers.get().add(new TrailingComma(randomId(), next)));
-                cursor++;
-            } else {
-                cursor = cursorBeforeWhitespace;
-            }
-            return omitParentheses ? EMPTY : sourceBefore(after);
-        });
+        List<JRightPadded<J2>> mappedArgs = convertAll(args, n -> sourceBefore(","),
+                n -> maybeTrailingComma(markers, omitParentheses ? null : after));
 
         if (iterNode != null) {
             J2 blockPass = convert(iterNode);
@@ -2783,6 +2782,22 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 mappedArgs,
                 markers.get()
         );
+    }
+
+    private Space maybeTrailingComma(AtomicReference<Markers> markers, @Nullable String after) {
+        int cursorBeforeWhitespace = cursor;
+        Space next = whitespace();
+        if (cursor < source.length() && source.charAt(cursor) == ',') {
+            cursor++;
+            markers.set(markers.get().add(new TrailingComma(randomId(),
+                    after == null ? EMPTY : sourceBefore(after))));
+            return next;
+        } else if (after != null) {
+            skip(after);
+            return next;
+        }
+        cursor = cursorBeforeWhitespace;
+        return EMPTY;
     }
 
     private <J2 extends J> List<JRightPadded<J2>> convertAll(List<? extends Node> trees,

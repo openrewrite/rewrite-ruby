@@ -599,8 +599,8 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         p.append(before);
         visitRightPadded(container.getPadding().getElements(), location.getElementLocation(), suffixBetween, p);
         container.getMarkers().findFirst(TrailingComma.class).ifPresent(comma -> {
-            visitSpace(comma.getSuffix(), Space.Location.LANGUAGE_EXTENSION, p);
             p.append(",");
+            visitSpace(comma.getSuffix(), Space.Location.LANGUAGE_EXTENSION, p);
         });
         p.append(after == null ? "" : after);
     }

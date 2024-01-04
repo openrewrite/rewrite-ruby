@@ -20,16 +20,17 @@ import org.openrewrite.test.RewriteTest;
 
 import static org.openrewrite.ruby.Assertions.ruby;
 
-public class ModuleTest implements RewriteTest {
+public class CompilationUnitTest implements RewriteTest {
 
     @Test
-    void module() {
+    void singleBlockStatementIsAnArray() {
         rewriteRun(
           ruby(
             """
-              module Base64
-                  DIGITS = '0123456789'
-              end
+              [{
+                "type" => "git_source",
+                "host" => "github.com",
+              }]
               """
           )
         );
