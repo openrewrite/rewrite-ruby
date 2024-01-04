@@ -69,6 +69,10 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     private int cursor = 0;
     private Cursor nodes = new Cursor(null, Cursor.ROOT_VALUE);
 
+    private final Stack<Ruby.Heredoc> openHeredocs = new Stack<>();
+    private final Map<Ruby.Heredoc, Space> spacesSplitByHeredocBodies = new HashMap<>();
+    private final Map<Ruby.Heredoc, J.Literal> heredocValues = new HashMap<>();
+
     public RubyParserVisitor(Path sourcePath, @Nullable FileAttributes fileAttributes, EncodingDetectingInputStream source) {
         this.sourcePath = sourcePath;
         this.fileAttributes = fileAttributes;
@@ -993,7 +997,19 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitDStrNode(DStrNode node) {
-        return convertStrings(node);
+        Space prefix = whitespace();
+        if (source.startsWith("<<", cursor)) {
+            Ruby.Heredoc heredoc = new Ruby.Heredoc(
+                    randomId(),
+                    prefix,
+                    Markers.EMPTY,
+                    null,
+                    null
+            );
+            openHeredocs.push(heredoc);
+            return heredoc;
+        }
+        return convertStrings(node).withPrefix(prefix);
     }
 
     @Override
@@ -2245,7 +2261,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public Ruby.CompilationUnit visitRootNode(RootNode node) {
-        return new Ruby.CompilationUnit(
+        Ruby.CompilationUnit cu = new Ruby.CompilationUnit(
                 randomId(),
                 whitespace(),
                 Markers.EMPTY,
@@ -2256,6 +2272,17 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 null,
                 convertBlockStatements(node.getBodyNode(), n -> whitespace())
         );
+        if (!spacesSplitByHeredocBodies.isEmpty()) {
+            return (Ruby.CompilationUnit) new RubyIsoVisitor<Integer>() {
+                @Override
+                public Ruby.Heredoc visitHeredoc(Ruby.Heredoc heredoc, Integer p) {
+                    return heredoc
+                            .withValue(heredocValues.get(heredoc))
+                            .withAroundValue(spacesSplitByHeredocBodies.get(heredoc));
+                }
+            }.visitNonNull(cu, 0);
+        }
+        return cu;
     }
 
     @Override
@@ -2898,17 +2925,6 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         return converted;
     }
 
-    private Space sourceBefore(String untilDelim) {
-        int delimIndex = positionOfNext(untilDelim);
-        if (delimIndex < 0) {
-            return EMPTY; // unable to find this delimiter
-        }
-
-        String prefix = source.substring(cursor, delimIndex);
-        cursor += prefix.length() + untilDelim.length(); // advance past the delimiter
-        return RubySpace.format(prefix);
-    }
-
     private <T> JRightPadded<T> padRight(T tree, Space right) {
         return new JRightPadded<>(tree, right, Markers.EMPTY);
     }
@@ -2917,43 +2933,15 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         return new JLeftPadded<>(left, tree, Markers.EMPTY);
     }
 
-    private int positionOfNext(String untilDelim) {
-        boolean inMultiLineComment = false;
-        boolean inSingleLineComment = false;
-
-        int delimIndex = cursor;
-        for (; delimIndex < source.length() - untilDelim.length() + 1; delimIndex++) {
-            if (inSingleLineComment) {
-                if (source.charAt(delimIndex) == '\n') {
-                    inSingleLineComment = false;
-                }
-            } else {
-                if (source.length() - untilDelim.length() > delimIndex + 1) {
-                    if (source.charAt(delimIndex) == '#') {
-                        inSingleLineComment = true;
-                        delimIndex++;
-                    } else {
-                        if (source.startsWith("=begin\n", delimIndex) ||
-                            source.startsWith("=begin\r\n", delimIndex)) {
-                            inMultiLineComment = true;
-                            delimIndex += "=begin".length();
-                        } else if (source.startsWith("=end\n", delimIndex) ||
-                                   source.startsWith("=end\r\n", delimIndex)) {
-                            inMultiLineComment = false;
-                            delimIndex += "=end".length();
-                        }
-                    }
-                }
-
-                if (!inMultiLineComment && !inSingleLineComment) {
-                    if (source.startsWith(untilDelim, delimIndex)) {
-                        break; // found it!
-                    }
-                }
-            }
+    private Space sourceBefore(String untilDelim) {
+        int cursorBeforeWhitespace = cursor;
+        Space before = whitespace();
+        if (source.startsWith(untilDelim, cursor)) {
+            cursor += untilDelim.length();
+            return before;
         }
-
-        return delimIndex > source.length() - untilDelim.length() ? -1 : delimIndex;
+        cursor = cursorBeforeWhitespace;
+        return EMPTY;
     }
 
     private Space whitespace() {
@@ -2962,6 +2950,10 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         cursor += prefix.length();
         return RubySpace.format(prefix);
     }
+
+//    private Space heredocAwareFormat(String prefix) {
+//        return null;
+//    }
 
     private void skip(@Nullable String token) {
         if (token == null) {
@@ -2973,7 +2965,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         }
     }
 
-    public static int indexOfNextNonWhitespace(int cursor, String source) {
+    private static int indexOfNextNonWhitespace(int cursor, String source) {
         boolean inMultiLineComment = false;
         boolean inSingleLineComment = false;
 
@@ -3002,7 +2994,12 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 }
             }
             if (!inMultiLineComment && !Character.isWhitespace(current)) {
-                break; // found it!
+                char next = cursor < source.length() - 1 ? source.charAt(cursor + 1) : '\0';
+
+                // we consider line continuations to be whitespace in Ruby
+                if (current != '\\' || !(next == '\n' || next == '\r')) {
+                    break; // found it!
+                }
             }
         }
         return cursor;

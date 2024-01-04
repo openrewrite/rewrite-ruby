@@ -53,6 +53,11 @@ public class RubyIsoVisitor<P> extends RubyVisitor<P> {
     }
 
     @Override
+    public Ruby.Heredoc visitHeredoc(Ruby.Heredoc heredoc, P p) {
+        return (Ruby.Heredoc) super.visitHeredoc(heredoc, p);
+    }
+
+    @Override
     public Ruby.KeyValue visitKeyValue(Ruby.KeyValue keyValue, P p) {
         return (Ruby.KeyValue) super.visitKeyValue(keyValue, p);
     }

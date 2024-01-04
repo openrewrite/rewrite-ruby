@@ -272,6 +272,21 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         return h;
     }
 
+    public J visitHeredoc(Ruby.Heredoc heredoc, P p) {
+        Ruby.Heredoc h = heredoc;
+        h = h.withPrefix(visitSpace(h.getPrefix(), RubySpace.Location.HEREDOC_PREFIX, p));
+        h = h.withMarkers(visitMarkers(h.getMarkers(), p));
+        Expression temp = (Expression) visitExpression(h, p);
+        if (!(temp instanceof Ruby.Heredoc)) {
+            return temp;
+        } else {
+            h = (Ruby.Heredoc) temp;
+        }
+        h = h.withValue((J.Literal) visit(h.getValue(), p));
+        h = h.withType(visitType(h.getType(), p));
+        return h;
+    }
+
     public J visitKeyValue(Ruby.KeyValue keyValue, P p) {
         Ruby.KeyValue k = keyValue;
         k = k.withPrefix(visitSpace(k.getPrefix(), RubySpace.Location.KEY_VALUE_PREFIX, p));

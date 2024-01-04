@@ -139,34 +139,20 @@ public class StringTest implements RewriteTest {
         );
     }
 
-    @Disabled
+    /**
+     * Squiggly "here docs" remove the extra indentation.
+     */
     @ParameterizedTest
-    @ValueSource(strings = {"<<", "<<-"})
+    @ValueSource(strings = {"<<~", "<<-"})
     void hereDocuments(String startDelim) {
         rewriteRun(
           ruby(
             """
-              document = %HERE
-              This is a string literal.
-              It has two lines and abruptly ends...
+              document = %sHERE.chomp
+                  This is a string literal.
+                  It has two lines and abruptly ends...
               HERE
               """.formatted(startDelim)
-          )
-        );
-    }
-
-    @Disabled
-    @Test
-    void overlappingHereDocuments() {
-        rewriteRun(
-          ruby(
-            """
-              greeting = <<HERE + <<THERE + "World"
-              Hello
-              HERE
-              There
-              THERE
-              """
           )
         );
     }

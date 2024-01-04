@@ -980,6 +980,46 @@ public interface Ruby extends J {
         }
     }
 
+    @Value
+    @With
+    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+    class Heredoc implements Ruby, Expression {
+        @EqualsAndHashCode.Include
+        UUID id;
+
+        Space prefix;
+        Markers markers;
+        J.Literal value;
+
+        /**
+         * The space that is split (i.e. non-contiguous) because of the heredoc body.
+         * We know that the heredoc body will exist precisely after the first newline character
+         * and the remainder of the space will continue from there.
+         */
+        Space aroundValue;
+
+        @Override
+        public @Nullable JavaType getType() {
+            return value.getType();
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public Heredoc withType(@Nullable JavaType type) {
+            return withValue(value.withType(type));
+        }
+
+        @Override
+        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
+            return v.visitHeredoc(this, p);
+        }
+
+        @Override
+        public CoordinateBuilder.Expression getCoordinates() {
+            return new CoordinateBuilder.Expression(this);
+        }
+    }
+
     @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
     @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
     @RequiredArgsConstructor

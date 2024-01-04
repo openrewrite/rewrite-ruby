@@ -51,6 +51,7 @@ public class RubySpace {
         HASH_ELEMENTS,
         HASH_ELEMENTS_SUFFIX,
         HASH_PREFIX,
+        HEREDOC_PREFIX,
         KEY_VALUE_PREFIX,
         KEY_VALUE_SEPARATOR_PREFIX,
         LIST_LITERAL_SUFFIX,
