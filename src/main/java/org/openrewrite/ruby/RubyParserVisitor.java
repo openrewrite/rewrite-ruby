@@ -1408,6 +1408,29 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     @Override
+    public J visitKeywordRestArgNode(KeywordRestArgNode node) {
+        return new J.VariableDeclarations(
+                randomId(),
+                whitespace(),
+                Markers.EMPTY.add(new KeywordRestArgument(randomId())),
+                emptyList(),
+                emptyList(),
+                null,
+                sourceBefore("**"),
+                emptyList(),
+                singletonList(padRight(new J.VariableDeclarations.NamedVariable(
+                        randomId(),
+                        EMPTY,
+                        Markers.EMPTY,
+                        convertIdentifier(node.getName()),
+                        emptyList(),
+                        null,
+                        null
+                ), EMPTY))
+        );
+    }
+
+    @Override
     public J visitLambdaNode(LambdaNode node) {
         Space prefix = sourceBefore("->");
         Space parametersPrefix = whitespace();
@@ -2167,7 +2190,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     public Ruby.CompilationUnit visitRootNode(RootNode node) {
         return new Ruby.CompilationUnit(
                 randomId(),
-                Space.EMPTY,
+                whitespace(),
                 Markers.EMPTY,
                 sourcePath,
                 fileAttributes,
@@ -2756,6 +2779,9 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             }
             if (argsArgsNode.getRestArgNode() != null) {
                 args.add(argsArgsNode.getRestArgNode());
+            }
+            if (argsArgsNode.getKeyRest() != null) {
+                args.add(argsArgsNode.getKeyRest());
             }
         } else {
             args = new ArrayList<>(2);

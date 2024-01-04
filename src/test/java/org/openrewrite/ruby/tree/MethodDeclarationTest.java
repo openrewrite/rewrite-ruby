@@ -23,6 +23,19 @@ import static org.openrewrite.ruby.Assertions.ruby;
 public class MethodDeclarationTest implements RewriteTest {
 
     @Test
+    void kwargs() {
+        rewriteRun(
+          ruby(
+            """
+              def method(h, **kwargs)
+                p h
+              end
+              """
+          )
+        );
+    }
+
+    @Test
     void vararg() {
         rewriteRun(
           ruby(

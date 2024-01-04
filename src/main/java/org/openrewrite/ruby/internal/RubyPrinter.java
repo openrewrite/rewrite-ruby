@@ -1003,6 +1003,9 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
             if (multiVariable.getVarargs() != null) {
                 visitSpace(multiVariable.getVarargs(), Space.Location.VARARGS, p);
                 p.append("*");
+                if (multiVariable.getMarkers().findFirst(KeywordRestArgument.class).isPresent()) {
+                    p.append("*");
+                }
             }
             visitRightPadded(multiVariable.getPadding().getVariables(), JRightPadded.Location.NAMED_VARIABLE, ",", p);
             afterSyntax(multiVariable, p);

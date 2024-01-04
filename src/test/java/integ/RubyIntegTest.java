@@ -32,7 +32,6 @@ public class RubyIntegTest implements RewriteTest {
 
     static Path REPOSITORY = Paths.get(System.getProperty("user.home"), "Projects/github/ruby/dependabot-core");
 
-    // 12
     @ParameterizedTest
     @MethodSource("files")
     void parse(Path file) throws IOException {
