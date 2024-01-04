@@ -56,7 +56,7 @@ public class PatternMatchingTest implements RewriteTest {
         rewriteRun(
           ruby(
             """
-              if user in {role: 'admin', login:}
+              if user in {role: role, login:}
                 puts "Granting admin scope: #{login}"
               end
               """

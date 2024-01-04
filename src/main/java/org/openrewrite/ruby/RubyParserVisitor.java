@@ -1217,7 +1217,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             Space valuePrefix = whitespace();
             Expression value;
             if (kv.getValue() instanceof LocalAsgnNode &&
-                source.startsWith(((LocalAsgnNode) kv.getValue()).getName().asJavaString())) {
+                !source.startsWith(((LocalAsgnNode) kv.getValue()).getName().asJavaString(), cursor)) {
                 // in hash pattern matching you can match on {sym:} with no value
                 // to the right of the symbol. not valid in hash literals
                 value = new J.Empty(randomId(), EMPTY, Markers.EMPTY);
