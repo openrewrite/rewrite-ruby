@@ -114,7 +114,8 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         visitSpace(begin.getBlock().getPrefix(), Space.Location.BLOCK_PREFIX, p);
         visitMarkers(begin.getBlock().getMarkers(), p);
         p.append("{");
-        visit(begin.getBlock().getStatements(), p);
+        visitRightPadded(begin.getBlock().getPadding().getStatements(),
+                RubyRightPadded.Location.BLOCK_PARAMETERS_SUFFIX, "", p);
         visitSpace(begin.getBlock().getEnd(), Space.Location.BLOCK_END, p);
         p.append("}");
         afterSyntax(begin, p);
@@ -279,7 +280,8 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         visitSpace(end.getBlock().getPrefix(), Space.Location.BLOCK_PREFIX, p);
         visitMarkers(end.getBlock().getMarkers(), p);
         p.append("{");
-        visit(end.getBlock().getStatements(), p);
+        visitRightPadded(end.getBlock().getPadding().getStatements(),
+                RubyRightPadded.Location.BLOCK_PARAMETERS_SUFFIX, "", p);
         visitSpace(end.getBlock().getEnd(), Space.Location.BLOCK_END, p);
         p.append("}");
         afterSyntax(end, p);
@@ -663,6 +665,11 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         }
 
         @Override
+        public void visitStatements(List<JRightPadded<Statement>> statements, JRightPadded.Location location, PrintOutputCapture<P> p) {
+            super.visitStatements(statements, location, p);
+        }
+
+        @Override
         protected void visitStatement(@Nullable JRightPadded<Statement> paddedStat, JRightPadded.Location location, PrintOutputCapture<P> p) {
             if (paddedStat != null) {
                 visit(paddedStat.getElement(), p);
@@ -1028,16 +1035,12 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         public J visitVariable(J.VariableDeclarations.NamedVariable variable, PrintOutputCapture<P> p) {
             beforeSyntax(variable, Space.Location.VARIABLE_PREFIX, p);
             visit(variable.getName(), p);
-            for (JLeftPadded<Space> dimension : variable.getDimensionsAfterName()) {
-                visitSpace(dimension.getBefore(), Space.Location.DIMENSION_PREFIX, p);
-                p.append('[');
-                visitSpace(dimension.getElement(), Space.Location.DIMENSION, p);
-                p.append(']');
-            }
-            // if this is a method parameter, it is a keyword argument
-            String separator = getCursor().getParentTreeCursor().getParentTreeCursor().getValue() instanceof J.MethodDeclaration ?
-                    ":" : "=";
-            visitLeftPadded(separator, variable.getPadding().getInitializer(), JLeftPadded.Location.VARIABLE_INITIALIZER, p);
+            visitLeftPadded(
+                    getCursor().firstEnclosingOrThrow(J.VariableDeclarations.class)
+                            .getMarkers().findFirst(KeywordArgument.class).isPresent() ? ":" : "=",
+                    variable.getPadding().getInitializer(), JLeftPadded.Location.VARIABLE_INITIALIZER,
+                    p
+            );
             afterSyntax(variable, p);
             return variable;
         }

@@ -463,23 +463,26 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
      */
     private boolean isMultipleStatements(ListNode node) {
         int cursorBeforeWhitespace = cursor;
-        whitespace();
-        if (source.startsWith("[", cursor)) {
-            cursor = cursorBeforeWhitespace;
-            return false;
-        }
+        try {
+            whitespace();
+            if (source.startsWith("[", cursor)) {
+                return false;
+            }
 
-        if (node.size() <= 1) {
-            return true;
-        }
-        int line = node.children()[0].getLine();
-        Node[] children = node.children();
-        for (int i = 1; i < children.length; i++) {
-            if (children[i].getLine() != line) {
+            if (node.size() <= 1) {
                 return true;
             }
+            int line = node.children()[0].getLine();
+            Node[] children = node.children();
+            for (int i = 1; i < children.length; i++) {
+                if (children[i].getLine() != line) {
+                    return true;
+                }
+            }
+            return false;
+        } finally {
+            cursor = cursorBeforeWhitespace;
         }
-        return false;
     }
 
     @Override
@@ -1443,7 +1446,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         return new J.VariableDeclarations(
                 randomId(),
                 whitespace(),
-                Markers.EMPTY,
+                Markers.EMPTY.add(new KeywordArgument(randomId())),
                 emptyList(),
                 emptyList(),
                 null,
