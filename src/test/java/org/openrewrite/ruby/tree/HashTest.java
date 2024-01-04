@@ -41,6 +41,17 @@ public class HashTest implements RewriteTest {
     }
 
     @Test
+    void colonHashWithSymbolValue() {
+        rewriteRun(
+          ruby(
+            """
+              {a: :b}
+              """
+          )
+        );
+    }
+
+    @Test
     void hashIter() {
         rewriteRun(
           ruby(

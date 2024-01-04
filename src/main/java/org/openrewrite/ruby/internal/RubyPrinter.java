@@ -502,18 +502,9 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     @Override
     public J visitSymbol(Ruby.Symbol symbol, PrintOutputCapture<P> p) {
         beforeSyntax(symbol, RubySpace.Location.SYMBOL_PREFIX, p);
-
-        J parentValue = getCursor().getParentTreeCursor().getValue();
-        boolean inArr = parentValue instanceof Ruby.DelimitedArray;
-        boolean inHashKeyValue = parentValue instanceof Ruby.KeyValue &&
-                                 ((Ruby.KeyValue) parentValue).getSeparator() == Ruby.KeyValue.Separator.Colon;
-
-        if (!inHashKeyValue && !inArr && !symbol.getDelimiter().startsWith("%")) {
-            p.append(":");
-        }
         p.append(symbol.getDelimiter());
         visit(symbol.getName(), p);
-        p.append(DelimiterMatcher.end(symbol.getDelimiter()));
+        p.append(DelimiterMatcher.endSymbol(symbol.getDelimiter()));
         afterSyntax(symbol, p);
         return symbol;
     }

@@ -176,7 +176,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     delimiter,
                     JContainer.build(
                             sourceBefore(delimiter),
-                            singletonList(padRight((Expression) convert(node.getPreArgs()), sourceBefore(DelimiterMatcher.end(delimiter)))),
+                            singletonList(padRight(convert(node.getPreArgs()), sourceBefore(DelimiterMatcher.end(delimiter)))),
                             Markers.EMPTY
                     )
             );
@@ -2455,10 +2455,14 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         Space prefix = whitespace();
 
         String delimiter;
+        boolean explicitColon = false;
         if (source.startsWith("%", cursor)) { // %s or %i
             delimiter = source.substring(cursor, cursor + 3);
         } else {
-            skip(":");
+            if (source.startsWith(":", cursor)) {
+                explicitColon = true;
+                skip(":");
+            }
             if (nodes[0] instanceof SymbolNode) {
                 RubySymbol firstName = ((SymbolNode) nodes[0]).getName();
                 delimiter = source.startsWith(firstName.asJavaString(), cursor) ?
@@ -2503,7 +2507,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     randomId(),
                     prefix,
                     Markers.EMPTY,
-                    delimiter,
+                    (explicitColon ? ":" : "") + delimiter,
                     nameNodes.get(0).getElement(),
                     null
             );

@@ -22,6 +22,15 @@ public final class DelimiterMatcher {
     private DelimiterMatcher() {
     }
 
+    public static String endSymbol(String beginDelimiter) {
+        if (beginDelimiter.equals(":")) {
+            return "";
+        } else if (beginDelimiter.startsWith(":")) {
+            return end(beginDelimiter.substring(1));
+        }
+        return end(beginDelimiter);
+    }
+
     public static String end(String beginDelimiter) {
         if (beginDelimiter.startsWith("%")) {
             char t = beginDelimiter.charAt(1);
@@ -33,7 +42,7 @@ public final class DelimiterMatcher {
             return matchBeginDelimiter(beginDelimiter.charAt(1), beginDelimiter.substring(1));
         }
         if (beginDelimiter.equals("?")) {
-            return ""; // the character literal case
+            return ""; // the character literal case and the bare symbol case
         }
         if (beginDelimiter.length() == 1) {
             return matchBeginDelimiter(beginDelimiter.charAt(0), beginDelimiter);
