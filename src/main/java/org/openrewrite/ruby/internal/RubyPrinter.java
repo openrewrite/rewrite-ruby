@@ -703,6 +703,8 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
                         Ruby.Heredoc heredoc = requireNonNull(around.poll());
                         String valueSource = requireNonNull(heredoc.getValue().getValueSource());
                         p.append(valueSource.substring(valueSource.indexOf('\n') + 1));
+
+                        visitSpace(heredoc.getEnd(), Space.Location.LANGUAGE_EXTENSION, p);
                     }
 
                     p.append(printed); // print remainder after last heredoc

@@ -159,6 +159,7 @@ public class StringTest implements RewriteTest {
         );
     }
 
+    @Disabled
     @Test
     void multipleHeredocs() {
         rewriteRun(

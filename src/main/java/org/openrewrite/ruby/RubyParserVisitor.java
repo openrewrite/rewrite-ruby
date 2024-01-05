@@ -15,7 +15,6 @@
  */
 package org.openrewrite.ruby;
 
-import org.jetbrains.annotations.NotNull;
 import org.jruby.RubySymbol;
 import org.jruby.ast.*;
 import org.jruby.ast.types.INameNode;
@@ -37,6 +36,7 @@ import org.openrewrite.marker.Markers;
 import org.openrewrite.ruby.internal.DelimiterMatcher;
 import org.openrewrite.ruby.marker.*;
 import org.openrewrite.ruby.tree.Ruby;
+import org.openrewrite.ruby.tree.RubySpace;
 
 import java.nio.charset.Charset;
 import java.nio.file.Path;
@@ -45,7 +45,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
@@ -72,6 +71,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     private Cursor nodes = new Cursor(null, Cursor.ROOT_VALUE);
 
     private final Queue<Ruby.Heredoc> openHeredocs = new LinkedList<>();
+    private final Map<Ruby.Heredoc, String> heredocDelimiters = new HashMap<>();
 
     /**
      * Since we're already PAST the heredoc's instantiation by the time we can fully flesh out its
@@ -1377,8 +1377,11 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     private J.If ifModifier(IfNode node) {
-        Statement thenElem = convert(node.getThenBody());
-        JRightPadded<Statement> then = padRight(thenElem, sourceBefore("if"));
+        J thenElem = convert(node.getThenBody());
+        if (!(thenElem instanceof Statement)) {
+            thenElem = new Ruby.ExpressionStatement(randomId(), (Expression) thenElem);
+        }
+        JRightPadded<Statement> then = padRight((Statement) thenElem, sourceBefore("if"));
         Space ifConditionPrefix = whitespace();
         Expression ifConditionExpr = convert(node.getCondition());
         J.ControlParentheses<Expression> ifCondition = new J.ControlParentheses<>(
@@ -2301,13 +2304,11 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 null,
                 convertBlockStatements(node.getBodyNode(), n -> whitespace())
         );
-        if (!spacesSplitByHeredocBodies.isEmpty()) {
+        if (!finalizedHeredocs.isEmpty()) {
             return (Ruby.CompilationUnit) new RubyIsoVisitor<Integer>() {
                 @Override
                 public Ruby.Heredoc visitHeredoc(Ruby.Heredoc heredoc, Integer p) {
-                    return heredoc
-                            .withValue(heredocValues.get(heredoc))
-                            .withAroundValue(spacesSplitByHeredocBodies.get(heredoc));
+                    return finalizedHeredocs.get(heredoc);
                 }
             }.visitNonNull(cu, 0);
         }
@@ -2979,11 +2980,12 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         Set<Ruby.Heredoc> heredocsSplitByThis = new HashSet<>(openHeredocs.size());
         do {
             int next = indexOfNextNonWhitespace(cursor, source);
+            //noinspection StringConcatenationInLoop
             prefix += source.substring(cursor, next);
             cursor += prefix.length();
             if (!openHeredocs.isEmpty() && prefix.contains("\n")) {
-                for(int i = cursor; i > 0; i--) {
-                    if(source.charAt(i - 1) == '\n') {
+                for (int i = cursor; i > 0; i--) {
+                    if (source.charAt(i - 1) == '\n') {
                         prefix = source.substring(cursor - prefix.length(), i);
                         cursor = i;
                         break;
@@ -3007,25 +3009,37 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 } else {
                     value = source.substring(cursor, i);
                 }
-                heredocValues.put(heredoc,
-                        new J.Literal(
-                                randomId(),
-                                EMPTY,
-                                Markers.EMPTY,
-                                value,
-                                delim + source.substring(cursor - prefix.length(), i) + endDelim,
-                                null,
-                                JavaType.Primitive.String
+                finalizedHeredocs.put(heredoc,
+                        heredoc.withValue(
+                                new J.Literal(
+                                        randomId(),
+                                        EMPTY,
+                                        Markers.EMPTY,
+                                        value,
+                                        delim + source.substring(cursor - prefix.length(), i) + endDelim,
+                                        null,
+                                        JavaType.Primitive.String
+                                )
                         )
                 );
                 heredocsSplitByThis.add(heredoc);
                 cursor = i + endDelim.length();
+
+                for (i = cursor; i < source.length(); i++) {
+                    if (source.charAt(i) == '\n') {
+                        Space heredocEnd = RubySpace.format(source.substring(cursor, i + 1));
+                        finalizedHeredocs.put(heredoc,
+                                finalizedHeredocs.get(heredoc).withEnd(heredocEnd));
+                        cursor = i + 1;
+                        break;
+                    }
+                }
             }
         } while (!openHeredocs.isEmpty() && prefix.contains("\n"));
 
         Space space = Space.format(prefix);
         for (Ruby.Heredoc h : heredocsSplitByThis) {
-            spacesSplitByHeredocBodies.put(h, space);
+            finalizedHeredocs.put(h, finalizedHeredocs.get(h).withAroundValue(space));
         }
         return space;
     }

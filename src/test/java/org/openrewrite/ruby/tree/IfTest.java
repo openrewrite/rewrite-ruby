@@ -35,6 +35,17 @@ public class IfTest implements RewriteTest {
     }
 
     @Test
+    void ifModifierImplicitStatement() {
+        rewriteRun(
+          ruby(
+            """
+              latest_version_for_git_dependency if git_dependency?
+              """
+          )
+        );
+    }
+
+    @Test
     void singleIf() {
         rewriteRun(
           ruby(
