@@ -15,6 +15,7 @@
  */
 package integ;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.openrewrite.ruby.RubyParser;
@@ -49,5 +50,22 @@ public class RubyIntegTest implements RewriteTest {
         return Files.walk(REPOSITORY)
           .filter(parser::accept)
           .map(p -> REPOSITORY.relativize(p));
+    }
+
+    @Test
+    void blockRecursion() {
+        rewriteRun(
+          ruby(
+            """
+              [*terraform_files, *terragrunt_files].each do |file|
+                next unless file_changed?(file)
+                updated_content = updated_terraform_file_content(file)
+                raise "Content didn't change!" if updated_content == file.content
+                updated_file = updated_file(file: file, content: updated_content)
+                updated_files << updated_file unless updated_files.include?(updated_file)
+              end
+              """
+          )
+        );
     }
 }

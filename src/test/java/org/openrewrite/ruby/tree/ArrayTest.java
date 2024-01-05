@@ -43,4 +43,16 @@ public class ArrayTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void argsCatWithExplicitBrackets() {
+        rewriteRun(
+          ruby(
+            """
+              [*terraform_files, *terragrunt_files].each do |file|
+              end
+              """
+          )
+        );
+    }
 }

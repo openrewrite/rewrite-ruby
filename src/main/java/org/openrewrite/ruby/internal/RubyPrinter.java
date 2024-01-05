@@ -33,6 +33,7 @@ import org.openrewrite.ruby.tree.*;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.UnaryOperator;
@@ -955,9 +956,10 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         public J visitIf(J.If iff, PrintOutputCapture<P> p) {
             beforeSyntax(iff, Space.Location.IF_PREFIX, p);
 
-            if (iff.getMarkers().findFirst(IfModifier.class).isPresent()) {
+            Optional<IfModifier> ifModifier = iff.getMarkers().findFirst(IfModifier.class);
+            if (ifModifier.isPresent()) {
                 visitStatement(iff.getPadding().getThenPart(), JRightPadded.Location.IF_THEN, p);
-                p.append("if");
+                p.append(ifModifier.get().isUnless() ? "unless" : "if");
                 visit(iff.getIfCondition(), p);
                 return iff;
             } else {

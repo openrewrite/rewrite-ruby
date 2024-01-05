@@ -108,6 +108,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     @Override
     public J visitArgsCatNode(ArgsCatNode node) {
         Space prefix = whitespace();
+        boolean omitBrackets = !skip("[");
         List<JRightPadded<Expression>> elements;
         if (node.getFirstNode() instanceof ListNode) {
             elements = convertAll(Arrays.asList(((ListNode) node.getFirstNode()).children()), n -> sourceBefore(","),
@@ -120,7 +121,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 sourceBefore("*"),
                 Markers.EMPTY,
                 convert(node.getSecondNode())
-        ), EMPTY));
+        ), omitBrackets ? EMPTY : sourceBefore("]")));
 
         return new Ruby.Array(
                 randomId(),
@@ -129,7 +130,9 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 JContainer.build(
                         EMPTY,
                         elements,
-                        Markers.EMPTY.add(new OmitParentheses(randomId()))
+                        omitBrackets ?
+                                Markers.EMPTY.add(new OmitParentheses(randomId())) :
+                                Markers.EMPTY
                 ),
                 null
         );
@@ -170,7 +173,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitArrayNode(ArrayNode node) {
-        if(node.size() == 1 && node.get(0) instanceof ListNode) {
+        if (node.size() == 1 && node.get(0) instanceof ListNode) {
             return convert(node.get(0));
         }
         return visitListNode(node);
@@ -1380,11 +1383,14 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     private J.If ifModifier(IfNode node) {
-        J thenElem = convert(node.getThenBody());
+        J thenElem = convert(node.getThenBody() == null ? node.getElseBody() : node.getThenBody());
+        Markers markers = Markers.EMPTY.add(new IfModifier(randomId(), node.getThenBody() == null));
         if (!(thenElem instanceof Statement)) {
             thenElem = new Ruby.ExpressionStatement(randomId(), (Expression) thenElem);
         }
-        JRightPadded<Statement> then = padRight((Statement) thenElem, sourceBefore("if"));
+        JRightPadded<Statement> then = padRight((Statement) thenElem, whitespace());
+        skip(node.getThenBody() == null ? "unless" : "if");
+
         Space ifConditionPrefix = whitespace();
         Expression ifConditionExpr = convert(node.getCondition());
         J.ControlParentheses<Expression> ifCondition = new J.ControlParentheses<>(
@@ -1396,7 +1402,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         return new J.If(
                 randomId(),
                 EMPTY,
-                Markers.EMPTY.add(new IfModifier(randomId())),
+                markers,
                 ifCondition,
                 then,
                 null
@@ -3047,14 +3053,16 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         return space;
     }
 
-    private void skip(@Nullable String token) {
+    private boolean skip(@Nullable String token) {
         if (token == null) {
             //noinspection ConstantConditions
-            return;
+            return false;
         }
         if (source.startsWith(token, cursor)) {
             cursor += token.length();
+            return true;
         }
+        return false;
     }
 
     private static int indexOfNextNonWhitespace(int cursor, String source) {

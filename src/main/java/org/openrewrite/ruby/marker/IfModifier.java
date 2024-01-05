@@ -29,4 +29,9 @@ import java.util.UUID;
 @With
 public class IfModifier implements Marker {
     UUID id;
+
+    /**
+     * The "unless" keyword inverts the condition.
+     */
+    boolean unless;
 }

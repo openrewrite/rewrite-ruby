@@ -23,6 +23,17 @@ import static org.openrewrite.ruby.Assertions.ruby;
 public class IfTest implements RewriteTest {
 
     @Test
+    void nextUnless() {
+        rewriteRun(
+          ruby(
+            """
+              next unless true
+              """
+          )
+        );
+    }
+
+    @Test
     void ifModifier() {
         rewriteRun(
           ruby(
