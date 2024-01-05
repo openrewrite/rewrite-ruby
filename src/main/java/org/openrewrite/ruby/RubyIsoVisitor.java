@@ -58,8 +58,8 @@ public class RubyIsoVisitor<P> extends RubyVisitor<P> {
     }
 
     @Override
-    public Ruby.KeyValue visitKeyValue(Ruby.KeyValue keyValue, P p) {
-        return (Ruby.KeyValue) super.visitKeyValue(keyValue, p);
+    public Ruby.Hash.KeyValue visitKeyValue(Ruby.Hash.KeyValue keyValue, P p) {
+        return (Ruby.Hash.KeyValue) super.visitKeyValue(keyValue, p);
     }
 
     @Override

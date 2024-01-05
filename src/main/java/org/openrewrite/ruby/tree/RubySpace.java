@@ -80,7 +80,6 @@ public class RubySpace {
         SUB_ARRAY_LENGTH_PREFIX,
         SUB_ARRAY_PREFIX,
         SYMBOL_PREFIX,
-        TYPE_REFERENCE_PREFIX,
         YIELD_DATA,
         YIELD_DATA_SUFFIX,
     }

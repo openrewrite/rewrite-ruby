@@ -925,14 +925,14 @@ public interface Ruby extends J {
         @With
         Markers markers;
 
-        JContainer<Expression> elements;
+        JContainer<Expression> pairs;
 
-        public List<Expression> getElements() {
-            return elements.getElements();
+        public List<Expression> getPairs() {
+            return pairs.getElements();
         }
 
-        public Hash withElements(List<Expression> elements) {
-            return getPadding().withElements(JContainer.withElements(this.elements, elements));
+        public Hash withPairs(List<Expression> pairs) {
+            return getPadding().withPairs(JContainer.withElements(this.pairs, pairs));
         }
 
         @Getter
@@ -970,12 +970,102 @@ public interface Ruby extends J {
         public static class Padding {
             private final Hash t;
 
-            public JContainer<Expression> getElements() {
-                return t.elements;
+            public JContainer<Expression> getPairs() {
+                return t.pairs;
             }
 
-            public Hash withElements(JContainer<Expression> elements) {
-                return t.elements == elements ? t : new Hash(t.id, t.prefix, t.markers, elements, t.type);
+            public Hash withPairs(JContainer<Expression> pairs) {
+                return t.pairs == pairs ? t : new Hash(t.id, t.prefix, t.markers, pairs, t.type);
+            }
+        }
+
+        @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
+        @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+        @RequiredArgsConstructor
+        @AllArgsConstructor(access = AccessLevel.PRIVATE)
+        public static final class KeyValue implements Ruby, Expression, TypedTree {
+            @Nullable
+            @NonFinal
+            transient WeakReference<Padding> padding;
+
+            @Getter
+            @With
+            @EqualsAndHashCode.Include
+            UUID id;
+
+            @Getter
+            @With
+            Space prefix;
+
+            @Getter
+            @With
+            Markers markers;
+
+            @Getter
+            @With
+            Expression key;
+
+            JLeftPadded<Separator> separator;
+
+            public Separator getSeparator() {
+                return separator.getElement();
+            }
+
+            public KeyValue withSeparator(Separator separator) {
+                return getPadding().withSeparator(JLeftPadded.withElement(this.separator, separator));
+            }
+
+            @Getter
+            @With
+            Expression value;
+
+            @Getter
+            @With
+            @Nullable
+            JavaType type;
+
+            @Override
+            public <P> J acceptRuby(RubyVisitor<P> v, P p) {
+                return v.visitKeyValue(this, p);
+            }
+
+            @Transient
+            @Override
+            public CoordinateBuilder.Expression getCoordinates() {
+                return new CoordinateBuilder.Expression(this);
+            }
+
+            public Padding getPadding() {
+                Padding p;
+                if (this.padding == null) {
+                    p = new Padding(this);
+                    this.padding = new WeakReference<>(p);
+                } else {
+                    p = this.padding.get();
+                    if (p == null || p.t != this) {
+                        p = new Padding(this);
+                        this.padding = new WeakReference<>(p);
+                    }
+                }
+                return p;
+            }
+
+            @RequiredArgsConstructor
+            public static class Padding {
+                private final KeyValue t;
+
+                public JLeftPadded<Separator> getSeparator() {
+                    return t.separator;
+                }
+
+                public KeyValue withSeparator(JLeftPadded<Separator> separator) {
+                    return t.separator == separator ? t : new KeyValue(t.id, t.prefix, t.markers, t.key, separator, t.value, t.type);
+                }
+            }
+
+            public enum Separator {
+                Rocket,
+                Colon
             }
         }
     }
@@ -1022,96 +1112,6 @@ public interface Ruby extends J {
         @Override
         public CoordinateBuilder.Expression getCoordinates() {
             return new CoordinateBuilder.Expression(this);
-        }
-    }
-
-    @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
-    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
-    @RequiredArgsConstructor
-    @AllArgsConstructor(access = AccessLevel.PRIVATE)
-    final class KeyValue implements Ruby, Expression, TypedTree {
-        @Nullable
-        @NonFinal
-        transient WeakReference<Padding> padding;
-
-        @Getter
-        @With
-        @EqualsAndHashCode.Include
-        UUID id;
-
-        @Getter
-        @With
-        Space prefix;
-
-        @Getter
-        @With
-        Markers markers;
-
-        @Getter
-        @With
-        Expression key;
-
-        JLeftPadded<Separator> separator;
-
-        public Separator getSeparator() {
-            return separator.getElement();
-        }
-
-        public KeyValue withSeparator(Separator separator) {
-            return getPadding().withSeparator(JLeftPadded.withElement(this.separator, separator));
-        }
-
-        @Getter
-        @With
-        Expression value;
-
-        @Getter
-        @With
-        @Nullable
-        JavaType type;
-
-        @Override
-        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
-            return v.visitKeyValue(this, p);
-        }
-
-        @Transient
-        @Override
-        public CoordinateBuilder.Expression getCoordinates() {
-            return new CoordinateBuilder.Expression(this);
-        }
-
-        public Padding getPadding() {
-            Padding p;
-            if (this.padding == null) {
-                p = new Padding(this);
-                this.padding = new WeakReference<>(p);
-            } else {
-                p = this.padding.get();
-                if (p == null || p.t != this) {
-                    p = new Padding(this);
-                    this.padding = new WeakReference<>(p);
-                }
-            }
-            return p;
-        }
-
-        @RequiredArgsConstructor
-        public static class Padding {
-            private final KeyValue t;
-
-            public JLeftPadded<Separator> getSeparator() {
-                return t.separator;
-            }
-
-            public KeyValue withSeparator(JLeftPadded<Separator> separator) {
-                return t.separator == separator ? t : new KeyValue(t.id, t.prefix, t.markers, t.key, separator, t.value, t.type);
-            }
-        }
-
-        public enum Separator {
-            Rocket,
-            Colon
         }
     }
 
@@ -1237,6 +1237,92 @@ public interface Ruby extends J {
     @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
     @RequiredArgsConstructor
     @AllArgsConstructor(access = AccessLevel.PRIVATE)
+    final class NumericDomain implements Ruby, Expression, TypedTree {
+        @Nullable
+        @NonFinal
+        transient WeakReference<Padding> padding;
+
+        @Getter
+        @With
+        @EqualsAndHashCode.Include
+        UUID id;
+
+        @Getter
+        @With
+        Space prefix;
+
+        @Getter
+        @With
+        Markers markers;
+
+        JRightPadded<Expression> value;
+
+        public Expression getValue() {
+            return value.getElement();
+        }
+
+        public NumericDomain withValue(Expression value) {
+            return getPadding().withValue(JRightPadded.withElement(this.value, value));
+        }
+
+        @Getter
+        @With
+        Domain domain;
+
+        public enum Domain {
+            Rational,
+            Complex
+        }
+
+        @Getter
+        @With
+        @Nullable
+        JavaType type;
+
+        @Override
+        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
+            return v.visitNumericDomain(this, p);
+        }
+
+        @Transient
+        @Override
+        public CoordinateBuilder.Expression getCoordinates() {
+            return new CoordinateBuilder.Expression(this);
+        }
+
+        public Padding getPadding() {
+            Padding p;
+            if (this.padding == null) {
+                p = new Padding(this);
+                this.padding = new WeakReference<>(p);
+            } else {
+                p = this.padding.get();
+                if (p == null || p.t != this) {
+                    p = new Padding(this);
+                    this.padding = new WeakReference<>(p);
+                }
+            }
+            return p;
+        }
+
+        @RequiredArgsConstructor
+        public static class Padding {
+            private final NumericDomain t;
+
+            public JRightPadded<Expression> getValue() {
+                return t.value;
+            }
+
+            public NumericDomain withValue(JRightPadded<Expression> value) {
+                return t.value == value ? t : new NumericDomain(t.id, t.prefix, t.markers, value, t.domain, t.type);
+            }
+        }
+    }
+
+    @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
+    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+    @RequiredArgsConstructor
+    @AllArgsConstructor(access = AccessLevel.PRIVATE)
     final class OpenEigenclass implements Ruby, Statement, TypedTree {
         @Nullable
         @NonFinal
@@ -1316,92 +1402,6 @@ public interface Ruby extends J {
 
             public OpenEigenclass withEigenclass(JLeftPadded<Expression> eigenclass) {
                 return t.eigenclass == eigenclass ? t : new OpenEigenclass(t.id, t.prefix, t.markers, eigenclass, t.body);
-            }
-        }
-    }
-
-    @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
-    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
-    @RequiredArgsConstructor
-    @AllArgsConstructor(access = AccessLevel.PRIVATE)
-    final class NumericDomain implements Ruby, Expression, TypedTree {
-        @Nullable
-        @NonFinal
-        transient WeakReference<Padding> padding;
-
-        @Getter
-        @With
-        @EqualsAndHashCode.Include
-        UUID id;
-
-        @Getter
-        @With
-        Space prefix;
-
-        @Getter
-        @With
-        Markers markers;
-
-        JRightPadded<Expression> value;
-
-        public Expression getValue() {
-            return value.getElement();
-        }
-
-        public NumericDomain withValue(Expression value) {
-            return getPadding().withValue(JRightPadded.withElement(this.value, value));
-        }
-
-        @Getter
-        @With
-        Domain domain;
-
-        public enum Domain {
-            Rational,
-            Complex
-        }
-
-        @Getter
-        @With
-        @Nullable
-        JavaType type;
-
-        @Override
-        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
-            return v.visitNumericDomain(this, p);
-        }
-
-        @Transient
-        @Override
-        public CoordinateBuilder.Expression getCoordinates() {
-            return new CoordinateBuilder.Expression(this);
-        }
-
-        public Padding getPadding() {
-            Padding p;
-            if (this.padding == null) {
-                p = new Padding(this);
-                this.padding = new WeakReference<>(p);
-            } else {
-                p = this.padding.get();
-                if (p == null || p.t != this) {
-                    p = new Padding(this);
-                    this.padding = new WeakReference<>(p);
-                }
-            }
-            return p;
-        }
-
-        @RequiredArgsConstructor
-        public static class Padding {
-            private final NumericDomain t;
-
-            public JRightPadded<Expression> getValue() {
-                return t.value;
-            }
-
-            public NumericDomain withValue(JRightPadded<Expression> value) {
-                return t.value == value ? t : new NumericDomain(t.id, t.prefix, t.markers, value, t.domain, t.type);
             }
         }
     }
@@ -1896,12 +1896,12 @@ public interface Ruby extends J {
     }
 
     /**
-     * A Ruby class may extend from a `Struct.new(..)` expression.
+     * For example, a Ruby class may extend from a `Struct.new(..)` expression.
      */
     @Value
     @With
     @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
-    class ExpressionTypeTree implements Ruby, TypeTree {
+    class ExpressionTypeTree implements Ruby, Expression, TypeTree {
         @EqualsAndHashCode.Include
         UUID id;
 
@@ -1910,46 +1910,15 @@ public interface Ruby extends J {
 
         /**
          * Most commonly will be a call of some sort, frequently a {@link J.NewClass}, for example
-         * in the case of <code>class Point < Struct.new(:x, :y)</code>.
+         * in the case of <code>class Point < Struct.new(:x, :y)</code>. Must be an {@link Expression}
+         * or a {@link TypedTree}.
          */
-        Expression newType;
+        J reference;
 
         @Override
         public <P> J acceptRuby(RubyVisitor<P> v, P p) {
             return v.visitExpressionTypeTree(this, p);
         }
-
-        @Override
-        public @Nullable JavaType getType() {
-            return newType.getType();
-        }
-
-        @SuppressWarnings("unchecked")
-        @Override
-        public ExpressionTypeTree withType(@Nullable JavaType type) {
-            return withNewType(newType.withType(type));
-        }
-    }
-
-    /**
-     * Type references can take forms that aren't {@link TypeTree} in
-     * the base {@link J} LST. For example:
-     * {@code Gem::Specification.new ..}
-     */
-    @Value
-    @With
-    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
-    class TypeReference implements Ruby, Expression, TypeTree {
-        @EqualsAndHashCode.Include
-        UUID id;
-
-        Space prefix;
-        Markers markers;
-
-        /**
-         * Must be an {@link Expression} or a {@link TypedTree}.
-         */
-        J reference;
 
         @Override
         public @Nullable JavaType getType() {
@@ -1963,18 +1932,13 @@ public interface Ruby extends J {
 
         @SuppressWarnings("unchecked")
         @Override
-        public TypeReference withType(@Nullable JavaType type) {
+        public ExpressionTypeTree withType(@Nullable JavaType type) {
             if (reference instanceof Expression) {
                 return withReference(((Expression) reference).withType(type));
             } else if (reference instanceof TypedTree) {
                 return withReference(((TypedTree) reference).withType(type));
             }
             return this;
-        }
-
-        @Override
-        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
-            return v.visitTypeReference(this, p);
         }
 
         @Override

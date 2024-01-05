@@ -186,6 +186,9 @@ public class ClassDeclarationTest implements RewriteTest {
         );
     }
 
+    /**
+     * Also called "opening the eigenclass".
+     */
     @Test
     void singletonClass() {
         rewriteRun(

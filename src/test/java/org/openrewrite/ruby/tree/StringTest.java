@@ -180,7 +180,7 @@ public class StringTest implements RewriteTest {
         rewriteRun(
           ruby(
             """
-              `hello`
+              `mkdir -p src/main/java`
               """
           )
         );
@@ -252,6 +252,11 @@ public class StringTest implements RewriteTest {
               DIGITS = 'AB' \\
                        'ab' \\
                        '01'
+              """
+          ),
+          ruby(
+            """
+              DIGITS = 'AB' 'ab' '01'
               """
           )
         );

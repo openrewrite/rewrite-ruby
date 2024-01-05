@@ -295,7 +295,7 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     @Override
     public J visitExpressionTypeTree(Ruby.ExpressionTypeTree expressionTypeTree, PrintOutputCapture<P> p) {
         beforeSyntax(expressionTypeTree, RubySpace.Location.EXPRESSION_TYPE_TREE_PREFIX, p);
-        visit(expressionTypeTree.getNewType(), p);
+        visit(expressionTypeTree.getReference(), p);
         afterSyntax(expressionTypeTree, p);
         return expressionTypeTree;
     }
@@ -304,9 +304,9 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     public J visitHash(Ruby.Hash hash, PrintOutputCapture<P> p) {
         beforeSyntax(hash, RubySpace.Location.HASH_PREFIX, p);
         if (hash.getMarkers().findFirst(OmitParentheses.class).isPresent()) {
-            visitContainer("", hash.getPadding().getElements(), RubyContainer.Location.HASH_ELEMENTS, ",", "", p);
+            visitContainer("", hash.getPadding().getPairs(), RubyContainer.Location.HASH_ELEMENTS, ",", "", p);
         } else {
-            visitContainer("{", hash.getPadding().getElements(), RubyContainer.Location.HASH_ELEMENTS, ",", "}", p);
+            visitContainer("{", hash.getPadding().getPairs(), RubyContainer.Location.HASH_ELEMENTS, ",", "}", p);
         }
         afterSyntax(hash, p);
         return hash;
@@ -323,13 +323,13 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     }
 
     @Override
-    public J visitKeyValue(Ruby.KeyValue keyValue, PrintOutputCapture<P> p) {
+    public J visitKeyValue(Ruby.Hash.KeyValue keyValue, PrintOutputCapture<P> p) {
         beforeSyntax(keyValue, RubySpace.Location.KEY_VALUE_PREFIX, p);
         visit(keyValue.getKey(), p);
 
-        JLeftPadded<Ruby.KeyValue.Separator> separator = keyValue.getPadding().getSeparator();
+        JLeftPadded<Ruby.Hash.KeyValue.Separator> separator = keyValue.getPadding().getSeparator();
         beforeSyntax(separator.getBefore(), separator.getMarkers(), RubyLeftPadded.Location.KEY_VALUE_SEPARATOR_PREFIX.getBeforeLocation(), p);
-        p.append(keyValue.getSeparator() == Ruby.KeyValue.Separator.Rocket ? "=>" : ":");
+        p.append(keyValue.getSeparator() == Ruby.Hash.KeyValue.Separator.Rocket ? "=>" : ":");
         afterSyntax(separator.getMarkers(), p);
 
         visit(keyValue.getValue(), p);
@@ -523,14 +523,6 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         p.append(DelimiterMatcher.endSymbol(symbol.getDelimiter()));
         afterSyntax(symbol, p);
         return symbol;
-    }
-
-    @Override
-    public J visitTypeReference(Ruby.TypeReference typeReference, PrintOutputCapture<P> p) {
-        beforeSyntax(typeReference, RubySpace.Location.TYPE_REFERENCE_PREFIX, p);
-        visit(typeReference.getReference(), p);
-        afterSyntax(typeReference, p);
-        return typeReference;
     }
 
     @Override

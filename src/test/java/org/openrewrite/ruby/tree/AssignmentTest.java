@@ -141,6 +141,17 @@ public class AssignmentTest implements RewriteTest {
     }
 
     @Test
+    void emptyArrayToAttribute() {
+        rewriteRun(
+          ruby(
+            """
+              spec.files = []
+              """
+          )
+        );
+    }
+
+    @Test
     void global() {
         rewriteRun(
           ruby(

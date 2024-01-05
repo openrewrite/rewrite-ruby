@@ -252,7 +252,7 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         Ruby.ExpressionTypeTree s = expressionTypeTree;
         s = s.withPrefix(visitSpace(s.getPrefix(), RubySpace.Location.EXPRESSION_TYPE_TREE_PREFIX, p));
         s = s.withMarkers(visitMarkers(s.getMarkers(), p));
-        s = s.withNewType((J.NewClass) visit(s.getNewType(), p));
+        s = s.withReference(visit(s.getReference(), p));
         return s;
     }
 
@@ -266,7 +266,7 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         } else {
             h = (Ruby.Hash) temp;
         }
-        h = h.getPadding().withElements(visitContainer(h.getPadding().getElements(),
+        h = h.getPadding().withPairs(visitContainer(h.getPadding().getPairs(),
                 RubyContainer.Location.HASH_ELEMENTS, p));
         h = h.withType(visitType(h.getType(), p));
         return h;
@@ -287,15 +287,15 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         return h;
     }
 
-    public J visitKeyValue(Ruby.KeyValue keyValue, P p) {
-        Ruby.KeyValue k = keyValue;
+    public J visitKeyValue(Ruby.Hash.KeyValue keyValue, P p) {
+        Ruby.Hash.KeyValue k = keyValue;
         k = k.withPrefix(visitSpace(k.getPrefix(), RubySpace.Location.KEY_VALUE_PREFIX, p));
         k = k.withMarkers(visitMarkers(k.getMarkers(), p));
         Expression temp = (Expression) visitExpression(k, p);
-        if (!(temp instanceof Ruby.KeyValue)) {
+        if (!(temp instanceof Ruby.Hash.KeyValue)) {
             return temp;
         } else {
-            k = (Ruby.KeyValue) temp;
+            k = (Ruby.Hash.KeyValue) temp;
         }
         k = k.withKey((Expression) visit(k.getKey(), p));
         k = k.getPadding().withSeparator(visitLeftPadded(k.getPadding().getSeparator(),
@@ -484,21 +484,6 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         s = s.withName((Expression) visit(s.getName(), p));
         s = s.withType(visitType(s.getType(), p));
         return s;
-    }
-
-    public J visitTypeReference(Ruby.TypeReference typeReference, P p) {
-        Ruby.TypeReference t = typeReference;
-        t = t.withPrefix(visitSpace(t.getPrefix(), RubySpace.Location.TYPE_REFERENCE_PREFIX, p));
-        t = t.withMarkers(visitMarkers(t.getMarkers(), p));
-        Expression temp = (Expression) visitExpression(t, p);
-        if (!(temp instanceof Ruby.TypeReference)) {
-            return temp;
-        } else {
-            t = (Ruby.TypeReference) temp;
-        }
-        t = t.withReference(visit(t.getReference(), p));
-        t = t.withType(visitType(t.getType(), p));
-        return t;
     }
 
     public J visitUnary(Ruby.Unary binary, P p) {

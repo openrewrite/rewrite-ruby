@@ -365,7 +365,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         Space beforeDot = sourceBefore(".");
         J.Identifier name = convertIdentifier(node.getName());
         if (!(receiver instanceof TypeTree)) {
-            receiver = new Ruby.TypeReference(
+            receiver = new Ruby.ExpressionTypeTree(
                     randomId(),
                     receiver.getPrefix(),
                     Markers.EMPTY,
@@ -1289,12 +1289,12 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             Space kvPrefix = whitespace();
             Expression key = convert(kv.getKey());
             Space separatorPrefix = whitespace();
-            Ruby.KeyValue.Separator separator;
+            Ruby.Hash.KeyValue.Separator separator;
             if (source.startsWith("=>", cursor)) {
-                separator = Ruby.KeyValue.Separator.Rocket;
+                separator = Ruby.Hash.KeyValue.Separator.Rocket;
                 skip("=>");
             } else {
-                separator = Ruby.KeyValue.Separator.Colon;
+                separator = Ruby.Hash.KeyValue.Separator.Colon;
                 skip(":");
             }
 
@@ -1311,7 +1311,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 value = convert(kv.getValue()).withPrefix(valuePrefix);
             }
 
-            pairs.add(padRight(new Ruby.KeyValue(
+            pairs.add(padRight(new Ruby.Hash.KeyValue(
                     randomId(),
                     kvPrefix,
                     Markers.EMPTY,
