@@ -152,7 +152,24 @@ public class StringTest implements RewriteTest {
                   This is a string literal.
                   It has two lines and abruptly ends...
               HERE
+              
+              n = 1
               """.formatted(startDelim)
+          )
+        );
+    }
+
+    @Test
+    void multipleHeredocs() {
+        rewriteRun(
+          ruby(
+            """
+              greeting = <<-HERE + <<-THERE + "World"
+              Hello
+              HERE
+              There
+              THERE
+              """
           )
         );
     }

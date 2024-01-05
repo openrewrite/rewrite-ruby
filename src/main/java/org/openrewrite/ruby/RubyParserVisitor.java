@@ -15,6 +15,7 @@
  */
 package org.openrewrite.ruby;
 
+import org.jetbrains.annotations.NotNull;
 import org.jruby.RubySymbol;
 import org.jruby.ast.*;
 import org.jruby.ast.types.INameNode;
@@ -26,6 +27,7 @@ import org.openrewrite.Cursor;
 import org.openrewrite.FileAttributes;
 import org.openrewrite.internal.EncodingDetectingInputStream;
 import org.openrewrite.internal.ListUtils;
+import org.openrewrite.internal.StringUtils;
 import org.openrewrite.internal.lang.Nullable;
 import org.openrewrite.java.marker.ImplicitReturn;
 import org.openrewrite.java.marker.OmitParentheses;
@@ -35,7 +37,6 @@ import org.openrewrite.marker.Markers;
 import org.openrewrite.ruby.internal.DelimiterMatcher;
 import org.openrewrite.ruby.marker.*;
 import org.openrewrite.ruby.tree.Ruby;
-import org.openrewrite.ruby.tree.RubySpace;
 
 import java.nio.charset.Charset;
 import java.nio.file.Path;
@@ -44,6 +45,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
@@ -69,9 +71,14 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     private int cursor = 0;
     private Cursor nodes = new Cursor(null, Cursor.ROOT_VALUE);
 
-    private final Stack<Ruby.Heredoc> openHeredocs = new Stack<>();
-    private final Map<Ruby.Heredoc, Space> spacesSplitByHeredocBodies = new HashMap<>();
-    private final Map<Ruby.Heredoc, J.Literal> heredocValues = new HashMap<>();
+    private final Queue<Ruby.Heredoc> openHeredocs = new LinkedList<>();
+
+    /**
+     * Since we're already PAST the heredoc's instantiation by the time we can fully flesh out its
+     * contents, we keep them here in a map and do a last pass in {@link #visitRootNode(RootNode)}
+     * to replace each heredoc with its finalized contents.
+     */
+    private final Map<Ruby.Heredoc, Ruby.Heredoc> finalizedHeredocs = new HashMap<>();
 
     public RubyParserVisitor(Path sourcePath, @Nullable FileAttributes fileAttributes, EncodingDetectingInputStream source) {
         this.sourcePath = sourcePath;
@@ -997,6 +1004,12 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitDStrNode(DStrNode node) {
+        // <<~ heredocs are handled here
+        return convertMaybeHeredoc(node);
+    }
+
+    private J convertMaybeHeredoc(Node node) {
+        int cursorBeforeWhitespace = cursor;
         Space prefix = whitespace();
         if (source.startsWith("<<", cursor)) {
             Ruby.Heredoc heredoc = new Ruby.Heredoc(
@@ -1004,12 +1017,28 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     prefix,
                     Markers.EMPTY,
                     null,
-                    null
+                    null,
+                    EMPTY
             );
-            openHeredocs.push(heredoc);
+            openHeredocs.add(heredoc);
+
+            // alphabets, decimal digits, and the underscore character
+            int i;
+            for (i = cursor + 3; i < source.length(); i++) {
+                char c = source.charAt(i);
+                if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') ||
+                      (c >= 'A' && c <= 'Z') || (c == '_'))) {
+                    break;
+                }
+            }
+
+            heredocDelimiters.put(heredoc, source.substring(cursor, i));
+            cursor = i;
             return heredoc;
         }
-        return convertStrings(node).withPrefix(prefix);
+
+        cursor = cursorBeforeWhitespace;
+        return convertStrings(node);
     }
 
     @Override
@@ -2325,7 +2354,8 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitStrNode(StrNode node) {
-        return convertStrings(node);
+        // <<- heredocs are handled here
+        return convertMaybeHeredoc(node);
     }
 
     /**
@@ -2945,15 +2975,60 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     private Space whitespace() {
-        int next = indexOfNextNonWhitespace(cursor, source);
-        String prefix = source.substring(cursor, next);
-        cursor += prefix.length();
-        return RubySpace.format(prefix);
-    }
+        String prefix = "";
+        Set<Ruby.Heredoc> heredocsSplitByThis = new HashSet<>(openHeredocs.size());
+        do {
+            int next = indexOfNextNonWhitespace(cursor, source);
+            prefix += source.substring(cursor, next);
+            cursor += prefix.length();
+            if (!openHeredocs.isEmpty() && prefix.contains("\n")) {
+                for(int i = cursor; i > 0; i--) {
+                    if(source.charAt(i - 1) == '\n') {
+                        prefix = source.substring(cursor - prefix.length(), i);
+                        cursor = i;
+                        break;
+                    }
+                }
 
-//    private Space heredocAwareFormat(String prefix) {
-//        return null;
-//    }
+                Ruby.Heredoc heredoc = openHeredocs.poll();
+                String delim = heredocDelimiters.remove(heredoc);
+                String endDelim = delim.substring(3);
+                int i = cursor;
+                for (; i < source.length(); i++) {
+                    char last = source.charAt(i - 1);
+                    if (last == '\n' && source.startsWith(endDelim, i)) {
+                        break;
+                    }
+                }
+                String value;
+                if (delim.charAt(2) == '~') {
+                    value = source.substring(cursor - prefix.length(), i);
+                    value = StringUtils.trimIndentPreserveCRLF(value);
+                } else {
+                    value = source.substring(cursor, i);
+                }
+                heredocValues.put(heredoc,
+                        new J.Literal(
+                                randomId(),
+                                EMPTY,
+                                Markers.EMPTY,
+                                value,
+                                delim + source.substring(cursor - prefix.length(), i) + endDelim,
+                                null,
+                                JavaType.Primitive.String
+                        )
+                );
+                heredocsSplitByThis.add(heredoc);
+                cursor = i + endDelim.length();
+            }
+        } while (!openHeredocs.isEmpty() && prefix.contains("\n"));
+
+        Space space = Space.format(prefix);
+        for (Ruby.Heredoc h : heredocsSplitByThis) {
+            spacesSplitByHeredocBodies.put(h, space);
+        }
+        return space;
+    }
 
     private void skip(@Nullable String token) {
         if (token == null) {

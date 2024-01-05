@@ -496,7 +496,7 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         } else {
             t = (Ruby.TypeReference) temp;
         }
-        t = t.withReference((TypedTree) visit(t.getReference(), p));
+        t = t.withReference(visit(t.getReference(), p));
         t = t.withType(visitType(t.getType(), p));
         return t;
     }

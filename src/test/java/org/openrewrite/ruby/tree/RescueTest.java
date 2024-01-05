@@ -149,7 +149,6 @@ public class RescueTest implements RewriteTest {
         );
     }
 
-    // FIXME see 5.6.6 since this is also possible on class and module defs as well
     @Test
     void rescueOnMethodDef() {
         rewriteRun(

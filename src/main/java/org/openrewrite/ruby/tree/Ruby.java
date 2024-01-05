@@ -983,7 +983,7 @@ public interface Ruby extends J {
     @Value
     @With
     @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
-    class Heredoc implements Ruby, Expression {
+    class Heredoc implements Ruby, Expression, TypedTree {
         @EqualsAndHashCode.Include
         UUID id;
 
@@ -997,6 +997,11 @@ public interface Ruby extends J {
          * and the remainder of the space will continue from there.
          */
         Space aroundValue;
+
+        /**
+         * The space after the end delimiter up to the next newline in the source code.
+         */
+        Space end;
 
         @Override
         public @Nullable JavaType getType() {

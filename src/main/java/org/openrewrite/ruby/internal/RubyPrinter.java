@@ -31,7 +31,9 @@ import org.openrewrite.ruby.RubyVisitor;
 import org.openrewrite.ruby.marker.*;
 import org.openrewrite.ruby.tree.*;
 
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.UnaryOperator;
 
@@ -42,6 +44,8 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
             out -> "~~" + out + (out.isEmpty() ? "" : "~~") + ">";
 
     private final RubyJavaPrinter delegate = new RubyJavaPrinter();
+
+    private final Queue<Ruby.Heredoc> openHeredocs = new LinkedList<>();
 
     @Override
     public J visit(@Nullable Tree tree, PrintOutputCapture<P> p) {
@@ -306,6 +310,16 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         }
         afterSyntax(hash, p);
         return hash;
+    }
+
+    @Override
+    public J visitHeredoc(Ruby.Heredoc heredoc, PrintOutputCapture<P> p) {
+        beforeSyntax(heredoc, RubySpace.Location.HEREDOC_PREFIX, p);
+        String valueSource = requireNonNull(heredoc.getValue().getValueSource());
+        p.append(valueSource.substring(0, valueSource.indexOf('\n')));
+        openHeredocs.add(heredoc);
+        afterSyntax(heredoc, p);
+        return heredoc;
     }
 
     @Override
@@ -654,6 +668,7 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     }
 
     private class RubyJavaPrinter extends JavaPrinter<P> {
+
         @Override
         public J visit(@Nullable Tree tree, PrintOutputCapture<P> p) {
             if (tree instanceof Ruby) {
@@ -662,6 +677,40 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
             } else {
                 return super.visit(tree, p);
             }
+        }
+
+        @Override
+        public Space visitSpace(Space space, Space.Location loc, PrintOutputCapture<P> p) {
+            if (!openHeredocs.isEmpty()) {
+                Queue<Ruby.Heredoc> around = new LinkedList<>();
+                for (Ruby.Heredoc h : openHeredocs) {
+                    if (h.getAroundValue() == space) {
+                        around.add(h);
+                    }
+                }
+                openHeredocs.removeAll(around);
+
+                if (!around.isEmpty()) {
+                    PrintOutputCapture<P> p2 = new PrintOutputCapture<>(p.getContext(), p.getMarkerPrinter());
+                    super.visitSpace(space, loc, p2);
+                    String printed = p2.getOut();
+
+                    while (!around.isEmpty()) {
+                        int nextNewline = printed.indexOf('\n');
+                        p.append(printed.substring(0, nextNewline + 1));
+                        printed = printed.substring(nextNewline + 1);
+
+                        Ruby.Heredoc heredoc = requireNonNull(around.poll());
+                        String valueSource = requireNonNull(heredoc.getValue().getValueSource());
+                        p.append(valueSource.substring(valueSource.indexOf('\n') + 1));
+                    }
+
+                    p.append(printed); // print remainder after last heredoc
+
+                    return space;
+                }
+            }
+            return super.visitSpace(space, loc, p);
         }
 
         @Override
