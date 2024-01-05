@@ -170,6 +170,9 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitArrayNode(ArrayNode node) {
+        if(node.size() == 1 && node.get(0) instanceof ListNode) {
+            return convert(node.get(0));
+        }
         return visitListNode(node);
     }
 
