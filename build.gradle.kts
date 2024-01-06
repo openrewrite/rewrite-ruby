@@ -14,6 +14,7 @@ dependencies {
 
     implementation("io.micrometer:micrometer-core:1.9.+")
     implementation("org.jruby:jruby-core:latest.release")
+    implementation("org.apache.commons:commons-text:latest.release")
 
     implementation("org.openrewrite:rewrite-test")
 }

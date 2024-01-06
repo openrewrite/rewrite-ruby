@@ -53,17 +53,15 @@ public class RubyIntegTest implements RewriteTest {
     }
 
     @Test
-    void blockRecursion() {
+    void test() {
         rewriteRun(
           ruby(
             """
-              [*terraform_files, *terragrunt_files].each do |file|
-                next unless file_changed?(file)
-                updated_content = updated_terraform_file_content(file)
-                raise "Content didn't change!" if updated_content == file.content
-                updated_file = updated_file(file: file, content: updated_content)
-                updated_files << updated_file unless updated_files.include?(updated_file)
-              end
+              expect(
+                "This terraform provider syntax is now deprecated.\\n" \\
+                "See https://www.terraform.io/docs/language/providers/requirements.html " \\
+                "for the new Terraform v0.13+ provider syntax!"
+              )
               """
           )
         );

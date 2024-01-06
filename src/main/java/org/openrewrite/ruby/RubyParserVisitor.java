@@ -15,6 +15,7 @@
  */
 package org.openrewrite.ruby;
 
+import org.apache.commons.text.StringEscapeUtils;
 import org.jruby.RubySymbol;
 import org.jruby.ast.*;
 import org.jruby.ast.types.INameNode;
@@ -2503,16 +2504,17 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
         // deal with the possibility of implicit concatenations
         char endDelimiterChar = endDelimiter.charAt(0);
-        Map<J.Literal, Space> strings = new LinkedHashMap<>(1);
+        Expression combined = null;
         Space beforeOperator = null;
         StringBuilder valueSrc = new StringBuilder();
-        char[] valueArr = value.toCharArray();
-        for (int i = 0; i < valueArr.length; ) {
+        String escapedValue = StringEscapeUtils.escapeJava(value);
+        for (int i = 0; i <= escapedValue.length(); ) {
             char c = source.charAt(cursor);
             char last = source.charAt(cursor - 1);
+            char nextLast = cursor >= 2 ? source.charAt(cursor - 2) : '\0';
             cursor++;
-            if (c == endDelimiterChar && last != '\'') {
-                strings.put(new J.Literal(
+            if (c == endDelimiterChar && (last != '\\' || nextLast == '\\')) {
+                J.Literal literal = new J.Literal(
                         randomId(),
                         EMPTY,
                         Markers.EMPTY,
@@ -2520,42 +2522,30 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                         String.format("%s%s%s", delimiter, valueSrc, endDelimiter),
                         null,
                         JavaType.Primitive.String
-                ), beforeOperator);
-                beforeOperator = sourceBefore(delimiter);
+                );
                 valueSrc.setLength(0);
+                if (combined == null) {
+                    combined = literal;
+                } else {
+                    combined = new Ruby.Binary(
+                            randomId(),
+                            combined.getPrefix(),
+                            Markers.EMPTY,
+                            combined.withPrefix(EMPTY),
+                            JLeftPadded.build(Ruby.Binary.Type.ImplicitStringConcatenation)
+                                    .withBefore(beforeOperator),
+                            literal,
+                            null
+                    );
+                }
+                if (i < escapedValue.length()) {
+                    beforeOperator = sourceBefore(delimiter);
+                } else {
+                    break;
+                }
             } else {
                 valueSrc.append(c);
                 i++;
-                if (i == valueArr.length) {
-                    strings.put(new J.Literal(
-                            randomId(),
-                            EMPTY,
-                            Markers.EMPTY,
-                            valueSrc,
-                            String.format("%s%s%s", delimiter, valueSrc, endDelimiter),
-                            null,
-                            JavaType.Primitive.String
-                    ), beforeOperator);
-                    break;
-                }
-            }
-        }
-
-        Expression combined = null;
-        for (Map.Entry<J.Literal, Space> literal : strings.entrySet()) {
-            if (combined == null) {
-                combined = literal.getKey();
-            } else {
-                combined = new Ruby.Binary(
-                        randomId(),
-                        combined.getPrefix(),
-                        Markers.EMPTY,
-                        combined.withPrefix(EMPTY),
-                        JLeftPadded.build(Ruby.Binary.Type.ImplicitStringConcatenation)
-                                .withBefore(literal.getValue()),
-                        literal.getKey(),
-                        null
-                );
             }
         }
 
