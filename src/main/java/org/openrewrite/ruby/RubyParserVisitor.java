@@ -16,6 +16,7 @@
 package org.openrewrite.ruby;
 
 import org.apache.commons.text.StringEscapeUtils;
+import org.jetbrains.annotations.NotNull;
 import org.jruby.RubySymbol;
 import org.jruby.ast.*;
 import org.jruby.ast.types.INameNode;
@@ -42,7 +43,9 @@ import org.openrewrite.ruby.tree.RubySpace;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
@@ -71,7 +74,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     private int cursor = 0;
     private Cursor nodes = new Cursor(null, Cursor.ROOT_VALUE);
 
-    private final Queue<Ruby.Heredoc> openHeredocs = new LinkedList<>();
+    private Queue<Ruby.Heredoc> openHeredocs = new ArrayDeque<>();
     private final Map<Ruby.Heredoc, String> heredocDelimiters = new HashMap<>();
 
     /**
@@ -480,27 +483,24 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
      * @return {@code true} if the {@link ListNode} contains more than one statement.
      */
     private boolean isMultipleStatements(ListNode node) {
-        int cursorBeforeWhitespace = cursor;
-        try {
-            whitespace();
-            if (source.startsWith("[", cursor)) {
-                return false;
-            }
-
-            if (node.size() <= 1) {
-                return true;
-            }
-            int line = node.children()[0].getLine();
-            Node[] children = node.children();
-            for (int i = 1; i < children.length; i++) {
-                if (children[i].getLine() != line) {
-                    return true;
+        AtomicBoolean multiple = new AtomicBoolean(false);
+        peekWhitespace(node, (n, prefix) -> {
+            if (!source.startsWith("[", cursor)) {
+                if (node.size() <= 1) {
+                    multiple.set(true);
+                } else {
+                    int line = node.children()[0].getLine();
+                    Node[] children = node.children();
+                    for (int i = 1; i < children.length; i++) {
+                        if (children[i].getLine() != line) {
+                            multiple.set(true);
+                        }
+                    }
                 }
             }
-            return false;
-        } finally {
-            cursor = cursorBeforeWhitespace;
-        }
+            return null;
+        });
+        return multiple.get();
     }
 
     @Override
@@ -637,25 +637,25 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 Markers.EMPTY
         );
 
-        int cursorBeforeBodyWhitespace = cursor;
-        Space beforeBody = whitespace();
-        Node body = cases.get(0) instanceof WhenNode ?
-                ((WhenNode) cases.get(0)).getBodyNode() :
-                ((InNode) cases.get(0)).getBody();
-
         Markers markers = Markers.EMPTY;
         if (patternCase) {
             markers = markers.add(new PatternCase(randomId()));
         }
 
-        if (source.startsWith("then", cursor)) {
-            expressions = expressions.withMarkers(expressions.getMarkers().add(new ExplicitThen(randomId())));
-            expressions = expressions.getPadding().withElements(ListUtils.mapLast(
-                    expressions.getPadding().getElements(), last -> last.withAfter(beforeBody)));
-            skip("then");
-        } else {
-            cursor = cursorBeforeBodyWhitespace;
-        }
+        Node body = cases.get(0) instanceof WhenNode ?
+                ((WhenNode) cases.get(0)).getBodyNode() :
+                ((InNode) cases.get(0)).getBody();
+
+        expressions = peekWhitespace(expressions, (exp, beforeBody) -> {
+            if (source.startsWith("then", cursor)) {
+                exp = exp.withMarkers(exp.getMarkers().add(new ExplicitThen(randomId())));
+                exp = exp.getPadding().withElements(ListUtils.mapLast(
+                        exp.getPadding().getElements(), last -> last.withAfter(beforeBody)));
+                skip("then");
+                return exp;
+            }
+            return null;
+        }).orElse(expressions);
 
         return padRight(new J.Case(
                 randomId(),
@@ -1017,7 +1017,8 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     private J convertMaybeHeredoc(Node node) {
         int cursorBeforeWhitespace = cursor;
-        Space prefix = whitespace();
+        Space prefix = RubySpace.format(source.substring(cursor,
+                indexOfNextNonWhitespace(cursor, source)));
         if (source.startsWith("<<", cursor)) {
             Ruby.Heredoc heredoc = new Ruby.Heredoc(
                     randomId(),
@@ -1123,13 +1124,15 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         Space prefix = whitespace();
         J.Identifier name = convertIdentifier(node.getName());
 
-        int cursorBeforeParen = cursor;
-        skip("(");
-        whitespace();
-        boolean isDelegation = source.startsWith("...", cursor);
-        cursor = cursorBeforeParen;
+        AtomicBoolean isDelegation = new AtomicBoolean(false);
+        peekWhitespace(0, (n, ws) -> {
+            skip("(");
+            whitespace();
+            isDelegation.set(source.startsWith("...", cursor));
+            return null;
+        });
 
-        JContainer<Expression> args = isDelegation ?
+        JContainer<Expression> args = isDelegation.get() ?
                 JContainer.build(sourceBefore("("), singletonList(padRight(convertIdentifier("..."),
                         sourceBefore(")"))), Markers.EMPTY) :
                 convertCallArgs(node);
@@ -1305,18 +1308,19 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 skip(":");
             }
 
-            int cursorBeforeWhitespace = cursor;
-            Space valuePrefix = whitespace();
-            Expression value;
-            if (kv.getValue() instanceof LocalAsgnNode &&
-                !source.startsWith(((LocalAsgnNode) kv.getValue()).getName().asJavaString(), cursor)) {
-                // in hash pattern matching you can match on {sym:} with no value
-                // to the right of the symbol. not valid in hash literals
-                value = new J.Empty(randomId(), EMPTY, Markers.EMPTY);
-                cursor = cursorBeforeWhitespace;
-            } else {
-                value = convert(kv.getValue()).withPrefix(valuePrefix);
-            }
+            AtomicReference<Expression> value = new AtomicReference<>(null);
+            peekWhitespace(0, (n, valuePrefix) -> {
+                if (kv.getValue() instanceof LocalAsgnNode &&
+                    !source.startsWith(((LocalAsgnNode) kv.getValue()).getName().asJavaString(), cursor)) {
+                    // in hash pattern matching you can match on {sym:} with no value
+                    // to the right of the symbol. not valid in hash literals
+                    value.set(new J.Empty(randomId(), EMPTY, Markers.EMPTY));
+                    return null;
+                } else {
+                    value.set(convert(kv.getValue()).withPrefix(valuePrefix));
+                    return 0;
+                }
+            });
 
             pairs.add(padRight(new Ruby.Hash.KeyValue(
                     randomId(),
@@ -1324,7 +1328,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     Markers.EMPTY,
                     key,
                     padLeft(separatorPrefix, separator),
-                    value,
+                    value.get(),
                     null
             ), i == nodePairs.size() - 1 && restArg == null ? EMPTY : sourceBefore(",")));
         }
@@ -2469,6 +2473,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     private Expression convertStringLiteral(StrNode node, String delimiter, boolean inArrayLiteral) {
         String value = node.getValue().toString();
         String endDelimiter = DelimiterMatcher.end(delimiter);
+
         if (delimiter.equals("?")) {
             return new J.Literal(
                     randomId(),
@@ -2507,7 +2512,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         Expression combined = null;
         Space beforeOperator = null;
         StringBuilder valueSrc = new StringBuilder();
-        String escapedValue = StringEscapeUtils.escapeJava(value);
+        String escapedValue = delimiter.equals("\"") ? StringEscapeUtils.escapeJava(value) : value;
         for (int i = 0; i <= escapedValue.length(); ) {
             char c = source.charAt(cursor);
             char last = source.charAt(cursor - 1);
@@ -2861,20 +2866,50 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         return j == null ? null : new JRightPadded<>(j, suffix.apply(t), Markers.EMPTY);
     }
 
-    private <J2 extends J> JContainer<J2> convertArgs(String before, @Nullable Node argsNode,
+    private <J2 extends J> JContainer<J2> convertArgs(String before,
+                                                      @Nullable Node argsNode,
                                                       @Nullable Node iterNode,
                                                       String after) {
         AtomicReference<Markers> markers = new AtomicReference<>(Markers.EMPTY);
-        Space prefix = whitespace();
-        boolean omitParentheses;
-        if (source.startsWith(before, cursor)) {
-            skip(before);
-            omitParentheses = false;
-        } else {
-            markers.set(markers.get().add(new OmitParentheses(randomId())));
-            omitParentheses = true;
-        }
+        AtomicBoolean omitParentheses = new AtomicBoolean();
 
+        return peekWhitespace(collectArgsToList(argsNode), (args, prefix) -> {
+            if (source.startsWith(before, cursor)) {
+                skip(before);
+                omitParentheses.set(false);
+            } else {
+                markers.set(markers.get().add(new OmitParentheses(randomId())));
+                omitParentheses.set(true);
+            }
+
+            List<JRightPadded<J2>> mappedArgs = convertAll(args, n -> sourceBefore(","),
+                    n -> maybeTrailingComma(markers, omitParentheses.get() ? null : after));
+
+            if (iterNode != null) {
+                J2 blockPass = convert(iterNode);
+                Space suffix = EMPTY;
+                if (blockPass instanceof Ruby.BlockArgument) {
+                    suffix = omitParentheses.get() ? EMPTY : sourceBefore(after);
+                }
+                mappedArgs = ListUtils.concat(
+                        mappedArgs,
+                        padRight(blockPass, suffix)
+                );
+            }
+
+            if (mappedArgs.isEmpty() && omitParentheses.get()) {
+                return null;
+            }
+
+            return JContainer.build(
+                    prefix,
+                    mappedArgs,
+                    markers.get()
+            );
+        }).orElse(JContainer.<J2>empty().withMarkers(markers.get()));
+    }
+
+    private static List<Node> collectArgsToList(@Nullable Node argsNode) {
         List<Node> args;
         if (argsNode == null) {
             args = new ArrayList<>(1);
@@ -2903,43 +2938,22 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             args = new ArrayList<>(2);
             args.add(argsNode);
         }
-
-        List<JRightPadded<J2>> mappedArgs = convertAll(args, n -> sourceBefore(","),
-                n -> maybeTrailingComma(markers, omitParentheses ? null : after));
-
-        if (iterNode != null) {
-            J2 blockPass = convert(iterNode);
-            Space suffix = EMPTY;
-            if (blockPass instanceof Ruby.BlockArgument) {
-                suffix = omitParentheses ? EMPTY : sourceBefore(after);
-            }
-            mappedArgs = ListUtils.concat(
-                    mappedArgs,
-                    padRight(blockPass, suffix)
-            );
-        }
-
-        return JContainer.build(
-                prefix,
-                mappedArgs,
-                markers.get()
-        );
+        return args;
     }
 
     private Space maybeTrailingComma(AtomicReference<Markers> markers, @Nullable String after) {
-        int cursorBeforeWhitespace = cursor;
-        Space next = whitespace();
-        if (cursor < source.length() && source.charAt(cursor) == ',') {
-            cursor++;
-            markers.set(markers.get().add(new TrailingComma(randomId(),
-                    after == null ? EMPTY : sourceBefore(after))));
-            return next;
-        } else if (after != null) {
-            skip(after);
-            return next;
-        }
-        cursor = cursorBeforeWhitespace;
-        return EMPTY;
+        return peekWhitespace(0, (n, next) -> {
+            if (cursor < source.length() && source.charAt(cursor) == ',') {
+                cursor++;
+                markers.set(markers.get().add(new TrailingComma(randomId(),
+                        after == null ? EMPTY : sourceBefore(after))));
+                return next;
+            } else if (after != null) {
+                skip(after);
+                return next;
+            }
+            return null;
+        }).orElse(EMPTY);
     }
 
     private <J2 extends J> List<JRightPadded<J2>> convertAll(List<? extends Node> trees,
@@ -2964,14 +2978,25 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     private Space sourceBefore(String untilDelim) {
+        return peekWhitespace(0, (n, before) -> {
+            if (source.startsWith(untilDelim, cursor)) {
+                cursor += untilDelim.length();
+                return before;
+            }
+            return null;
+        }).orElse(EMPTY);
+    }
+
+    private <T, U> Optional<U> peekWhitespace(T t, BiFunction<T, Space, U> conditional) {
         int cursorBeforeWhitespace = cursor;
-        Space before = whitespace();
-        if (source.startsWith(untilDelim, cursor)) {
-            cursor += untilDelim.length();
-            return before;
+        Queue<Ruby.Heredoc> openHeredocsBeforeWhitespace = new ArrayDeque<>(openHeredocs);
+        U converted = conditional.apply(t, whitespace());
+        if (converted != null) {
+            return Optional.of(converted);
         }
+        openHeredocs = openHeredocsBeforeWhitespace;
         cursor = cursorBeforeWhitespace;
-        return EMPTY;
+        return Optional.empty();
     }
 
     private Space whitespace() {
@@ -2992,15 +3017,24 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 }
 
                 Ruby.Heredoc heredoc = openHeredocs.poll();
-                String delim = heredocDelimiters.remove(heredoc);
+                String delim = heredocDelimiters.get(heredoc);
                 String endDelim = delim.substring(3);
                 int i = cursor;
+
+                findEndDelim:
                 for (; i < source.length(); i++) {
-                    char last = source.charAt(i - 1);
-                    if (last == '\n' && source.startsWith(endDelim, i)) {
-                        break;
+                    if (source.startsWith(endDelim, i)) {
+                        for (int j = i - 1; j > 0; j--) {
+                            char c = source.charAt(j);
+                            if (c == '\n') {
+                                break findEndDelim;
+                            } else if (c != ' ' && c != '\t') {
+                                continue findEndDelim;
+                            }
+                        }
                     }
                 }
+
                 String value;
                 if (delim.charAt(2) == '~') {
                     value = source.substring(cursor - prefix.length(), i);
@@ -3023,16 +3057,8 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 );
                 heredocsSplitByThis.add(heredoc);
                 cursor = i + endDelim.length();
-
-                for (i = cursor; i < source.length(); i++) {
-                    if (source.charAt(i) == '\n') {
-                        Space heredocEnd = RubySpace.format(source.substring(cursor, i + 1));
-                        finalizedHeredocs.put(heredoc,
-                                finalizedHeredocs.get(heredoc).withEnd(heredocEnd));
-                        cursor = i + 1;
-                        break;
-                    }
-                }
+                Space heredocEnd = whitespace(); // note the potential here for recursion
+                finalizedHeredocs.put(heredoc, finalizedHeredocs.get(heredoc).withEnd(heredocEnd));
             }
         } while (!openHeredocs.isEmpty() && prefix.contains("\n"));
 

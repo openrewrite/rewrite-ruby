@@ -153,7 +153,7 @@ public class StringTest implements RewriteTest {
                   It has two lines and abruptly ends...
               HERE
               
-              n = 1
+              1 and 2
               """.formatted(startDelim)
           )
         );
@@ -272,6 +272,21 @@ public class StringTest implements RewriteTest {
                 "See https://www.terraform.io/docs/language/providers/requirements.html " \\
                 "for the new Terraform v0.13+ provider syntax!"
               )
+              """
+          )
+        );
+    }
+
+    @Test
+    void heredocWithClosingParen() {
+        rewriteRun(
+          ruby(
+            """
+              expect(<<~HCL)
+                module "s3-webapp"
+              HCL
+              
+              a = "hello world"
               """
           )
         );
