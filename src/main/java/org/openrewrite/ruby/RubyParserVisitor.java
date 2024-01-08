@@ -15,7 +15,6 @@
  */
 package org.openrewrite.ruby;
 
-import org.apache.commons.text.StringEscapeUtils;
 import org.jruby.RubySymbol;
 import org.jruby.ast.*;
 import org.jruby.ast.types.INameNode;
@@ -27,14 +26,13 @@ import org.openrewrite.Cursor;
 import org.openrewrite.FileAttributes;
 import org.openrewrite.internal.EncodingDetectingInputStream;
 import org.openrewrite.internal.ListUtils;
-import org.openrewrite.internal.StringUtils;
 import org.openrewrite.internal.lang.Nullable;
 import org.openrewrite.java.marker.ImplicitReturn;
 import org.openrewrite.java.marker.OmitParentheses;
 import org.openrewrite.java.marker.TrailingComma;
 import org.openrewrite.java.tree.*;
 import org.openrewrite.marker.Markers;
-import org.openrewrite.ruby.internal.DelimiterMatcher;
+import org.openrewrite.ruby.internal.StringUtils;
 import org.openrewrite.ruby.marker.*;
 import org.openrewrite.ruby.tree.Ruby;
 import org.openrewrite.ruby.tree.RubySpace;
@@ -196,7 +194,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     delimiter,
                     JContainer.build(
                             sourceBefore(delimiter),
-                            singletonList(padRight(convert(node.getPreArgs()), sourceBefore(DelimiterMatcher.end(delimiter)))),
+                            singletonList(padRight(convert(node.getPreArgs()), sourceBefore(StringUtils.endDelimiter(delimiter)))),
                             Markers.EMPTY
                     )
             );
@@ -1369,7 +1367,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     JContainer.build(
                             sourceBefore(delimiter),
                             singletonList(padRight(convertHash(node.getKeywordArgs(), node.getRestArg()),
-                                    sourceBefore(DelimiterMatcher.end(delimiter)))),
+                                    sourceBefore(StringUtils.endDelimiter(delimiter)))),
                             Markers.EMPTY
                     )
             );
@@ -2441,7 +2439,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             throw new UnsupportedOperationException("Unexpected string node type " + nodes[0].getClass().getSimpleName());
         }
 
-        skip(DelimiterMatcher.end(delimiter));
+        skip(StringUtils.endDelimiter(delimiter));
         return stringly.withPrefix(prefix);
     }
 
@@ -2471,7 +2469,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
      */
     private Expression convertStringLiteral(StrNode node, String delimiter, boolean inArrayLiteral) {
         String value = node.getValue().toString();
-        String endDelimiter = DelimiterMatcher.end(delimiter);
+        String endDelimiter = StringUtils.endDelimiter(delimiter);
 
         if (delimiter.equals("?")) {
             return new J.Literal(
@@ -2511,7 +2509,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         Expression combined = null;
         Space beforeOperator = null;
         StringBuilder valueSrc = new StringBuilder();
-        String escapedValue = delimiter.equals("\"") ? StringEscapeUtils.escapeJava(value) : value;
+        String escapedValue = StringUtils.escapeRuby(delimiter, value, source, cursor);
         for (int i = 0; i <= escapedValue.length(); ) {
             char c = source.charAt(cursor);
             char last = source.charAt(cursor - 1);
@@ -2641,7 +2639,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         }
 
         if (delimiter.startsWith("%")) {
-            skip(DelimiterMatcher.end(delimiter));
+            skip(StringUtils.endDelimiter(delimiter));
         }
 
         if (delimiter.startsWith("%i") || delimiter.startsWith("%I")) {
@@ -2769,7 +2767,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         String delimiter = source.charAt(cursor) == '`' ? "`" : source.substring(cursor, cursor + 3);
         skip(delimiter);
         skip(value);
-        skip(DelimiterMatcher.end(delimiter));
+        skip(StringUtils.endDelimiter(delimiter));
         return new Ruby.DelimitedString(
                 randomId(),
                 prefix,
@@ -3037,7 +3035,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 String value;
                 if (delim.charAt(2) == '~') {
                     value = source.substring(cursor - prefix.length(), i);
-                    value = StringUtils.trimIndentPreserveCRLF(value);
+                    value = org.openrewrite.internal.StringUtils.trimIndentPreserveCRLF(value);
                 } else {
                     value = source.substring(cursor, i);
                 }

@@ -21,22 +21,22 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class DelimiterMatcherTest {
+class StringUtilsTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"%[", "%s[", "%q[", "%Q["})
     void percentDelimiters(String delimiter) {
-        assertThat(DelimiterMatcher.end(delimiter)).isEqualTo("]");
+        assertThat(StringUtils.endDelimiter(delimiter)).isEqualTo("]");
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"\"", "'", "`"})
     void stringDelimiters(String delimiter) {
-        assertThat(DelimiterMatcher.end(delimiter)).isEqualTo(delimiter);
+        assertThat(StringUtils.endDelimiter(delimiter)).isEqualTo(delimiter);
     }
 
     @Test
     void empty() {
-        assertThat(DelimiterMatcher.end("")).isEqualTo("");
+        assertThat(StringUtils.endDelimiter("")).isEqualTo("");
     }
 }

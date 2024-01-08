@@ -18,6 +18,7 @@ package org.openrewrite.ruby.tree;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openrewrite.test.RewriteTest;
 
@@ -152,7 +153,7 @@ public class StringTest implements RewriteTest {
                   This is a string literal.
                   It has two lines and abruptly ends...
               HERE
-              
+                            
               1 and 2
               """.formatted(startDelim)
           )
@@ -285,7 +286,7 @@ public class StringTest implements RewriteTest {
               expect(<<~HCL)
                 module "s3-webapp"
               HCL
-              
+                            
               a = "hello world"
               """
           )
@@ -303,9 +304,45 @@ public class StringTest implements RewriteTest {
                     source     = "git::https://github.com/cloudposse/terraform-null-label.git?ref=tags/0.4.1"
                 DEP
               )
-              
+                            
               1 and 2
               """
+          )
+        );
+    }
+
+    @ParameterizedTest
+    @CsvSource(textBlock = """
+      \\",escape a character
+      \\a,ring the console bell
+      \\b,backspace
+      \\e,escape
+      \\f,form feed
+      \\n,newline
+      \\r,carriage return
+      \\s,space
+      \\t,tab
+      \\u0000,Unicode character
+      \\u{0000},Unicode character
+      \\v,vertical tab
+      \\000,three octal digits between 000 and 377
+      \\00,two octal digits between 00 and 77
+      \\0,one octal digit between 0 and 7
+      \\x00,two hexadecimal digits between 00 and FF
+      \\x0,hex digit between 0 and 7
+      \\C-A,way to specify ctrl+A
+      \\cA,alternative way to specify ctrl+A
+      \\M-A,way to specify a meta character which is not part of the ASCII table
+      \\r,carriage return
+      """
+    )
+    void escaping(String escapeSequence) {
+        rewriteRun(
+          ruby(
+            """
+              a = "%s"
+              1 and 2
+              """.formatted(escapeSequence)
           )
         );
     }

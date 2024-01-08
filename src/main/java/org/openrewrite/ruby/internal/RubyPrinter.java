@@ -219,7 +219,7 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         p.append(delimitedArray.getDelimiter());
         visitContainer("", delimitedArray.getPadding().getElements(), RubyContainer.Location.DELIMITED_ARRAY_ELEMENTS,
                 "", "", p);
-        p.append(DelimiterMatcher.end(delimitedArray.getDelimiter()));
+        p.append(StringUtils.endDelimiter(delimitedArray.getDelimiter()));
         afterSyntax(delimitedArray, p);
         return delimitedArray;
     }
@@ -229,7 +229,7 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         beforeSyntax(dString, RubySpace.Location.DELIMITED_STRING_VALUE_PREFIX, p);
         p.append(dString.getDelimiter());
         visit(dString.getStrings(), p);
-        p.append(DelimiterMatcher.end(dString.getDelimiter()));
+        p.append(StringUtils.endDelimiter(dString.getDelimiter()));
         for (Ruby.DelimitedString.RegexpOptions regexpOption : dString.getRegexpOptions()) {
             switch (regexpOption) {
                 case IgnoreCase:
@@ -502,7 +502,7 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         visit(structPattern.getConstant(), p);
         visitContainer(structPattern.getDelimiter(), structPattern.getPadding().getPattern(),
                 RubyContainer.Location.STRUCT_PATTERN_ELEMENT, "",
-                DelimiterMatcher.end(structPattern.getDelimiter()), p);
+                StringUtils.endDelimiter(structPattern.getDelimiter()), p);
         afterSyntax(structPattern, p);
         return structPattern;
     }
@@ -521,7 +521,7 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         beforeSyntax(symbol, RubySpace.Location.SYMBOL_PREFIX, p);
         p.append(symbol.getDelimiter());
         visit(symbol.getName(), p);
-        p.append(DelimiterMatcher.endSymbol(symbol.getDelimiter()));
+        p.append(StringUtils.endSymbol(symbol.getDelimiter()));
         afterSyntax(symbol, p);
         return symbol;
     }
