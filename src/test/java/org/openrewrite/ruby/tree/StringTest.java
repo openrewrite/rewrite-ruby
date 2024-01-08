@@ -291,4 +291,22 @@ public class StringTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void heredocStartingOnNextLine() {
+        rewriteRun(
+          ruby(
+            """
+              expect(updated_file.content).to include(
+                <<~DEP
+                  module "origin_label" {
+                    source     = "git::https://github.com/cloudposse/terraform-null-label.git?ref=tags/0.4.1"
+                DEP
+              )
+              
+              1 and 2
+              """
+          )
+        );
+    }
 }

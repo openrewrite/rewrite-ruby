@@ -16,7 +16,6 @@
 package org.openrewrite.ruby;
 
 import org.apache.commons.text.StringEscapeUtils;
-import org.jetbrains.annotations.NotNull;
 import org.jruby.RubySymbol;
 import org.jruby.ast.*;
 import org.jruby.ast.types.INameNode;
@@ -1017,8 +1016,9 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     private J convertMaybeHeredoc(Node node) {
         int cursorBeforeWhitespace = cursor;
-        Space prefix = RubySpace.format(source.substring(cursor,
-                indexOfNextNonWhitespace(cursor, source)));
+        int nonWhitespace = indexOfNextNonWhitespace(cursor, source);
+        Space prefix = RubySpace.format(source.substring(cursor, nonWhitespace));
+        cursor = nonWhitespace;
         if (source.startsWith("<<", cursor)) {
             Ruby.Heredoc heredoc = new Ruby.Heredoc(
                     randomId(),
@@ -1044,7 +1044,6 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             cursor = i;
             return heredoc;
         }
-
         cursor = cursorBeforeWhitespace;
         return convertStrings(node);
     }
