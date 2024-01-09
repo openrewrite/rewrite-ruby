@@ -264,6 +264,21 @@ public class StringTest implements RewriteTest {
     }
 
     @Test
+    void implicitConcatenationOfDStrings() {
+        rewriteRun(
+          ruby(
+            """
+              a = "Don't know how to update a #{new_req[:source][:type]} " \\
+                   "declaration" \\
+                   "!"
+              
+              puts "hello"
+              """
+          )
+        );
+    }
+
+    @Test
     void implicitConcatenationNotLastStatement() {
         rewriteRun(
           ruby(

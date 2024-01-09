@@ -20,20 +20,10 @@ import lombok.With;
 import org.openrewrite.Cursor;
 import org.openrewrite.PrintOutputCapture;
 import org.openrewrite.java.tree.Comment;
-import org.openrewrite.java.tree.TextComment;
 import org.openrewrite.marker.Marker;
 import org.openrewrite.marker.Markers;
 
 import java.util.function.UnaryOperator;
-
-
-/*
-
-
-<!--CLI_VERSION-->1.6.2<!--/CLI_VERSION-->
-
- */
-
 
 @Value
 public class RubyTextComment implements Comment {
@@ -70,17 +60,17 @@ public class RubyTextComment implements Comment {
     @With
     Markers markers;
 
-    private static final UnaryOperator<String> JAVA_MARKER_WRAPPER =
-            out -> "/*~~" + out + (out.isEmpty() ? "" : "~~") + ">*/";
+    private static final UnaryOperator<String> RUBY_MARKER_WRAPPER =
+            out -> "~~" + out + (out.isEmpty() ? "" : "~~") + ">";
 
     @Override
     public <P> void printComment(Cursor cursor, PrintOutputCapture<P> p) {
         for (Marker marker : markers.getMarkers()) {
-            p.append(p.getMarkerPrinter().beforeSyntax(marker, new Cursor(cursor, this), JAVA_MARKER_WRAPPER));
+            p.append(p.getMarkerPrinter().beforeSyntax(marker, new Cursor(cursor, this), RUBY_MARKER_WRAPPER));
         }
         p.append(multiline ? "=begin" + text + "=end" : "#" + text);
         for (Marker marker : markers.getMarkers()) {
-            p.append(p.getMarkerPrinter().afterSyntax(marker, new Cursor(cursor, this), JAVA_MARKER_WRAPPER));
+            p.append(p.getMarkerPrinter().afterSyntax(marker, new Cursor(cursor, this), RUBY_MARKER_WRAPPER));
         }
     }
 }

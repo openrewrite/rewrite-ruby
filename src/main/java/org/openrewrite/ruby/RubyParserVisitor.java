@@ -2463,14 +2463,47 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         return stringly.withPrefix(prefix);
     }
 
-    private Ruby.DelimitedString convertDelimitedString(DNode node, String delimiter) {
+    private Expression convertDelimitedString(DNode node, String delimiter) {
         List<J> strings = new ArrayList<>(node.size());
-        for (Node n : node) {
+
+        Space beforeImplicitConcat = EMPTY;
+        Expression expression = null;
+        for (int i = 0, line = -1; i < node.size(); i++) {
+            Node n = node.get(i);
+            if (line == -1) {
+                line = n.getLine();
+            }
+            if (line != n.getLine()) {
+                line = n.getLine();
+                Ruby.DelimitedString ds = new Ruby.DelimitedString(
+                        randomId(),
+                        EMPTY,
+                        Markers.EMPTY,
+                        delimiter,
+                        strings,
+                        emptyList(),
+                        null
+                );
+                expression = expression == null ? ds : new Ruby.Binary(
+                        randomId(),
+                        EMPTY,
+                        Markers.EMPTY,
+                        expression,
+                        JLeftPadded.build(Ruby.Binary.Type.ImplicitStringConcatenation)
+                                .withBefore(beforeImplicitConcat),
+                        ds,
+                        null
+                );
+                skip(StringUtils.endDelimiter(delimiter));
+                beforeImplicitConcat = sourceBefore(delimiter);
+                skip(delimiter);
+                strings = new ArrayList<>(node.size() - i);
+            }
             if (!(n instanceof StrNode) || !((StrNode) n).getValue().isEmpty()) {
                 strings.add(convert(n));
             }
         }
-        return new Ruby.DelimitedString(
+        Ruby.DelimitedString ds = new Ruby.DelimitedString(
                 randomId(),
                 EMPTY,
                 Markers.EMPTY,
@@ -2479,6 +2512,18 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 emptyList(),
                 null
         );
+        expression = expression == null ? ds : new Ruby.Binary(
+                randomId(),
+                EMPTY,
+                Markers.EMPTY,
+                expression,
+                JLeftPadded.build(Ruby.Binary.Type.ImplicitStringConcatenation)
+                        .withBefore(beforeImplicitConcat),
+                ds,
+                null
+        );
+
+        return requireNonNull(expression);
     }
 
     /**
@@ -3154,7 +3199,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             }
         } while (!openHeredocs.isEmpty() && prefix.contains("\n"));
 
-        Space space = Space.format(prefix);
+        Space space = RubySpace.format(prefix);
         for (Ruby.Heredoc h : heredocsSplitByThis) {
             finalizedHeredocs.put(h, finalizedHeredocs.get(h).withAroundValue(space));
         }
