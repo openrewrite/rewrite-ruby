@@ -411,6 +411,7 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
             Object parentValue = parent.getParentTreeCursor().getValue();
             if (parentValue instanceof J.MethodDeclaration ||
                 parentValue instanceof J.ClassDeclaration ||
+                parentValue instanceof Ruby.ClassMethod ||
                 parentValue instanceof Ruby.Module) {
                 defRescue = true;
             }
@@ -1028,9 +1029,10 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         @Override
         public J visitMethodInvocation(J.MethodInvocation method, PrintOutputCapture<P> p) {
             beforeSyntax(method, Space.Location.METHOD_INVOCATION_PREFIX, p);
+            String suffix = (method.getMarkers().findFirst(SafeNavigation.class).isPresent() ? "&" : "") +
+                            (method.getMarkers().findFirst(Colon2.class).isPresent() ? "::" : ".");
             visitRightPadded(method.getPadding().getSelect(),
-                    JRightPadded.Location.METHOD_SELECT,
-                    method.getMarkers().findFirst(SafeNavigation.class).isPresent() ? "&." : ".", p);
+                    JRightPadded.Location.METHOD_SELECT, suffix, p);
             visit(method.getName(), p);
 
             JContainer<Expression> args = method.getPadding().getArguments();

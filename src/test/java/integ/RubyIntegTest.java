@@ -51,15 +51,4 @@ public class RubyIntegTest implements RewriteTest {
           .filter(parser::accept)
           .map(p -> REPOSITORY.relativize(p));
     }
-
-//    @Test
-//    void test() {
-//        rewriteRun(
-//          ruby(
-//            """
-//              query&.include?("archive=")
-//              """
-//          )
-//        );
-//    }
 }

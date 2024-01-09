@@ -163,4 +163,19 @@ public class RescueTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void rescueOnClassMethod() {
+        rewriteRun(
+          ruby(
+            """
+              def self.get_proxied_source(raw_source)
+                return raw_source
+              rescue Excon::Error::Timeout => e
+                raw_source
+              end
+              """
+          )
+        );
+    }
 }

@@ -392,24 +392,21 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         }
 
         Space prefix = whitespace();
-        J receiver = convert(node.getReceiverNode());
+
+        TypeTree receiver = convertTypeTree(node.getReceiverNode());
+
         Space beforeDot = whitespace();
         Markers markers = Markers.EMPTY;
-        if (skip("&.")) {
+        if (skip("&")) {
             markers = markers.add(new SafeNavigation(randomId()));
+        }
+        if (skip("::")) {
+            markers = markers.add(new Colon2(randomId()));
         } else {
             skip(".");
         }
-        J.Identifier name = convertIdentifier(node.getName());
-        if (!(receiver instanceof TypeTree)) {
-            receiver = new Ruby.ExpressionTypeTree(
-                    randomId(),
-                    receiver.getPrefix(),
-                    Markers.EMPTY,
-                    receiver.withPrefix(EMPTY)
-            );
-        }
 
+        J.Identifier name = convertIdentifier(node.getName());
         if (name.getSimpleName().equals("new")) {
             return new J.NewClass(
                     randomId(),
@@ -417,7 +414,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     markers,
                     padRight(new J.Empty(randomId(), EMPTY, markers), beforeDot),
                     name.getPrefix(),
-                    (TypeTree) receiver,
+                    receiver,
                     convertCallArgs(node),
                     null,
                     null
@@ -705,17 +702,10 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         Node superNode = node.getSuperNode();
         if (superNode != null) {
             Space extendingsPrefix = sourceBefore("<");
-            Expression superClass = convertExpression(superNode);
+            TypeTree superClass = convertTypeTree(superNode);
             extendings = padLeft(
                     extendingsPrefix,
-                    superClass instanceof TypeTree ?
-                            (TypeTree) superClass :
-                            new Ruby.ExpressionTypeTree(
-                                    randomId(),
-                                    superClass.getPrefix(),
-                                    Markers.EMPTY,
-                                    superClass.withPrefix(EMPTY)
-                            )
+                    superClass
             );
         }
 
@@ -2243,7 +2233,16 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
         TypeTree exceptionType;
         if (exceptionTypes.size() == 1) {
-            exceptionType = (TypeTree) exceptionTypes.get(0).getElement();
+            J elem = exceptionTypes.get(0).getElement();
+            if (!(elem instanceof TypeTree)) {
+                elem = new Ruby.ExpressionTypeTree(
+                        randomId(),
+                        elem.getPrefix(),
+                        Markers.EMPTY,
+                        elem.withPrefix(EMPTY)
+                );
+            }
+            exceptionType = (TypeTree) elem;
         } else {
             //noinspection unchecked
             exceptionType = new J.MultiCatch(randomId(), EMPTY, Markers.EMPTY,
@@ -2884,6 +2883,19 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             return new Ruby.StatementExpression(randomId(), (Statement) j);
         }
         return (Expression) j;
+    }
+
+    private TypeTree convertTypeTree(@Nullable Node t) {
+        J j = convert(t);
+        if (!(j instanceof TypeTree)) {
+            j = new Ruby.ExpressionTypeTree(
+                    randomId(),
+                    j.getPrefix(),
+                    Markers.EMPTY,
+                    j.withPrefix(EMPTY)
+            );
+        }
+        return (TypeTree) j;
     }
 
     private J convert(@Nullable Node t) {
