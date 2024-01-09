@@ -365,9 +365,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                         node,
                         n -> {
                             Space eob = whitespace();
-                            if (source.startsWith("end", cursor)) {
-                                skip("end");
-                            }
+                            skip("end");
                             return eob;
                         }
                 ),
@@ -541,8 +539,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
             Space casePrefix = whitespace();
 
-            boolean booleanCheck = source.startsWith("in", cursor);
-            skip(booleanCheck ? "in" : "=>");
+            boolean booleanCheck = skip("in") || !skip("=>");
             J.Case pattern = ((J.Case) convertCases(groupedCases, true).getElement())
                     .withStatements(emptyList())
                     .withPrefix(casePrefix);
@@ -1190,8 +1187,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         Expression left = convertExpression(node.getBeginNode());
         Space opPrefix = sourceBefore("..");
         Ruby.Binary.Type op = Ruby.Binary.Type.FlipFlopInclusive;
-        if (source.charAt(cursor) == '.') {
-            skip(".");
+        if (skip(".")) {
             op = Ruby.Binary.Type.FlipFlopExclusive;
         }
         return new Ruby.Binary(
@@ -1284,11 +1280,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     private Ruby.Hash convertHash(HashNode node, @Nullable Node restArg) {
         Space prefix = whitespace();
-        boolean omitBrackets = source.charAt(cursor) != '{';
-        if (!omitBrackets) {
-            skip("{");
-        }
-
+        boolean omitBrackets = !skip("{");
         List<JRightPadded<Expression>> pairs = new ArrayList<>(node.getPairs().size());
         List<KeyValuePair<Node, Node>> nodePairs = node.getPairs();
         for (int i = 0; i < nodePairs.size(); i++) {
@@ -1296,14 +1288,10 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             Space kvPrefix = whitespace();
             Expression key = convertExpression(kv.getKey());
             Space separatorPrefix = whitespace();
-            Ruby.Hash.KeyValue.Separator separator;
-            if (source.startsWith("=>", cursor)) {
-                separator = Ruby.Hash.KeyValue.Separator.Rocket;
-                skip("=>");
-            } else {
-                separator = Ruby.Hash.KeyValue.Separator.Colon;
-                skip(":");
-            }
+
+            Ruby.Hash.KeyValue.Separator separator = skip("=>") || !skip(":") ?
+                    Ruby.Hash.KeyValue.Separator.Rocket :
+                    Ruby.Hash.KeyValue.Separator.Colon;
 
             AtomicReference<Expression> value = new AtomicReference<>(null);
             peekWhitespace(0, (n, valuePrefix) -> {
@@ -2140,9 +2128,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     @Override
     public J visitRescueNode(RescueNode node) {
         Space prefix = whitespace();
-        if (source.startsWith("begin", cursor)) {
-            skip("begin");
-        }
+        skip("begin");
         Space bodyPrefix = whitespace();
         J.Block body = visitBlock(node.getBodyNode());
         List<J.Try.Catch> catches = convertCatches(node.getRescueNode(), emptyList());
@@ -2163,9 +2149,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             // whitespace rather than sourceBefore("end") because an ensure may follow
             catches = ListUtils.mapLast(catches, c -> c.withBody(c.getBody().withEnd(whitespace())));
         }
-        if (source.startsWith("end", cursor)) {
-            skip("end");
-        }
+        skip("end");
 
         return new Ruby.Rescue(
                 randomId(),
@@ -2204,8 +2188,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         List<JRightPadded<Statement>> catchBody;
         Space beforeExceptionNamePrefix = whitespace();
         Space bodyPrefix = beforeExceptionNamePrefix;
-        if (source.startsWith("=>", cursor)) {
-            skip("=>");
+        if (skip("=>")) {
             BlockNode body = (BlockNode) rescue.getBodyNode();
 
             // because the exceptionName is being assigned to $!
@@ -2221,8 +2204,12 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             ), EMPTY));
 
             bodyPrefix = whitespace();
-            List<Node> bodyNodes = Arrays.asList(body.children());
-            bodyNodes = bodyNodes.subList(1, bodyNodes.size());
+            List<Node> bodyNodes = new ArrayList<>(3);
+            if (body.children()[1] instanceof BlockNode) {
+                Collections.addAll(bodyNodes, ((BlockNode) body.children()[1]).children());
+            } else {
+                bodyNodes.add(body.children()[1]);
+            }
             catchBody = convertAll(bodyNodes, n -> EMPTY, n -> EMPTY);
         } else if (rescue.getBodyNode() instanceof BlockNode) {
             catchBody = convertAll(Arrays.asList(((BlockNode) rescue.getBodyNode()).children()),

@@ -171,8 +171,9 @@ public class RescueTest implements RewriteTest {
             """
               def self.get_proxied_source(raw_source)
                 return raw_source
-              rescue Excon::Error::Timeout => e
+              rescue Excon::Error::Socket, Excon::Error::Timeout => e
                 raw_source
+                1
               end
               """
           )
