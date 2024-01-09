@@ -210,6 +210,24 @@ public class StringTest implements RewriteTest {
     }
 
     @Test
+    void nonInterpolableStringArrayLiteralMultiline() {
+        rewriteRun(
+          ruby(
+            """
+              possible_architectures = %w(
+                linux_amd64
+                darwin_amd64
+                windows_amd64
+                darwin_arm64
+                linux_arm64
+              )
+              puts "hello"
+              """
+          )
+        );
+    }
+
+    @Test
     void interpolableStringArrayLiteral() {
         rewriteRun(
           ruby(
@@ -271,7 +289,7 @@ public class StringTest implements RewriteTest {
               a = "Don't know how to update a #{new_req[:source][:type]} " \\
                    "declaration" \\
                    "!"
-              
+                            
               puts "hello"
               """
           )

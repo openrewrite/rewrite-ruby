@@ -51,6 +51,21 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         return super.visitRightPadded(right, JRightPadded.Location.LANGUAGE_EXTENSION, p);
     }
 
+    public J visitBreak(Ruby.Break aBreak, P p) {
+        Ruby.Break b = aBreak;
+        b = b.withPrefix(visitSpace(b.getPrefix(), RubySpace.Location.BREAK_PREFIX, p));
+        b = b.withMarkers(visitMarkers(b.getMarkers(), p));
+        Statement temp = (Statement) visitStatement(b, p);
+        if (!(temp instanceof Ruby.Break)) {
+            return temp;
+        } else {
+            b = (Ruby.Break) temp;
+        }
+        b = b.withBreak((J.Break) visit(b.getBreak(), p));
+        b = b.withValue((Expression) visit(b.getValue(), p));
+        return b;
+    }
+
     public Ruby visitCompilationUnit(Ruby.CompilationUnit compilationUnit, P p) {
         Ruby.CompilationUnit c = compilationUnit;
         c = c.withPrefix(visitSpace(c.getPrefix(), Space.Location.COMPILATION_UNIT_PREFIX, p));

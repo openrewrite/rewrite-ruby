@@ -375,11 +375,17 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitBreakNode(BreakNode node) {
-        return new J.Break(
+        return new Ruby.Break(
                 randomId(),
                 sourceBefore("break"),
                 Markers.EMPTY,
-                null
+                new J.Break(
+                        randomId(),
+                        EMPTY,
+                        Markers.EMPTY,
+                        null
+                ),
+                convertExpression(node.getValueNode())
         );
     }
 
@@ -2546,7 +2552,17 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     null,
                     JavaType.Primitive.String
             );
-        } else if (inArrayLiteral || endDelimiter.isEmpty()) {
+        } else if (inArrayLiteral) {
+            return new J.Literal(
+                    randomId(),
+                    sourceBefore(value),
+                    Markers.EMPTY,
+                    value,
+                    value,
+                    null,
+                    JavaType.Primitive.String
+            );
+        } else if(endDelimiter.isEmpty()) {
             skip(value);
             return new J.Literal(
                     randomId(),
@@ -2557,7 +2573,8 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     null,
                     JavaType.Primitive.String
             );
-        } else if (node.getValue().isEmpty()) {
+        }
+        else if (node.getValue().isEmpty()) {
             return new J.Literal(
                     randomId(),
                     EMPTY,

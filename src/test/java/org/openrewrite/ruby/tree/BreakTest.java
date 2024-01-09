@@ -36,4 +36,18 @@ public class BreakTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void breakIfStatement() {
+        rewriteRun(
+          ruby(
+            """
+              for i in 0..5
+                 break if i > 2
+                 puts "hello"
+              end
+              """
+          )
+        );
+    }
 }

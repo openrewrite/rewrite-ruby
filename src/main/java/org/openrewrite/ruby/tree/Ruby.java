@@ -653,6 +653,49 @@ public interface Ruby extends J {
         }
     }
 
+    @FieldDefaults(makeFinal=true, level=AccessLevel.PRIVATE)
+    @AllArgsConstructor
+    @ToString
+    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+    class Break implements Ruby, Statement {
+        @Getter
+        @With
+        @EqualsAndHashCode.Include
+        UUID id;
+
+        @Getter
+        @With
+        Space prefix;
+
+        @Getter
+        @With
+        Markers markers;
+
+        J.Break aBreak;
+
+        public J.Break getBreak() {
+            return aBreak;
+        }
+
+        public Ruby.Break withBreak(J.Break aBreak) {
+            return this.aBreak == aBreak ? this : new Ruby.Break(id, prefix, markers, aBreak, value);
+        }
+
+        @Getter
+        @With
+        Expression value;
+
+        @Override
+        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
+            return v.visitBreak(this, p);
+        }
+
+        @Override
+        public CoordinateBuilder.Statement getCoordinates() {
+            return new CoordinateBuilder.Statement(this);
+        }
+    }
+
     @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
     @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
     @RequiredArgsConstructor

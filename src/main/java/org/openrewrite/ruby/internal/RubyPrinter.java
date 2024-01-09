@@ -203,6 +203,15 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     }
 
     @Override
+    public J visitBreak(Ruby.Break aBreak, PrintOutputCapture<P> p) {
+        beforeSyntax(aBreak, RubySpace.Location.BREAK_PREFIX, p);
+        visit(aBreak.getBreak(), p);
+        visit(aBreak.getValue(), p);
+        afterSyntax(aBreak, p);
+        return aBreak;
+    }
+
+    @Override
     public J visitClassMethod(Ruby.ClassMethod method, PrintOutputCapture<P> p) {
         beforeSyntax(method, RubySpace.Location.CLASS_METHOD_PREFIX, p);
         p.append("def");
