@@ -1372,13 +1372,13 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         } else if (node.getThenBody() == null || node.getElseBody() == null) {
             return ifModifier(node).withPrefix(prefix);
         }
-        return ternary(node);
+        return ternary(node).withPrefix(prefix);
     }
 
     private J.Ternary ternary(IfNode node) {
         return new J.Ternary(
                 randomId(),
-                whitespace(),
+                EMPTY,
                 Markers.EMPTY,
                 convertExpression(node.getCondition()),
                 padLeft(sourceBefore("?"), convertExpression(node.getThenBody())),

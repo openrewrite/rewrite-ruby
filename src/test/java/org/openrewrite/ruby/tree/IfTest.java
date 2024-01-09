@@ -147,6 +147,7 @@ public class IfTest implements RewriteTest {
         rewriteRun(
           ruby(
             """
+              a = 0
               source_address ? 1 : 2
               """
           )
