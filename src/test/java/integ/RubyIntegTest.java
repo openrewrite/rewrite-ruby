@@ -15,6 +15,7 @@
  */
 package integ;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.openrewrite.ruby.RubyParser;
@@ -49,5 +50,17 @@ public class RubyIntegTest implements RewriteTest {
         return Files.walk(REPOSITORY)
           .filter(parser::accept)
           .map(p -> REPOSITORY.relativize(p));
+    }
+
+    @Test
+    void test() {
+        rewriteRun(
+          ruby(
+            """
+              @lockfile if defined?(@lockfile)
+              @lockfile = nil
+              """
+          )
+        );
     }
 }

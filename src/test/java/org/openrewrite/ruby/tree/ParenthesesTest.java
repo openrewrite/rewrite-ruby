@@ -23,13 +23,24 @@ import static org.openrewrite.ruby.Assertions.ruby;
 
 public class ParenthesesTest implements RewriteTest {
 
-    @Disabled
     @Test
     void parentheses() {
         rewriteRun(
           ruby(
             """
               (42)
+              """
+          )
+        );
+    }
+
+    @Test
+    void parenthesizedExpression() {
+        rewriteRun(
+          ruby(
+            """
+              @lockfile if defined?(@lockfile)
+              @lockfile = nil
               """
           )
         );

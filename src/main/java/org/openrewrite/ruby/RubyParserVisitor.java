@@ -72,6 +72,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     private Cursor nodes = new Cursor(null, Cursor.ROOT_VALUE);
 
     private Queue<Ruby.Heredoc> openHeredocs = new ArrayDeque<>();
+    private Queue<Space> openParentheses = new ArrayDeque<>();
     private final Map<Ruby.Heredoc, String> heredocDelimiters = new HashMap<>();
 
     /**
@@ -908,36 +909,20 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitDotNode(DotNode node) {
-        return maybeParenthesized(prefix -> {
-            Expression left = convert(node.getBeginNode());
-            Space opPrefix = whitespace();
-            String op = source.substring(cursor).startsWith("...") ? "..." : "..";
-            skip(op);
-            return new Ruby.Binary(
-                    randomId(),
-                    prefix,
-                    Markers.EMPTY,
-                    left,
-                    padLeft(opPrefix, op.equals("...") ? Ruby.Binary.Type.RangeExclusive : Ruby.Binary.Type.RangeInclusive),
-                    (Expression) node.getEndNode().accept(this),
-                    null
-            );
-        });
-    }
-
-    private J maybeParenthesized(Function<Space, J> insideParentheses) {
         Space prefix = whitespace();
-        if (source.startsWith("(", cursor)) {
-            skip("(");
-            J inside = maybeParenthesized(insideParentheses);
-            return new J.Parentheses<>(
-                    randomId(),
-                    prefix,
-                    Markers.EMPTY,
-                    padRight(inside, sourceBefore(")"))
-            );
-        }
-        return insideParentheses.apply(prefix);
+        Expression left = convert(node.getBeginNode());
+        Space opPrefix = whitespace();
+        String op = source.substring(cursor).startsWith("...") ? "..." : "..";
+        skip(op);
+        return new Ruby.Binary(
+                randomId(),
+                prefix,
+                Markers.EMPTY,
+                left,
+                padLeft(opPrefix, op.equals("...") ? Ruby.Binary.Type.RangeExclusive : Ruby.Binary.Type.RangeInclusive),
+                convert(node.getEndNode()),
+                null
+        );
     }
 
     @Override
@@ -2848,13 +2833,30 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         nodes = new Cursor(nodes, t);
         //noinspection CaughtExceptionImmediatelyRethrown
         try {
-            //noinspection unchecked
-            J2 j = (J2) t.accept(this);
+            J2 j = maybeParenthesized(t);
             nodes = nodes.getParentOrThrow();
             return j;
         } catch (Throwable ex) {
             throw ex; // nice debug breakpoint
         }
+    }
+
+    private <J2 extends J> J2 maybeParenthesized(Node t) {
+        //noinspection unchecked
+        return peekWhitespace(0, (n, prefix) -> {
+            if (skip("(")) {
+                J parenthesized = maybeParenthesized(t);
+                //noinspection unchecked
+                J2 p = (J2) new J.Parentheses<>(
+                        randomId(),
+                        prefix,
+                        Markers.EMPTY,
+                        padRight(parenthesized, sourceBefore(")"))
+                );
+                return p;
+            }
+            return null;
+        }).orElseGet(() -> (J2) t.accept(this));
     }
 
     private <J2 extends J> JRightPadded<J2> convert(Node t, Function<Node, Space> suffix) {
@@ -2903,7 +2905,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     mappedArgs,
                     markers.get()
             );
-        }).orElse(JContainer.<J2>empty().withMarkers(markers.get()));
+        }).orElseGet(() -> JContainer.<J2>empty().withMarkers(markers.get()));
     }
 
     private static List<Node> collectArgsToList(@Nullable Node argsNode) {
