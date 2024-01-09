@@ -1011,7 +1011,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     private J convertMaybeHeredoc(Node node) {
         int cursorBeforeWhitespace = cursor;
-        int nonWhitespace = indexOfNextNonWhitespace(cursor, source);
+        int nonWhitespace = indexOfNextNonWhitespace();
         Space prefix = RubySpace.format(source.substring(cursor, nonWhitespace));
         cursor = nonWhitespace;
         if (source.startsWith("<<", cursor)) {
@@ -1418,7 +1418,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         skip("if");
         Space ifConditionPrefix = whitespace();
         Expression ifConditionExpr = convertExpression(node.getCondition());
-        boolean explicitThen = Pattern.compile("\\s+then").matcher(source).find(cursor);
+        boolean explicitThen = source.startsWith("then", indexOfNextNonWhitespace());
         J.ControlParentheses<Expression> ifCondition = new J.ControlParentheses<>(
                 randomId(),
                 ifConditionPrefix,
@@ -3089,7 +3089,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         String prefix = "";
         Set<Ruby.Heredoc> heredocsSplitByThis = new HashSet<>(openHeredocs.size());
         do {
-            int next = indexOfNextNonWhitespace(cursor, source);
+            int next = indexOfNextNonWhitespace();
             //noinspection StringConcatenationInLoop
             prefix += source.substring(cursor, next);
             cursor += prefix.length();
@@ -3167,36 +3167,37 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         return false;
     }
 
-    private static int indexOfNextNonWhitespace(int cursor, String source) {
+    private int indexOfNextNonWhitespace() {
         boolean inMultiLineComment = false;
         boolean inSingleLineComment = false;
 
         int length = source.length();
-        for (; cursor < length; cursor++) {
-            char current = source.charAt(cursor);
+        int i = cursor;
+        for (; i < length; i++) {
+            char current = source.charAt(i);
             if (inSingleLineComment) {
                 inSingleLineComment = current != '\n';
                 continue;
-            } else if (length > cursor + 1) {
+            } else if (length > i + 1) {
                 if (current == '#') {
                     inSingleLineComment = true;
-                    cursor++;
+                    i++;
                     continue;
-                } else if (cursor == 0 || cursor == source.length() - "=end".length() ||
-                           source.charAt(cursor - 1) == '\n') {
-                    if (source.startsWith("=begin", cursor)) {
+                } else if (i == 0 || i == source.length() - "=end".length() ||
+                           source.charAt(i - 1) == '\n') {
+                    if (source.startsWith("=begin", i)) {
                         inMultiLineComment = true;
-                        cursor++;
+                        i++;
                         continue;
-                    } else if (source.startsWith("=end", cursor)) {
+                    } else if (source.startsWith("=end", i)) {
                         inMultiLineComment = false;
-                        cursor += "=end".length() - 1; // the loop increment adds another 1
+                        i += "=end".length() - 1; // the loop increment adds another 1
                         continue;
                     }
                 }
             }
             if (!inMultiLineComment && !Character.isWhitespace(current)) {
-                char next = cursor < source.length() - 1 ? source.charAt(cursor + 1) : '\0';
+                char next = i < source.length() - 1 ? source.charAt(i + 1) : '\0';
 
                 // we consider line continuations to be whitespace in Ruby
                 if (current != '\\' || !(next == '\n' || next == '\r')) {
@@ -3204,6 +3205,6 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 }
             }
         }
-        return cursor;
+        return i;
     }
 }

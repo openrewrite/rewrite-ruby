@@ -153,4 +153,19 @@ public class IfTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void noThen() {
+        rewriteRun(
+          ruby(
+            """
+              if current_version &&
+                 version_class.correct?(current_version) &&
+                 version_class.new(current_version).prerelease?
+                return true
+              end
+              """
+          )
+        );
+    }
 }
