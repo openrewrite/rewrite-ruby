@@ -352,6 +352,21 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         return m;
     }
 
+    public J visitNext(Ruby.Next next, P p) {
+        Ruby.Next n = next;
+        n = n.withPrefix(visitSpace(n.getPrefix(), RubySpace.Location.NEXT_PREFIX, p));
+        n = n.withMarkers(visitMarkers(n.getMarkers(), p));
+        Statement temp = (Statement) visitStatement(n, p);
+        if (!(temp instanceof Ruby.Next)) {
+            return temp;
+        } else {
+            n = (Ruby.Next) temp;
+        }
+        n = n.withNext((J.Continue) visit(n.getNext(), p));
+        n = n.withValue((Expression) visit(n.getValue(), p));
+        return n;
+    }
+
     public J visitNumericDomain(Ruby.NumericDomain numericDomain, P p) {
         Ruby.NumericDomain n = numericDomain;
         n = n.withPrefix(visitSpace(n.getPrefix(), RubySpace.Location.NUMERIC_DOMAIN_PREFIX, p));

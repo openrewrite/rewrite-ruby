@@ -1781,11 +1781,17 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitNextNode(NextNode node) {
-        return new J.Continue(
+        return new Ruby.Next(
                 randomId(),
                 sourceBefore("next"),
                 Markers.EMPTY,
-                null
+                new J.Continue(
+                        randomId(),
+                        EMPTY,
+                        Markers.EMPTY,
+                        null
+                ),
+                convertExpression(node.getValueNode())
         );
     }
 

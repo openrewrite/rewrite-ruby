@@ -370,6 +370,15 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     }
 
     @Override
+    public J visitNext(Ruby.Next next, PrintOutputCapture<P> p) {
+        beforeSyntax(next, RubySpace.Location.NEXT_PREFIX, p);
+        visit(next.getNext(), p);
+        visit(next.getValue(), p);
+        afterSyntax(next, p);
+        return next;
+    }
+
+    @Override
     public J visitNumericDomain(Ruby.NumericDomain numericDomain, PrintOutputCapture<P> p) {
         beforeSyntax(numericDomain, RubySpace.Location.NUMERIC_DOMAIN_PREFIX, p);
         visitRightPadded(
