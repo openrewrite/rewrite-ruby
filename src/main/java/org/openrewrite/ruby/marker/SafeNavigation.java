@@ -13,26 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.openrewrite.ruby.tree;
+package org.openrewrite.ruby.marker;
 
-import org.junit.jupiter.api.Test;
-import org.openrewrite.test.RewriteTest;
+import lombok.Value;
+import lombok.With;
+import org.openrewrite.marker.Marker;
 
-import static org.openrewrite.ruby.Assertions.ruby;
+import java.util.UUID;
 
-public class BeginTest implements RewriteTest {
-
-    @Test
-    void beginExpression() {
-        rewriteRun(
-          ruby(
-            """
-              @registry_client ||= begin
-                hostname = dependency_source_details.fetch(:registry_hostname)
-                RegistryClient.new(hostname: hostname, credentials: credentials)
-              end
-              """
-          )
-        );
-    }
+@Value
+@With
+public class SafeNavigation implements Marker {
+    UUID id;
 }

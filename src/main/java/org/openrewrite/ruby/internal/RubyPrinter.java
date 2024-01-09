@@ -1028,7 +1028,9 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         @Override
         public J visitMethodInvocation(J.MethodInvocation method, PrintOutputCapture<P> p) {
             beforeSyntax(method, Space.Location.METHOD_INVOCATION_PREFIX, p);
-            visitRightPadded(method.getPadding().getSelect(), JRightPadded.Location.METHOD_SELECT, ".", p);
+            visitRightPadded(method.getPadding().getSelect(),
+                    JRightPadded.Location.METHOD_SELECT,
+                    method.getMarkers().findFirst(SafeNavigation.class).isPresent() ? "&." : ".", p);
             visit(method.getName(), p);
 
             JContainer<Expression> args = method.getPadding().getArguments();
@@ -1104,7 +1106,7 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
             beforeSyntax(newClass, Space.Location.NEW_CLASS_PREFIX, p);
             visit(newClass.getClazz(), p);
             visitSpace(requireNonNull(newClass.getPadding().getEnclosing()).getAfter(), Space.Location.NEW_CLASS_ENCLOSING_SUFFIX, p);
-            p.append('.');
+            p.append(newClass.getMarkers().findFirst(SafeNavigation.class).isPresent() ? "&." : ".");
             visitSpace(newClass.getNew(), Space.Location.NEW_PREFIX, p);
             p.append("new");
             if (newClass.getPadding().getArguments().getMarkers().findFirst(OmitParentheses.class).isPresent()) {

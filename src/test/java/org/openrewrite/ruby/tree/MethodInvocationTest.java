@@ -48,6 +48,17 @@ public class MethodInvocationTest implements RewriteTest {
     }
 
     @Test
+    void safeNavigation() {
+        rewriteRun(
+          ruby(
+            """
+              obj&.accept(consumer)
+              """
+          )
+        );
+    }
+
+    @Test
     void blockLastArgument() {
         rewriteRun(
           ruby(

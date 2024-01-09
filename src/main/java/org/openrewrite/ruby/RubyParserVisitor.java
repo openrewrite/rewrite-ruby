@@ -393,7 +393,13 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
         Space prefix = whitespace();
         J receiver = convert(node.getReceiverNode());
-        Space beforeDot = sourceBefore(".");
+        Space beforeDot = whitespace();
+        Markers markers = Markers.EMPTY;
+        if (skip("&.")) {
+            markers = markers.add(new SafeNavigation(randomId()));
+        } else {
+            skip(".");
+        }
         J.Identifier name = convertIdentifier(node.getName());
         if (!(receiver instanceof TypeTree)) {
             receiver = new Ruby.ExpressionTypeTree(
@@ -408,8 +414,8 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             return new J.NewClass(
                     randomId(),
                     prefix,
-                    Markers.EMPTY,
-                    padRight(new J.Empty(randomId(), EMPTY, Markers.EMPTY), beforeDot),
+                    markers,
+                    padRight(new J.Empty(randomId(), EMPTY, markers), beforeDot),
                     name.getPrefix(),
                     (TypeTree) receiver,
                     convertCallArgs(node),
@@ -420,7 +426,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             return new J.MethodInvocation(
                     randomId(),
                     prefix,
-                    Markers.EMPTY,
+                    markers,
                     padRight((Expression) receiver, beforeDot),
                     null,
                     name,
@@ -2112,7 +2118,10 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitRegexpNode(RegexpNode node) {
-        return ((Ruby.DelimitedString) convertStrings(new StrNode(node.getLine(), node.getValue())))
+        J str = convertStrings(new StrNode(node.getLine(), node.getValue()));
+        assert str instanceof Ruby.DelimitedString : String.format("Expected a Ruby.DelimitedString for string |%s| on line %d",
+                node.getValue(), node.getLine() + 1);
+        return ((Ruby.DelimitedString) str)
                 .withRegexpOptions(convertRegexOptions(node.getOptions()));
     }
 
