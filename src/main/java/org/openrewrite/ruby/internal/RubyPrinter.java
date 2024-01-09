@@ -113,8 +113,8 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     }
 
     @Override
-    public J visitBegin(Ruby.Begin begin, PrintOutputCapture<P> p) {
-        beforeSyntax(begin, RubySpace.Location.BEGIN_PREFIX, p);
+    public J visitPreExecution(Ruby.PreExecution begin, PrintOutputCapture<P> p) {
+        beforeSyntax(begin, RubySpace.Location.PRE_EXECUTION_PREFIX, p);
         p.append("BEGIN");
         visitSpace(begin.getBlock().getPrefix(), Space.Location.BLOCK_PREFIX, p);
         visitMarkers(begin.getBlock().getMarkers(), p);
@@ -124,6 +124,15 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         visitSpace(begin.getBlock().getEnd(), Space.Location.BLOCK_END, p);
         p.append("}");
         afterSyntax(begin, p);
+        return begin;
+    }
+
+    @Override
+    public J visitBegin(Ruby.Begin begin, PrintOutputCapture<P> p) {
+        beforeSyntax(begin, RubySpace.Location.BEGIN_PREFIX, p);
+        p.append("begin");
+        visit(begin.getBody(), p);
+        p.append("end");
         return begin;
     }
 
@@ -279,8 +288,8 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     }
 
     @Override
-    public J visitEnd(Ruby.End end, PrintOutputCapture<P> p) {
-        beforeSyntax(end, RubySpace.Location.END_PREFIX, p);
+    public J visitPostExecution(Ruby.PostExecution end, PrintOutputCapture<P> p) {
+        beforeSyntax(end, RubySpace.Location.POST_EXECUTION_PREFIX, p);
         p.append("END");
         visitSpace(end.getBlock().getPrefix(), Space.Location.BLOCK_PREFIX, p);
         visitMarkers(end.getBlock().getMarkers(), p);

@@ -73,7 +73,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     private Cursor nodes = new Cursor(null, Cursor.ROOT_VALUE);
 
     private Queue<Ruby.Heredoc> openHeredocs = new ArrayDeque<>();
-    private Queue<OpenParenthesis> openParentheses = new ArrayDeque<>();
+    private final Queue<OpenParenthesis> openParentheses = new ArrayDeque<>();
     private final Map<Ruby.Heredoc, String> heredocDelimiters = new HashMap<>();
 
     /**
@@ -285,9 +285,31 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitBeginNode(BeginNode node) {
-        throw new UnsupportedOperationException("Calls to visitBeginNode have not been observed " +
-                                                "with a variety of rescue statements. Implement if one " +
-                                                "is found.");
+        Space prefix = sourceBefore("begin");
+        J body = convert(node.getBodyNode());
+        if (!(body instanceof J.Block)) {
+            body = new J.Block(
+                    randomId(),
+                    body.getPrefix(),
+                    Markers.EMPTY,
+                    JRightPadded.build(false),
+                    singletonList(
+                            padRight(
+                                    body instanceof Statement ?
+                                            (Statement) body :
+                                            new Ruby.ExpressionStatement(randomId(), (Expression) body),
+                                    EMPTY
+                            )
+                    ),
+                    EMPTY
+            );
+        }
+        return new Ruby.Begin(
+                randomId(),
+                prefix,
+                Markers.EMPTY,
+                ((J.Block) body).withEnd(sourceBefore("end"))
+        );
     }
 
     @Override
@@ -2037,7 +2059,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     @Override
     public J visitPostExeNode(PostExeNode node) {
         Space prefix = sourceBefore("END");
-        return new Ruby.End(
+        return new Ruby.PostExecution(
                 randomId(),
                 prefix,
                 Markers.EMPTY,
@@ -2048,7 +2070,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     @Override
     public J visitPreExeNode(PreExeNode node) {
         Space prefix = sourceBefore("BEGIN");
-        return new Ruby.Begin(
+        return new Ruby.PreExecution(
                 randomId(),
                 prefix,
                 Markers.EMPTY,
@@ -2537,6 +2559,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             }
         }
 
+        assert combined != null : "unable to create a string literal for |" + value + "|";
         return requireNonNull(combined);
     }
 

@@ -113,11 +113,26 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         return a;
     }
 
+    public J visitPreExecution(Ruby.PreExecution begin, P p) {
+        Ruby.PreExecution b = begin;
+        b = b.withPrefix(visitSpace(b.getPrefix(), RubySpace.Location.PRE_EXECUTION_PREFIX, p));
+        b = b.withMarkers(visitMarkers(b.getMarkers(), p));
+        b = b.withBlock((J.Block) visit(b.getBlock(), p));
+        return b;
+    }
+
     public J visitBegin(Ruby.Begin begin, P p) {
         Ruby.Begin b = begin;
         b = b.withPrefix(visitSpace(b.getPrefix(), RubySpace.Location.BEGIN_PREFIX, p));
         b = b.withMarkers(visitMarkers(b.getMarkers(), p));
-        b = b.withBlock((J.Block) visit(b.getBlock(), p));
+        Expression temp = (Expression) visitExpression(b, p);
+        if (!(temp instanceof Ruby.Begin)) {
+            return temp;
+        } else {
+            b = (Ruby.Begin) temp;
+        }
+        b = b.withBody((J.Block) visit(b.getBody(), p));
+        b = b.withType(visitType(b.getType(), p));
         return b;
     }
 
@@ -240,9 +255,9 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         return v;
     }
 
-    public J visitEnd(Ruby.End end, P p) {
-        Ruby.End e = end;
-        e = e.withPrefix(visitSpace(e.getPrefix(), RubySpace.Location.END_PREFIX, p));
+    public J visitPostExecution(Ruby.PostExecution end, P p) {
+        Ruby.PostExecution e = end;
+        e = e.withPrefix(visitSpace(e.getPrefix(), RubySpace.Location.POST_EXECUTION_PREFIX, p));
         e = e.withMarkers(visitMarkers(e.getMarkers(), p));
         e = e.withBlock((J.Block) visit(e.getBlock(), p));
         return e;

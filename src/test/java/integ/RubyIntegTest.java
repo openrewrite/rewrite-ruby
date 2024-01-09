@@ -57,8 +57,7 @@ public class RubyIntegTest implements RewriteTest {
         rewriteRun(
           ruby(
             """
-              @lockfile if defined?(@lockfile)
-              @lockfile = nil
+              query&.include?("archive=")
               """
           )
         );
