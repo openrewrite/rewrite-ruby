@@ -15,7 +15,6 @@
  */
 package org.openrewrite.ruby.tree;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.openrewrite.test.RewriteTest;
 
@@ -41,6 +40,19 @@ public class ParenthesesTest implements RewriteTest {
             """
               @lockfile if defined?(@lockfile)
               @lockfile = nil
+              """
+          )
+        );
+    }
+
+    @Test
+    void ambiguousOpenParens() {
+        rewriteRun(
+          ruby(
+            // do the first parentheses belong to the WHOLE expression or a part? it isn't immediately
+            // obvious when you pass that first open parentheses
+            """
+              (((1 + 2)) + 3) + 4
               """
           )
         );

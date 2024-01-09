@@ -15,7 +15,6 @@
  */
 package org.openrewrite.ruby.tree;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.openrewrite.test.RewriteTest;
 

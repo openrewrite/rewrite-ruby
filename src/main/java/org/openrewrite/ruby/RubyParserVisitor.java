@@ -32,6 +32,7 @@ import org.openrewrite.java.marker.OmitParentheses;
 import org.openrewrite.java.marker.TrailingComma;
 import org.openrewrite.java.tree.*;
 import org.openrewrite.marker.Markers;
+import org.openrewrite.ruby.internal.OpenParenthesis;
 import org.openrewrite.ruby.internal.StringUtils;
 import org.openrewrite.ruby.marker.*;
 import org.openrewrite.ruby.tree.Ruby;
@@ -72,7 +73,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     private Cursor nodes = new Cursor(null, Cursor.ROOT_VALUE);
 
     private Queue<Ruby.Heredoc> openHeredocs = new ArrayDeque<>();
-    private Queue<Space> openParentheses = new ArrayDeque<>();
+    private Queue<OpenParenthesis> openParentheses = new ArrayDeque<>();
     private final Map<Ruby.Heredoc, String> heredocDelimiters = new HashMap<>();
 
     /**
@@ -2842,21 +2843,46 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     private <J2 extends J> J2 maybeParenthesized(Node t) {
-        //noinspection unchecked
+        for (OpenParenthesis paren : openParentheses) {
+            paren.addLeft(t);
+        }
+        J2 j = maybeOpenParentheses(t);
+        for (OpenParenthesis paren : openParentheses) {
+            paren.closeLeft();
+        }
+        j = maybeCloseParentheses(t, j);
+        return j;
+    }
+
+    @SuppressWarnings("unchecked")
+    private <J2 extends J> J2 maybeOpenParentheses(Node t) {
         return peekWhitespace(0, (n, prefix) -> {
             if (skip("(")) {
-                J parenthesized = maybeParenthesized(t);
-                //noinspection unchecked
-                J2 p = (J2) new J.Parentheses<>(
-                        randomId(),
-                        prefix,
-                        Markers.EMPTY,
-                        padRight(parenthesized, sourceBefore(")"))
-                );
-                return p;
+                openParentheses.add(new OpenParenthesis(t, prefix));
+                return (J2) maybeOpenParentheses(t);
             }
             return null;
         }).orElseGet(() -> (J2) t.accept(this));
+    }
+
+    private <J2 extends J> J2 maybeCloseParentheses(Node t, J2 j) {
+        return peekWhitespace(j, (j2, prefix) -> {
+            if (skip(")")) {
+                for (OpenParenthesis paren : new ArrayList<>(openParentheses)) {
+                    if (paren.isParenthesized(t)) {
+                        openParentheses.remove(paren);
+                        //noinspection unchecked
+                        return maybeCloseParentheses(t, (J2) new J.Parentheses<>(
+                                randomId(),
+                                requireNonNull(paren.getBefore()),
+                                Markers.EMPTY,
+                                padRight(j2, prefix)
+                        ));
+                    }
+                }
+            }
+            return null;
+        }).orElse(j);
     }
 
     private <J2 extends J> JRightPadded<J2> convert(Node t, Function<Node, Space> suffix) {
