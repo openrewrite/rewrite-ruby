@@ -161,8 +161,8 @@ public interface Ruby extends J {
 
         Space prefix;
         Markers markers;
-        J.Identifier newName;
-        J.Identifier existingName;
+        Expression newName;
+        Expression existingName;
 
         @Override
         public <P> J acceptRuby(RubyVisitor<P> v, P p) {
@@ -889,6 +889,58 @@ public interface Ruby extends J {
         @Override
         public CoordinateBuilder.Statement getCoordinates() {
             return new CoordinateBuilder.Statement(this);
+        }
+    }
+
+    /**
+     * For example, a Ruby class may extend from a `Struct.new(..)` expression.
+     */
+    @Value
+    @With
+    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+    class ExpressionTypeTree implements Ruby, Expression, TypeTree {
+        @EqualsAndHashCode.Include
+        UUID id;
+
+        Space prefix;
+        Markers markers;
+
+        /**
+         * Most commonly will be a call of some sort, frequently a {@link J.NewClass}, for example
+         * in the case of <code>class Point < Struct.new(:x, :y)</code>. Must be an {@link Expression}
+         * or a {@link TypedTree}.
+         */
+        J reference;
+
+        @Override
+        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
+            return v.visitExpressionTypeTree(this, p);
+        }
+
+        @Override
+        public @Nullable JavaType getType() {
+            if (reference instanceof Expression) {
+                return ((Expression) reference).getType();
+            } else if (reference instanceof TypedTree) {
+                return ((TypedTree) reference).getType();
+            }
+            return null;
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public ExpressionTypeTree withType(@Nullable JavaType type) {
+            if (reference instanceof Expression) {
+                return withReference(((Expression) reference).withType(type));
+            } else if (reference instanceof TypedTree) {
+                return withReference(((TypedTree) reference).withType(type));
+            }
+            return this;
+        }
+
+        @Override
+        public CoordinateBuilder.Expression getCoordinates() {
+            return new CoordinateBuilder.Expression(this);
         }
     }
 
@@ -1788,6 +1840,66 @@ public interface Ruby extends J {
         }
     }
 
+    /**
+     * The inverse of {@link ExpressionStatement} for essentially the same reasons.
+     */
+    @SuppressWarnings("unchecked")
+    @Value
+    @With
+    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+    class StatementExpression implements Ruby, Expression, Statement {
+        @EqualsAndHashCode.Include
+        UUID id;
+
+        Statement statement;
+
+        @Override
+        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
+            J j = v.visit(getStatement(), p);
+            if (j instanceof ExpressionStatement) {
+                return j;
+            } else if (j instanceof Statement) {
+                return withStatement((Statement) j);
+            }
+            return j;
+        }
+
+        @Override
+        public <J2 extends J> J2 withPrefix(Space space) {
+            return (J2) withStatement(statement.withPrefix(space));
+        }
+
+        @Override
+        public Space getPrefix() {
+            return statement.getPrefix();
+        }
+
+        @Override
+        public <J2 extends Tree> J2 withMarkers(Markers markers) {
+            return (J2) withStatement(statement.withMarkers(markers));
+        }
+
+        @Override
+        public Markers getMarkers() {
+            return statement.getMarkers();
+        }
+
+        @Override
+        public @Nullable JavaType getType() {
+            return null;
+        }
+
+        @Override
+        public <T extends J> T withType(@Nullable JavaType type) {
+            return (T) this;
+        }
+
+        @Override
+        public CoordinateBuilder.Statement getCoordinates() {
+            return new CoordinateBuilder.Statement(this);
+        }
+    }
+
     @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
     @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
     @RequiredArgsConstructor
@@ -1818,7 +1930,7 @@ public interface Ruby extends J {
         @Getter
         @With
         @Nullable
-        Identifier constant;
+        Expression constant;
 
         /**
          * For struct pattern matching "[]" and "()" are equally acceptable regardless of whether
@@ -1917,7 +2029,6 @@ public interface Ruby extends J {
         }
 
         @Override
-        @Transient
         public CoordinateBuilder.Expression getCoordinates() {
             return new CoordinateBuilder.Expression(this);
         }
@@ -1925,58 +2036,6 @@ public interface Ruby extends J {
         @Override
         public String toString() {
             return withPrefix(Space.EMPTY).printTrimmed(new JavaPrinter<>());
-        }
-    }
-
-    /**
-     * For example, a Ruby class may extend from a `Struct.new(..)` expression.
-     */
-    @Value
-    @With
-    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
-    class ExpressionTypeTree implements Ruby, Expression, TypeTree {
-        @EqualsAndHashCode.Include
-        UUID id;
-
-        Space prefix;
-        Markers markers;
-
-        /**
-         * Most commonly will be a call of some sort, frequently a {@link J.NewClass}, for example
-         * in the case of <code>class Point < Struct.new(:x, :y)</code>. Must be an {@link Expression}
-         * or a {@link TypedTree}.
-         */
-        J reference;
-
-        @Override
-        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
-            return v.visitExpressionTypeTree(this, p);
-        }
-
-        @Override
-        public @Nullable JavaType getType() {
-            if (reference instanceof Expression) {
-                return ((Expression) reference).getType();
-            } else if (reference instanceof TypedTree) {
-                return ((TypedTree) reference).getType();
-            }
-            return null;
-        }
-
-        @SuppressWarnings("unchecked")
-        @Override
-        public ExpressionTypeTree withType(@Nullable JavaType type) {
-            if (reference instanceof Expression) {
-                return withReference(((Expression) reference).withType(type));
-            } else if (reference instanceof TypedTree) {
-                return withReference(((TypedTree) reference).withType(type));
-            }
-            return this;
-        }
-
-        @Override
-        public CoordinateBuilder.Expression getCoordinates() {
-            return new CoordinateBuilder.Expression(this);
         }
     }
 

@@ -75,6 +75,19 @@ public class MethodDeclarationTest implements RewriteTest {
     }
 
     @Test
+    void noArgsWithParentheses() {
+        rewriteRun(
+          ruby(
+            """
+              def test()
+                  i = 42
+              end
+              """
+          )
+        );
+    }
+
+    @Test
     void blockArg() {
         rewriteRun(
           ruby(

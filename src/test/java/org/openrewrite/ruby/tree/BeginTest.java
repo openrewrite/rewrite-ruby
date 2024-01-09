@@ -27,9 +27,11 @@ public class BeginTest implements RewriteTest {
         rewriteRun(
           ruby(
             """
-              @registry_client ||= begin
-                hostname = dependency_source_details.fetch(:registry_hostname)
-                RegistryClient.new(hostname: hostname, credentials: credentials)
+              def method(a)
+                @registry_client ||= begin
+                  hostname = dependency_source_details.fetch(:registry_hostname)
+                  RegistryClient.new(hostname: hostname, credentials: credentials)
+                end
               end
               """
           )

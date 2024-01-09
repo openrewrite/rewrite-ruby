@@ -141,4 +141,15 @@ public class IfTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void ternary() {
+        rewriteRun(
+          ruby(
+            """
+              source_address ? 1 : 2
+              """
+          )
+        );
+    }
 }

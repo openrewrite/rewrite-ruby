@@ -103,8 +103,8 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 randomId(),
                 sourceBefore("alias"),
                 Markers.EMPTY,
-                convert(node.getNewName()),
-                convert(node.getOldName())
+                convertExpression(node.getNewName()),
+                convertExpression(node.getOldName())
         );
     }
 
@@ -117,13 +117,13 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             elements = convertAll(Arrays.asList(((ListNode) node.getFirstNode()).children()), n -> sourceBefore(","),
                     n -> sourceBefore(","));
         } else {
-            elements = singletonList(padRight(convert(node.getFirstNode()), sourceBefore(",")));
+            elements = singletonList(padRight(convertExpression(node.getFirstNode()), sourceBefore(",")));
         }
         elements = ListUtils.concat(elements, padRight(new Ruby.Splat(
                 randomId(),
                 sourceBefore("*"),
                 Markers.EMPTY,
-                convert(node.getSecondNode())
+                convertExpression(node.getSecondNode())
         ), omitBrackets ? EMPTY : sourceBefore("]")));
 
         return new Ruby.Array(
@@ -144,7 +144,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     @Override
     public J visitAndNode(AndNode node) {
         Space prefix = whitespace();
-        Expression left = convert(node.getFirstNode());
+        Expression left = convertExpression(node.getFirstNode());
         Space opPrefix = whitespace();
         String op = source.startsWith("&&", cursor) ? "&&" : "and";
         skip(op);
@@ -154,7 +154,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 op.equals("&&") ? Markers.EMPTY : Markers.EMPTY.add(new EnglishOperator(randomId())),
                 left,
                 padLeft(opPrefix, J.Binary.Type.And),
-                convert(node.getSecondNode()),
+                convertExpression(node.getSecondNode()),
                 null
         );
     }
@@ -166,7 +166,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public Expression visitArgsPushNode(ArgsPushNode node) {
-        return convert(node.getFirstNode());
+        return convertExpression(node.getFirstNode());
     }
 
     @Override
@@ -186,7 +186,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     public J visitArrayPatternNode(ArrayPatternNode node) {
         Space prefix = whitespace();
         if (node.getConstant() != null) {
-            J.Identifier constant = convert(node.getConstant());
+            Expression constant = convertExpression(node.getConstant());
             String delimiter = source.substring(cursor, cursor + 1);
             return new Ruby.StructPattern(
                     randomId(),
@@ -196,7 +196,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     delimiter,
                     JContainer.build(
                             sourceBefore(delimiter),
-                            singletonList(padRight(convert(node.getPreArgs()), sourceBefore(StringUtils.endDelimiter(delimiter)))),
+                            singletonList(padRight(convertExpression(node.getPreArgs()), sourceBefore(StringUtils.endDelimiter(delimiter)))),
                             Markers.EMPTY
                     )
             );
@@ -220,17 +220,17 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                         randomId(),
                         EMPTY,
                         Markers.EMPTY,
-                        convert(node.getReceiverNode()),
+                        convertExpression(node.getReceiverNode()),
                         padLeft(sourceBefore("."), convertIdentifier(attrName.substring(0, attrName.indexOf('=')))),
                         null
                 ),
-                padLeft(sourceBefore("="), convert(node.getArgsNode())),
+                padLeft(sourceBefore("="), convertExpression(node.getArgsNode())),
                 null
         );
     }
 
     private J.Assignment convertArrayAssignment(AttrAssignNode node, Space prefix) {
-        Expression arrayAccessReceiver = convert(node.getReceiverNode());
+        Expression arrayAccessReceiver = convertExpression(node.getReceiverNode());
         Space arrayDimensionPrefix = sourceBefore("[");
         Expression index;
         Node assignment;
@@ -241,14 +241,14 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         } else {
             ListNode args = (ListNode) node.getArgsNode();
             if (args.size() == 2) {
-                index = convert(args.get(0));
+                index = convertExpression(args.get(0));
             } else if (args.size() == 3) {
                 index = new Ruby.SubArrayIndex(
                         randomId(),
                         EMPTY,
                         Markers.EMPTY,
-                        convert(args.get(0)),
-                        padLeft(sourceBefore(","), convert(args.get(1)))
+                        convertExpression(args.get(0)),
+                        padLeft(sourceBefore(","), convertExpression(args.get(1)))
                 );
             } else {
                 throw new IllegalStateException("Unexpected array index with 3 nodes");
@@ -273,7 +273,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                         ),
                         null
                 ),
-                padLeft(sourceBefore("="), convert(assignment)),
+                padLeft(sourceBefore("="), convertExpression(assignment)),
                 null
         );
     }
@@ -308,7 +308,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 randomId(),
                 prefix,
                 Markers.EMPTY,
-                ((J.Block) body).withEnd(sourceBefore("end"))
+                (J.Block) body
         );
     }
 
@@ -341,7 +341,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 randomId(),
                 sourceBefore("&"),
                 Markers.EMPTY,
-                convert(node.getBodyNode())
+                convertExpression(node.getBodyNode())
         );
     }
 
@@ -442,7 +442,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     private J.ArrayAccess convertArrayAccess(Node receiverNode, Node argsNode, @Nullable Node iterNode) {
         Space prefix = whitespace();
-        Expression receiver = convert(receiverNode);
+        Expression receiver = convertExpression(receiverNode);
         JContainer<J> args = convertArgs("[", argsNode, iterNode, "]");
         List<J> argElems = args.getElements();
         if (argElems.size() == 2) {
@@ -488,15 +488,11 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         }
         List<JRightPadded<Statement>> converted = new ArrayList<>(trees.size());
         for (int i = 0; i < trees.size(); i++) {
-            JRightPadded<J> stat = convert(trees.get(i), i == trees.size() - 1 ? suffix : n -> EMPTY);
-            if (!(stat.getElement() instanceof Statement)) {
-                stat = stat.withElement(new Ruby.ExpressionStatement(randomId(), (Expression) stat.getElement()));
-            }
-            if (stat.getElement() instanceof J.Empty) {
+            Statement stat = convertStatement(trees.get(i));
+            if (stat instanceof J.Empty) {
                 continue;
             }
-            //noinspection ReassignedVariable,unchecked
-            converted.add((JRightPadded<Statement>) (JRightPadded<?>) stat);
+            converted.add(padRight(stat, i == trees.size() - 1 ? suffix.apply(trees.get(i)) : EMPTY));
         }
         return converted;
     }
@@ -544,7 +540,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         } else {
             List<Node> groupedCases = new ArrayList<>(cases.size());
             cases.forEach(groupedCases::add);
-            Expression left = convert(caseNode);
+            Expression left = convertExpression(caseNode);
 
             Space casePrefix = whitespace();
 
@@ -583,7 +579,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 randomId(),
                 EMPTY,
                 Markers.EMPTY,
-                padRight(convert(caseNode), EMPTY)
+                padRight(convertExpression(caseNode), EMPTY)
         );
 
         Map<Integer, List<Node>> groupedWhen = new LinkedHashMap<>();
@@ -709,7 +705,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         Node superNode = node.getSuperNode();
         if (superNode != null) {
             Space extendingsPrefix = sourceBefore("<");
-            Expression superClass = convert(superNode);
+            Expression superClass = convertExpression(superNode);
             extendings = padLeft(
                     extendingsPrefix,
                     superClass instanceof TypeTree ?
@@ -763,7 +759,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 randomId(),
                 whitespace(),
                 Markers.EMPTY,
-                padRight(convert(node.getLeftNode()), sourceBefore("::")),
+                padRight(convertExpression(node.getLeftNode()), sourceBefore("::")),
                 null,
                 padLeft(EMPTY, convertIdentifier(node.getName())),
                 null,
@@ -794,7 +790,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 randomId(),
                 whitespace(),
                 Markers.EMPTY,
-                padRight(convert(node.getNumber()), sourceBefore("i")),
+                padRight(convertExpression(node.getNumber()), sourceBefore("i")),
                 Ruby.NumericDomain.Domain.Complex,
                 null
         );
@@ -817,7 +813,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 sourceBefore("defined?"),
                 Markers.EMPTY,
                 Ruby.Unary.Type.Defined,
-                convert(node.getExpressionNode())
+                convertExpression(node.getExpressionNode())
         );
     }
 
@@ -837,7 +833,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         Expression classMethodReceiver = null;
         Space classMethodReceiverDot = null;
         if (node instanceof DefsNode) {
-            classMethodReceiver = convert(((DefsNode) node).getReceiverNode());
+            classMethodReceiver = convertExpression(((DefsNode) node).getReceiverNode());
             classMethodReceiverDot = sourceBefore(".");
         }
 
@@ -939,7 +935,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     @Override
     public J visitDotNode(DotNode node) {
         Space prefix = whitespace();
-        Expression left = convert(node.getBeginNode());
+        Expression left = convertExpression(node.getBeginNode());
         Space opPrefix = whitespace();
         String op = source.substring(cursor).startsWith("...") ? "..." : "..";
         skip(op);
@@ -949,7 +945,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 Markers.EMPTY,
                 left,
                 padLeft(opPrefix, op.equals("...") ? Ruby.Binary.Type.RangeExclusive : Ruby.Binary.Type.RangeInclusive),
-                convert(node.getEndNode()),
+                convertExpression(node.getEndNode()),
                 null
         );
     }
@@ -1082,7 +1078,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitEnsureNode(EnsureNode node) {
-        Ruby.Rescue rescue = convert(node.getBodyNode());
+        Ruby.Rescue rescue = (Ruby.Rescue) convert(node.getBodyNode());
         Space prefix;
         if (rescue.getElse() == null) {
             List<J.Try.Catch> catches = rescue.getTry().getCatches();
@@ -1100,7 +1096,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             ensureBody = convertAll(Arrays.asList(((BlockNode) node.getEnsureNode()).children()),
                     n -> EMPTY, n -> EMPTY);
         } else {
-            ensureBody = singletonList(padRight(convert(node.getEnsureNode()), EMPTY));
+            ensureBody = singletonList(padRight(convertStatement(node.getEnsureNode()), EMPTY));
         }
 
         return rescue.withTry(rescue.getTry().withFinally(new J.Block(
@@ -1201,7 +1197,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     @Override
     public J visitFlipNode(FlipNode node) {
         Space prefix = whitespace();
-        Expression left = convert(node.getBeginNode());
+        Expression left = convertExpression(node.getBeginNode());
         Space opPrefix = sourceBefore("..");
         Ruby.Binary.Type op = Ruby.Binary.Type.FlipFlopInclusive;
         if (source.charAt(cursor) == '.') {
@@ -1214,7 +1210,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 Markers.EMPTY,
                 left,
                 padLeft(opPrefix, op),
-                convert(node.getEndNode()),
+                convertExpression(node.getEndNode()),
                 JavaType.Primitive.Boolean
         );
     }
@@ -1237,7 +1233,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         Markers markers = Markers.EMPTY;
         Space prefix = sourceBefore("for");
 
-        J.Identifier variableIdentifier = convert(node.getVarNode());
+        Expression variableIdentifier = convertExpression(node.getVarNode());
         JRightPadded<J.VariableDeclarations> variable = padRight(new J.VariableDeclarations(
                 randomId(),
                 variableIdentifier.getPrefix(),
@@ -1258,7 +1254,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 ), EMPTY))
         ), sourceBefore("in"));
 
-        JRightPadded<Expression> iterable = padRight(convert(node.getIterNode()), whitespace());
+        JRightPadded<Expression> iterable = padRight(convertExpression(node.getIterNode()), whitespace());
 
         return new J.ForEachLoop(
                 randomId(),
@@ -1271,7 +1267,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                         variable,
                         iterable
                 ),
-                padRight(convert(node.getBodyNode()), sourceBefore("end"))
+                padRight(convertStatement(node.getBodyNode()), sourceBefore("end"))
         );
     }
 
@@ -1308,7 +1304,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         for (int i = 0; i < nodePairs.size(); i++) {
             KeyValuePair<Node, Node> kv = nodePairs.get(i);
             Space kvPrefix = whitespace();
-            Expression key = convert(kv.getKey());
+            Expression key = convertExpression(kv.getKey());
             Space separatorPrefix = whitespace();
             Ruby.Hash.KeyValue.Separator separator;
             if (source.startsWith("=>", cursor)) {
@@ -1344,7 +1340,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             ), i == nodePairs.size() - 1 && restArg == null ? EMPTY : sourceBefore(",")));
         }
         if (restArg != null) {
-            pairs.add(padRight(convert(restArg), EMPTY));
+            pairs.add(padRight(convertExpression(restArg), EMPTY));
         }
         if (nodePairs.isEmpty() && restArg == null) {
             pairs.add(padRight(new J.Empty(randomId(), EMPTY, Markers.EMPTY), EMPTY));
@@ -1370,7 +1366,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     public J visitHashPatternNode(HashPatternNode node) {
         Space prefix = whitespace();
         if (node.getConstant() != null) {
-            J.Identifier constant = convert(node.getConstant());
+            Expression constant = convertExpression(node.getConstant());
             String delimiter = source.substring(cursor, cursor + 1);
             return new Ruby.StructPattern(
                     randomId(),
@@ -1393,9 +1389,24 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     @Override
     public J visitIfNode(IfNode node) {
         Space prefix = whitespace();
-        return (source.startsWith("if", cursor) ?
-                ifStatement(node) :
-                ifModifier(node)).withPrefix(prefix);
+        if (source.startsWith("if", cursor)) {
+            return ifStatement(node).withPrefix(prefix);
+        } else if (node.getThenBody() == null || node.getElseBody() == null) {
+            return ifModifier(node).withPrefix(prefix);
+        }
+        return ternary(node);
+    }
+
+    private J.Ternary ternary(IfNode node) {
+        return new J.Ternary(
+                randomId(),
+                whitespace(),
+                Markers.EMPTY,
+                convertExpression(node.getCondition()),
+                padLeft(sourceBefore("?"), convertExpression(node.getThenBody())),
+                padLeft(sourceBefore(":"), convertExpression(node.getElseBody())),
+                null
+        );
     }
 
     private J.If ifModifier(IfNode node) {
@@ -1408,7 +1419,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         skip(node.getThenBody() == null ? "unless" : "if");
 
         Space ifConditionPrefix = whitespace();
-        Expression ifConditionExpr = convert(node.getCondition());
+        Expression ifConditionExpr = convertExpression(node.getCondition());
         J.ControlParentheses<Expression> ifCondition = new J.ControlParentheses<>(
                 randomId(),
                 ifConditionPrefix,
@@ -1428,7 +1439,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     private J.If ifStatement(IfNode node) {
         skip("if");
         Space ifConditionPrefix = whitespace();
-        Expression ifConditionExpr = convert(node.getCondition());
+        Expression ifConditionExpr = convertExpression(node.getCondition());
         boolean explicitThen = Pattern.compile("\\s+then").matcher(source).find(cursor);
         J.ControlParentheses<Expression> ifCondition = new J.ControlParentheses<>(
                 randomId(),
@@ -1439,7 +1450,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 padRight(ifConditionExpr, explicitThen ? sourceBefore("then") : EMPTY)
         );
 
-        Statement thenElem = convert(node.getThenBody());
+        Statement thenElem = convertStatement(node.getThenBody());
         JRightPadded<Statement> then = node.getElseBody() == null ?
                 padRight(thenElem, sourceBefore("end")) :
                 padRight(thenElem, EMPTY);
@@ -1452,7 +1463,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     randomId(),
                     elsePrefix,
                     Markers.EMPTY,
-                    padRight(convert(node.getElseBody()),
+                    padRight(convertStatement(node.getElseBody()),
                             node.getElseBody() instanceof IfNode ? EMPTY : sourceBefore("end"))
             );
         }
@@ -1531,7 +1542,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                         Markers.EMPTY,
                         convertIdentifier(assignable.getName()),
                         emptyList(),
-                        padLeft(sourceBefore(":"), convert(assignable.getValueNode())),
+                        padLeft(sourceBefore(":"), convertExpression(assignable.getValueNode())),
                         null
                 ), EMPTY))
         );
@@ -1673,7 +1684,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     prefix,
                     Markers.EMPTY,
                     variable,
-                    padLeft(sourceBefore("="), convert(node.getValueNode())),
+                    padLeft(sourceBefore("="), convertExpression(node.getValueNode())),
                     null
             );
         }
@@ -1723,9 +1734,9 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 randomId(),
                 whitespace(),
                 Markers.EMPTY,
-                convert(node.getReceiverNode()),
+                convertExpression(node.getReceiverNode()),
                 padLeft(sourceBefore("=~"), Ruby.Binary.Type.Match),
-                convert(node.getValueNode()),
+                convertExpression(node.getValueNode()),
                 null
         );
     }
@@ -1758,7 +1769,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             assignments = assignments.withMarkers(assignments.getMarkers().removeByType(TrailingComma.class));
             assignments = assignments.getPadding().withElements(ListUtils.concat(
                     ListUtils.mapLast(assignments.getPadding().getElements(), assign -> assign.withAfter(lastComma)),
-                    padRight(convert(node.getRest()), EMPTY)
+                    padRight(convertExpression(node.getRest()), EMPTY)
             ));
         }
         Space initializerPrefix = sourceBefore("=");
@@ -1821,7 +1832,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     @Override
     public J visitOpAsgnNode(OpAsgnNode node) {
         Supplier<Expression> receiver = () -> {
-            Expression r = convert(node.getReceiverNode());
+            Expression r = convertExpression(node.getReceiverNode());
             if (node.getVariableName() != null) {
                 r = new J.FieldAccess(
                         randomId(),
@@ -1839,12 +1850,12 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitOpAsgnAndNode(OpAsgnAndNode node) {
-        return convertOpAsgn(() -> convert(node.getFirstNode()), "&&", node.getSecondNode());
+        return convertOpAsgn(() -> convertExpression(node.getFirstNode()), "&&", node.getSecondNode());
     }
 
     @Override
     public J visitOpAsgnOrNode(OpAsgnOrNode node) {
-        return convertOpAsgn(() -> convert(node.getFirstNode()), "||", node.getSecondNode());
+        return convertOpAsgn(() -> convertExpression(node.getFirstNode()), "||", node.getSecondNode());
     }
 
     @Override
@@ -1876,7 +1887,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     Markers.EMPTY,
                     firstExpr,
                     padLeft(sourceBefore(op + "="), (Ruby.AssignmentOperation.Type) opType),
-                    convert(second),
+                    convertExpression(second),
                     null
             );
         } else {
@@ -1886,7 +1897,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     Markers.EMPTY,
                     firstExpr,
                     padLeft(sourceBefore(op + "="), (J.AssignmentOperation.Type) opType),
-                    convert(second),
+                    convertExpression(second),
                     null
             );
         }
@@ -1987,9 +1998,9 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     randomId(),
                     whitespace(),
                     markers,
-                    convert(node.getReceiverNode()),
+                    convertExpression(node.getReceiverNode()),
                     padLeft(sourceBefore(op), type),
-                    convert(node.getArgsNode().childNodes().get(0)),
+                    convertExpression(node.getArgsNode().childNodes().get(0)),
                     null
             );
         } else if (unaryType != null) {
@@ -1998,7 +2009,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     whitespace(),
                     markers,
                     padLeft(sourceBefore(op), unaryType),
-                    convert(node.getReceiverNode()),
+                    convertExpression(node.getReceiverNode()),
                     null
             );
         } else {
@@ -2006,9 +2017,9 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     randomId(),
                     whitespace(),
                     markers,
-                    convert(node.getReceiverNode()),
+                    convertExpression(node.getReceiverNode()),
                     padLeft(sourceBefore(op), rubyType),
-                    convert(node.getArgsNode().childNodes().get(0)),
+                    convertExpression(node.getArgsNode().childNodes().get(0)),
                     null
             );
         }
@@ -2033,7 +2044,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                         emptyList(),
                         node.getValue() == null ?
                                 null :
-                                padLeft(sourceBefore("="), convert(((LocalAsgnNode) node.getValue()).getValueNode())),
+                                padLeft(sourceBefore("="), convertExpression(((LocalAsgnNode) node.getValue()).getValueNode())),
                         null
                 ), EMPTY))
         );
@@ -2042,7 +2053,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     @Override
     public J visitOrNode(OrNode node) {
         Space prefix = whitespace();
-        Expression left = convert(node.getFirstNode());
+        Expression left = convertExpression(node.getFirstNode());
         Space opPrefix = whitespace();
         String op = source.startsWith("||", cursor) ? "||" : "or";
         skip(op);
@@ -2052,7 +2063,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 op.equals("||") ? Markers.EMPTY : Markers.EMPTY.add(new EnglishOperator(randomId())),
                 left,
                 padLeft(opPrefix, J.Binary.Type.Or),
-                convert(node.getSecondNode()),
+                convertExpression(node.getSecondNode()),
                 null
         );
     }
@@ -2101,7 +2112,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 randomId(),
                 whitespace(),
                 Markers.EMPTY,
-                padRight(convert(node.getNumerator()), sourceBefore("r")),
+                padRight(convertExpression(node.getNumerator()), sourceBefore("r")),
                 Ruby.NumericDomain.Domain.Rational,
                 null
         );
@@ -2227,7 +2238,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             catchBody = convertAll(Arrays.asList(((BlockNode) rescue.getBodyNode()).children()),
                     n -> EMPTY, n -> EMPTY);
         } else {
-            catchBody = singletonList(padRight(convert(rescue.getBodyNode()), EMPTY));
+            catchBody = singletonList(padRight(convertStatement(rescue.getBodyNode()), EMPTY));
         }
 
         TypeTree exceptionType;
@@ -2310,7 +2321,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     @Override
     public J visitReturnNode(ReturnNode node) {
         Space prefix = sourceBefore("return");
-        Expression returnValue = convert(node.getValueNode());
+        Expression returnValue = convertExpression(node.getValueNode());
         return new J.Return(
                 randomId(),
                 prefix,
@@ -2349,7 +2360,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 randomId(),
                 sourceBefore("class"),
                 Markers.EMPTY,
-                padLeft(sourceBefore("<<"), convert(node.getReceiverNode())),
+                padLeft(sourceBefore("<<"), convertExpression(node.getReceiverNode())),
                 new J.Block(
                         randomId(),
                         whitespace(),
@@ -2372,7 +2383,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 randomId(),
                 sourceBefore("*"),
                 Markers.EMPTY,
-                convert(node.getValue())
+                convertExpression(node.getValue())
         );
     }
 
@@ -2568,7 +2579,8 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             }
         }
 
-        assert combined != null : "unable to create a string literal for |" + value + "|";
+        assert combined != null : String.format("unable to create a string literal for |%s| on line %d",
+                value, node.getLine() + 1);
         return requireNonNull(combined);
     }
 
@@ -2647,13 +2659,13 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 nameNodes.add(padRight(
                         node instanceof SymbolNode ?
                                 convertIdentifier(((SymbolNode) node).getName()) :
-                                convert(((DSymbolNode) node).children()[0]), whitespace()));
+                                convertExpression(((DSymbolNode) node).children()[0]), whitespace()));
             }
         } else if (nodes[0] instanceof SymbolNode) {
             // whitespace on the end of non-array name symbols is actually part of the name...
             nameNodes.add(padRight(convertIdentifier(((SymbolNode) nodes[0]).getName()), EMPTY));
         } else { // instanceof DSymbolNode
-            nameNodes.add(padRight(convert((((DSymbolNode) nodes[0]).children()[0])), whitespace()));
+            nameNodes.add(padRight(convertExpression((((DSymbolNode) nodes[0]).children()[0])), whitespace()));
         }
 
         if (delimiter.startsWith("%")) {
@@ -2726,7 +2738,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         if (source.startsWith("while", cursor) || source.startsWith("until", cursor)) {
             Markers markers = whileOrUntil();
             Space conditionPrefix = whitespace();
-            Expression conditionExpr = convert(conditionNode);
+            Expression conditionExpr = convertExpression(conditionNode);
             boolean explicitDo = Pattern.compile("\\s+do").matcher(source).find(cursor);
             J.ControlParentheses<Expression> condition = new J.ControlParentheses<>(
                     randomId(),
@@ -2742,14 +2754,14 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     prefix,
                     markers,
                     condition,
-                    padRight(convert(bodyNode), sourceBefore("end"))
+                    padRight(convertStatement(bodyNode), sourceBefore("end"))
             );
         } else {
-            JRightPadded<Statement> body = padRight(convert(bodyNode), whitespace());
+            JRightPadded<Statement> body = padRight(convertStatement(bodyNode), whitespace());
             Markers markers = whileOrUntil();
 
             Space conditionPrefix = whitespace();
-            Expression conditionExpr = convert(conditionNode);
+            Expression conditionExpr = convertExpression(conditionNode);
             J.ControlParentheses<Expression> condition = new J.ControlParentheses<>(
                     randomId(),
                     conditionPrefix,
@@ -2858,7 +2870,23 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         );
     }
 
-    private <J2 extends J> J2 convert(@Nullable Node t) {
+    private Statement convertStatement(@Nullable Node t) {
+        J j = convert(t);
+        if (!(j instanceof Statement)) {
+            j = new Ruby.ExpressionStatement(randomId(), (Expression) j);
+        }
+        return (Statement) j;
+    }
+
+    private Expression convertExpression(@Nullable Node t) {
+        J j = convert(t);
+        if (!(j instanceof Expression)) {
+            return new Ruby.StatementExpression(randomId(), (Statement) j);
+        }
+        return (Expression) j;
+    }
+
+    private J convert(@Nullable Node t) {
         if (t == null) {
             //noinspection ConstantConditions
             return null;
@@ -2866,7 +2894,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         nodes = new Cursor(nodes, t);
         //noinspection CaughtExceptionImmediatelyRethrown
         try {
-            J2 j = maybeParenthesized(t);
+            J j = maybeParenthesized(t);
             nodes = nodes.getParentOrThrow();
             return j;
         } catch (Throwable ex) {
@@ -2917,12 +2945,6 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         }).orElse(j);
     }
 
-    private <J2 extends J> JRightPadded<J2> convert(Node t, Function<Node, Space> suffix) {
-        J2 j = convert(t);
-        //noinspection ConstantConditions
-        return j == null ? null : new JRightPadded<>(j, suffix.apply(t), Markers.EMPTY);
-    }
-
     private <J2 extends J> JContainer<J2> convertArgs(String before,
                                                       @Nullable Node argsNode,
                                                       @Nullable Node iterNode,
@@ -2943,7 +2965,8 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     n -> maybeTrailingComma(markers, omitParentheses.get() ? null : after));
 
             if (iterNode != null) {
-                J2 blockPass = convert(iterNode);
+                //noinspection unchecked
+                J2 blockPass = (J2) convert(iterNode);
                 Space suffix = EMPTY;
                 if (blockPass instanceof Ruby.BlockArgument) {
                     suffix = omitParentheses.get() ? EMPTY : sourceBefore(after);
@@ -2954,8 +2977,14 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 );
             }
 
-            if (mappedArgs.isEmpty() && omitParentheses.get()) {
-                return null;
+            if (mappedArgs.isEmpty()) {
+                if (omitParentheses.get()) {
+                    return null;
+                } else {
+                    //noinspection unchecked
+                    mappedArgs = singletonList(padRight((J2) new J.Empty(randomId(), EMPTY, Markers.EMPTY),
+                            sourceBefore(after)));
+                }
             }
 
             return JContainer.build(
@@ -3021,7 +3050,8 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         }
         List<JRightPadded<J2>> converted = new ArrayList<>(trees.size());
         for (int i = 0; i < trees.size(); i++) {
-            converted.add(convert(trees.get(i), i == trees.size() - 1 ? suffix : innerSuffix));
+            @SuppressWarnings("unchecked") J2 j = (J2) convert(trees.get(i));
+            converted.add(padRight(j, (i == trees.size() - 1 ? suffix : innerSuffix).apply(trees.get(i))));
         }
         return converted;
     }

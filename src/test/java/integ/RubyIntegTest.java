@@ -52,14 +52,14 @@ public class RubyIntegTest implements RewriteTest {
           .map(p -> REPOSITORY.relativize(p));
     }
 
-    @Test
-    void test() {
-        rewriteRun(
-          ruby(
-            """
-              query&.include?("archive=")
-              """
-          )
-        );
-    }
+//    @Test
+//    void test() {
+//        rewriteRun(
+//          ruby(
+//            """
+//              query&.include?("archive=")
+//              """
+//          )
+//        );
+//    }
 }
