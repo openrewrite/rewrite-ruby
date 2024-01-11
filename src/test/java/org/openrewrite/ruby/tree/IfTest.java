@@ -34,6 +34,19 @@ public class IfTest implements RewriteTest {
     }
 
     @Test
+    void unlessStatement() {
+        rewriteRun(
+          ruby(
+            """
+              unless h == "hello"
+                  puts "world"
+              end
+              """
+          )
+        );
+    }
+
+    @Test
     void ifModifier() {
         rewriteRun(
           ruby(

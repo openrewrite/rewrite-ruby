@@ -16,9 +16,11 @@
 package org.openrewrite.ruby.tree;
 
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 
 public class RubyContainer {
 
+    @RequiredArgsConstructor(access = lombok.AccessLevel.PRIVATE)
     @Getter
     public enum Location {
         ARRAY_ELEMENTS(RubySpace.Location.ARRAY_ELEMENTS, RubyRightPadded.Location.ARRAY_ELEMENTS_SUFFIX),
@@ -29,14 +31,10 @@ public class RubyContainer {
         MULTIPLE_ASSIGNMENT_ASSIGNMENTS(RubySpace.Location.MULTIPLE_ASSIGNMENT_ASSIGNMENTS, RubyRightPadded.Location.MULTIPLE_ASSIGNMENT_SUFFIX),
         MULTIPLE_ASSIGNMENT_INITIALIZERS(RubySpace.Location.MULTIPLE_ASSIGNMENT_INITIALIZERS, RubyRightPadded.Location.MULTIPLE_ASSIGNMENT_INITIALIZERS_SUFFIX),
         STRUCT_PATTERN_ELEMENT(RubySpace.Location.STRUCT_PATTERN_ELEMENT, RubyRightPadded.Location.STRUCT_PATTERN_ELEMENT_SUFFIX),
-        YIELD_DATA(RubySpace.Location.YIELD_DATA, RubyRightPadded.Location.YIELD_DATA_SUFFIX);
+        YIELD_DATA(RubySpace.Location.YIELD_DATA, RubyRightPadded.Location.YIELD_DATA_SUFFIX),
+        REGEXP_STRINGS(RubySpace.Location.REGEXP_STRINGS, RubyRightPadded.Location.REGEXP_STRINGS_SUFFIX);
 
         private final RubySpace.Location beforeLocation;
         private final RubyRightPadded.Location elementLocation;
-
-        Location(RubySpace.Location beforeLocation, RubyRightPadded.Location elementLocation) {
-            this.beforeLocation = beforeLocation;
-            this.elementLocation = elementLocation;
-        }
     }
 }

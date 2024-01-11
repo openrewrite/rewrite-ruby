@@ -248,39 +248,6 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         p.append(dString.getDelimiter());
         visit(dString.getStrings(), p);
         p.append(StringUtils.endDelimiter(dString.getDelimiter()));
-        for (Ruby.DelimitedString.RegexpOptions regexpOption : dString.getRegexpOptions()) {
-            switch (regexpOption) {
-                case IgnoreCase:
-                    p.append('i');
-                    break;
-                case Java:
-                    p.append('j');
-                    break;
-                case Multiline:
-                    p.append('m');
-                    break;
-                case Extended:
-                    p.append('x');
-                    break;
-                case Once:
-                    p.append('o');
-                    break;
-                case None:
-                    p.append('n');
-                    break;
-                case EUCJPEncoding:
-                    p.append('e');
-                    break;
-                case SJISEncoding:
-                    p.append('s');
-                    break;
-                case UTF8Encoding:
-                    p.append('u');
-                    break;
-                default:
-                    throw new IllegalStateException("Unexpected regexp option " + regexpOption);
-            }
-        }
         afterSyntax(dString, p);
         return dString;
     }
@@ -417,6 +384,49 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         p.append("redo");
         afterSyntax(redo, p);
         return redo;
+    }
+
+    @Override
+    public J visitRegexp(Ruby.Regexp regexp, PrintOutputCapture<P> p) {
+        beforeSyntax(regexp, RubySpace.Location.REGEXP_PREFIX, p);
+        p.append(regexp.getDelimiter());
+        visit(regexp.getStrings(), p);
+        p.append(StringUtils.endDelimiter(regexp.getDelimiter()));
+        for (Ruby.Regexp.Options regexpOption : regexp.getOptions()) {
+            switch (regexpOption) {
+                case IgnoreCase:
+                    p.append('i');
+                    break;
+                case Java:
+                    p.append('j');
+                    break;
+                case Multiline:
+                    p.append('m');
+                    break;
+                case Extended:
+                    p.append('x');
+                    break;
+                case Once:
+                    p.append('o');
+                    break;
+                case None:
+                    p.append('n');
+                    break;
+                case EUCJPEncoding:
+                    p.append('e');
+                    break;
+                case SJISEncoding:
+                    p.append('s');
+                    break;
+                case UTF8Encoding:
+                    p.append('u');
+                    break;
+                default:
+                    throw new IllegalStateException("Unexpected regexp option " + regexpOption);
+            }
+        }
+        afterSyntax(regexp, p);
+        return regexp;
     }
 
     @Override
@@ -941,10 +951,13 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         @Override
         public J visitElse(J.If.Else anElse, PrintOutputCapture<P> p) {
             beforeSyntax(anElse, Space.Location.ELSE_PREFIX, p);
-            if (anElse.getBody() instanceof J.If) {
-                p.append("els"); // the nested `J.If` will print the remaining `if`
-            } else {
-                p.append("else");
+            J.If iff = getCursor().firstEnclosingOrThrow(J.If.class);
+            if (!iff.getMarkers().findFirst(Unless.class).isPresent()) {
+                if (anElse.getBody() instanceof J.If) {
+                    p.append("els"); // the nested `J.If` will print the remaining `if`
+                } else {
+                    p.append("else");
+                }
             }
             visitStatement(anElse.getPadding().getBody(), JRightPadded.Location.IF_ELSE, p);
             if (!(anElse.getBody() instanceof J.If)) {
@@ -984,14 +997,15 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         public J visitIf(J.If iff, PrintOutputCapture<P> p) {
             beforeSyntax(iff, Space.Location.IF_PREFIX, p);
 
+            String keyword = iff.getMarkers().findFirst(Unless.class).isPresent() ? "unless" : "if";
             Optional<IfModifier> ifModifier = iff.getMarkers().findFirst(IfModifier.class);
             if (ifModifier.isPresent()) {
                 visitStatement(iff.getPadding().getThenPart(), JRightPadded.Location.IF_THEN, p);
-                p.append(ifModifier.get().isUnless() ? "unless" : "if");
+                p.append(keyword);
                 visit(iff.getIfCondition(), p);
                 return iff;
             } else {
-                p.append("if");
+                p.append(keyword);
                 visit(iff.getIfCondition(), p);
                 visitStatement(iff.getPadding().getThenPart(), JRightPadded.Location.IF_THEN, p);
                 if (iff.getElsePart() == null) {

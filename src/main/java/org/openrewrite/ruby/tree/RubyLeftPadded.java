@@ -16,9 +16,11 @@
 package org.openrewrite.ruby.tree;
 
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 
 public class RubyLeftPadded {
 
+    @RequiredArgsConstructor(access = lombok.AccessLevel.PRIVATE)
     @Getter
     public enum Location {
         BOOLEAN_CHECK_IN_PREFIX(RubySpace.Location.BOOLEAN_CHECK_IN_PREFIX),
@@ -28,9 +30,5 @@ public class RubyLeftPadded {
         SUB_ARRAY_LENGTH_PREFIX(RubySpace.Location.SUB_ARRAY_LENGTH_PREFIX);
 
         private final RubySpace.Location beforeLocation;
-
-        Location(RubySpace.Location beforeLocation) {
-            this.beforeLocation = beforeLocation;
-        }
     }
 }

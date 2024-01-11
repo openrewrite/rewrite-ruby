@@ -950,63 +950,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitDRegxNode(DRegexpNode node) {
-        return ((Ruby.DelimitedString) convertStrings(node))
-                .withRegexpOptions(convertRegexOptions(node.getOptions()));
-    }
-
-    private List<Ruby.DelimitedString.RegexpOptions> convertRegexOptions(RegexpOptions options) {
-        return regexOptionsString(options).chars().mapToObj(opt -> {
-            switch (opt) {
-                case 'x':
-                    return Ruby.DelimitedString.RegexpOptions.Extended;
-                case 'i':
-                    return Ruby.DelimitedString.RegexpOptions.IgnoreCase;
-                case 'm':
-                    return Ruby.DelimitedString.RegexpOptions.Multiline;
-                case 'j':
-                    return Ruby.DelimitedString.RegexpOptions.Java;
-                case 'o':
-                    return Ruby.DelimitedString.RegexpOptions.Once;
-                case 'n':
-                    return Ruby.DelimitedString.RegexpOptions.None;
-                case 'e':
-                    return Ruby.DelimitedString.RegexpOptions.EUCJPEncoding;
-                case 's':
-                    return Ruby.DelimitedString.RegexpOptions.SJISEncoding;
-                case 'u':
-                    return Ruby.DelimitedString.RegexpOptions.UTF8Encoding;
-                default:
-                    throw new UnsupportedOperationException(String.format("Unknown regexp option %s", opt));
-            }
-        }).collect(toList());
-    }
-
-    private String regexOptionsString(RegexpOptions options) {
-        int optionCount = 0;
-        if (options.isExtended()) {
-            optionCount++;
-        }
-        if (!options.isKcodeDefault()) {
-            optionCount++;
-        }
-        if (options.isIgnorecase()) {
-            optionCount++;
-        }
-        if (options.isJava()) {
-            optionCount++;
-        }
-        if (options.isLiteral()) {
-            optionCount++;
-        }
-        if (options.isMultiline()) {
-            optionCount++;
-        }
-        if (options.isOnce()) {
-            optionCount++;
-        }
-        String optionsString = source.substring(cursor, cursor + optionCount);
-        skip(optionsString);
-        return optionsString;
+        return convertStrings(node);
     }
 
     @Override
@@ -1373,7 +1317,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     @Override
     public J visitIfNode(IfNode node) {
         Space prefix = whitespace();
-        if (source.startsWith("if", cursor)) {
+        if (source.startsWith("if", cursor) || source.startsWith("unless", cursor)) {
             return ifStatement(node).withPrefix(prefix);
         } else if (node.getThenBody() == null || node.getElseBody() == null) {
             return ifModifier(node).withPrefix(prefix);
@@ -1395,7 +1339,10 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     private J.If ifModifier(IfNode node) {
         J thenElem = convert(node.getThenBody() == null ? node.getElseBody() : node.getThenBody());
-        Markers markers = Markers.EMPTY.add(new IfModifier(randomId(), node.getThenBody() == null));
+        Markers markers = Markers.EMPTY.add(new IfModifier(randomId()));
+        if (node.getThenBody() == null) {
+            markers = markers.add(new Unless(randomId()));
+        }
         if (!(thenElem instanceof Statement)) {
             thenElem = new Ruby.ExpressionStatement(randomId(), (Expression) thenElem);
         }
@@ -1421,7 +1368,11 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     private J.If ifStatement(IfNode node) {
-        skip("if");
+        Markers markers = Markers.EMPTY;
+        if (!skip("if")) {
+            skip("unless");
+            markers = markers.add(new Unless(randomId()));
+        }
         Space ifConditionPrefix = whitespace();
         Expression ifConditionExpr = convertExpression(node.getCondition());
         boolean explicitThen = source.startsWith("then", indexOfNextNonWhitespace());
@@ -1455,7 +1406,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         return new J.If(
                 randomId(),
                 EMPTY,
-                Markers.EMPTY,
+                markers,
                 ifCondition,
                 then,
                 anElse
@@ -2119,11 +2070,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitRegexpNode(RegexpNode node) {
-        J str = convertStrings(new StrNode(node.getLine(), node.getValue()));
-        assert str instanceof Ruby.DelimitedString : String.format("Expected a Ruby.DelimitedString for string |%s| on line %d",
-                node.getValue(), node.getLine() + 1);
-        return ((Ruby.DelimitedString) str)
-                .withRegexpOptions(convertRegexOptions(node.getOptions()));
+        return convertStrings(new StrNode(node.getLine(), node.getValue()));
     }
 
     @Override
@@ -2449,15 +2396,14 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             boolean isRegex = delimiter.startsWith("%r") || delimiter.startsWith("/");
             stringly = convertStringLiteral((StrNode) nodes[0], isRegex || inDString ? "" : delimiter, false);
             if (isRegex) {
-                stringly = new Ruby.DelimitedString(
+                stringly = new Ruby.Regexp(
                         randomId(),
                         EMPTY,
                         Markers.EMPTY,
                         delimiter,
-                        singletonList(stringly),
-                        emptyList(),
+                        JContainer.build(singletonList(padRight(stringly, EMPTY))),
                         null
-                );
+                ).withOptions(convertRegexOptions(nodes[0]));
             }
         } else if (nodes[0] instanceof DNode) {
             stringly = convertDelimitedString((DNode) nodes[0], delimiter);
@@ -2469,25 +2415,78 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         return stringly.withPrefix(prefix);
     }
 
+    private List<Ruby.Regexp.Options> convertRegexOptions(Node node) {
+        RegexpOptions options = node instanceof DRegexpNode ?
+                ((DRegexpNode) node).getOptions() :
+                ((RegexpNode) node).getOptions();
+        return regexOptionsString(options).chars().mapToObj(opt -> {
+            switch (opt) {
+                case 'x':
+                    return Ruby.Regexp.Options.Extended;
+                case 'i':
+                    return Ruby.Regexp.Options.IgnoreCase;
+                case 'm':
+                    return Ruby.Regexp.Options.Multiline;
+                case 'j':
+                    return Ruby.Regexp.Options.Java;
+                case 'o':
+                    return Ruby.Regexp.Options.Once;
+                case 'n':
+                    return Ruby.Regexp.Options.None;
+                case 'e':
+                    return Ruby.Regexp.Options.EUCJPEncoding;
+                case 's':
+                    return Ruby.Regexp.Options.SJISEncoding;
+                case 'u':
+                    return Ruby.Regexp.Options.UTF8Encoding;
+                default:
+                    throw new UnsupportedOperationException(String.format("Unknown regexp option %s", opt));
+            }
+        }).collect(toList());
+    }
+
+    private String regexOptionsString(RegexpOptions options) {
+        int optionCount = 0;
+        if (options.isExtended()) {
+            optionCount++;
+        }
+        if (!options.isKcodeDefault()) {
+            optionCount++;
+        }
+        if (options.isIgnorecase()) {
+            optionCount++;
+        }
+        if (options.isJava()) {
+            optionCount++;
+        }
+        if (options.isLiteral()) {
+            optionCount++;
+        }
+        if (options.isMultiline()) {
+            optionCount++;
+        }
+        if (options.isOnce()) {
+            optionCount++;
+        }
+        String optionsString = source.substring(cursor, cursor + optionCount);
+        skip(optionsString);
+        return optionsString;
+    }
+
     private Expression convertDelimitedString(DNode node, String delimiter) {
         List<J> strings = new ArrayList<>(node.size());
 
         Space beforeImplicitConcat = EMPTY;
         Expression expression = null;
-        for (int i = 0, line = -1; i < node.size(); i++) {
+        for (int i = 0; i < node.size(); i++) {
             Node n = node.get(i);
-            if (line == -1) {
-                line = n.getLine();
-            }
-            if (line != n.getLine()) {
-                line = n.getLine();
+            if (skip(StringUtils.endDelimiter(delimiter))) {
                 Ruby.DelimitedString ds = new Ruby.DelimitedString(
                         randomId(),
                         EMPTY,
                         Markers.EMPTY,
                         delimiter,
                         strings,
-                        emptyList(),
                         null
                 );
                 expression = expression == null ? ds : new Ruby.Binary(
@@ -2500,10 +2499,9 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                         ds,
                         null
                 );
-                skip(StringUtils.endDelimiter(delimiter));
                 beforeImplicitConcat = sourceBefore(delimiter);
                 skip(delimiter);
-                strings = new ArrayList<>(node.size() - i);
+                strings = new ArrayList<>(node.size());
             }
             if (!(n instanceof StrNode) || !((StrNode) n).getValue().isEmpty()) {
                 strings.add(convert(n));
@@ -2515,7 +2513,6 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 Markers.EMPTY,
                 delimiter,
                 strings,
-                emptyList(),
                 null
         );
         expression = expression == null ? ds : new Ruby.Binary(
@@ -2562,7 +2559,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     null,
                     JavaType.Primitive.String
             );
-        } else if(endDelimiter.isEmpty()) {
+        } else if (endDelimiter.isEmpty()) {
             skip(value);
             return new J.Literal(
                     randomId(),
@@ -2573,8 +2570,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     null,
                     JavaType.Primitive.String
             );
-        }
-        else if (node.getValue().isEmpty()) {
+        } else if (node.getValue().isEmpty()) {
             return new J.Literal(
                     randomId(),
                     EMPTY,
@@ -2868,7 +2864,6 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                                 JavaType.Primitive.String
                         )
                 ),
-                emptyList(),
                 null
         );
     }

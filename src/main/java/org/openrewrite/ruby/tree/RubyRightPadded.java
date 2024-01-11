@@ -16,9 +16,11 @@
 package org.openrewrite.ruby.tree;
 
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 
 public class RubyRightPadded {
 
+    @RequiredArgsConstructor(access = lombok.AccessLevel.PRIVATE)
     @Getter
     public enum Location {
         ARRAY_ELEMENTS_SUFFIX(RubySpace.Location.LIST_LITERAL_SUFFIX),
@@ -31,15 +33,11 @@ public class RubyRightPadded {
         MULTIPLE_ASSIGNMENT_INITIALIZERS_SUFFIX(RubySpace.Location.MULTIPLE_ASSIGNMENT_INITIALIZER_SUFFIX),
         MULTIPLE_ASSIGNMENT_SUFFIX(RubySpace.Location.MULTIPLE_ASSIGNMENT_SUFFIX),
         NUMERIC_VALUE_SUFFIX(RubySpace.Location.NUMERIC_VALUE_SUFFIX),
+        REGEXP_STRINGS_SUFFIX(RubySpace.Location.REGEXP_STRINGS_SUFFIX),
         RESCUE_TYPE_SUFFIX(RubySpace.Location.RESCUE_TYPE_SUFFIX),
         STRUCT_EXTENDS_ARGUMENTS_SUFFIX(RubySpace.Location.STRUCT_EXTENDS_ARGUMENTS_SUFFIX),
-        STRUCT_PATTERN_ELEMENT_SUFFIX(RubySpace.Location.STRUCT_PATTERN_ELEMENT_SUFFIX),
-        YIELD_DATA_SUFFIX(RubySpace.Location.YIELD_DATA_SUFFIX);
+        STRUCT_PATTERN_ELEMENT_SUFFIX(RubySpace.Location.STRUCT_PATTERN_ELEMENT_SUFFIX), YIELD_DATA_SUFFIX(RubySpace.Location.YIELD_DATA_SUFFIX);
 
         private final RubySpace.Location afterLocation;
-
-        Location(RubySpace.Location afterLocation) {
-            this.afterLocation = afterLocation;
-        }
     }
 }

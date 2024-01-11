@@ -61,7 +61,12 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         } else {
             b = (Ruby.Break) temp;
         }
-        b = b.withBreak((J.Break) visit(b.getBreak(), p));
+        J jBreak = visit(b.getBreak(), p);
+        if (jBreak == null) {
+            //noinspection DataFlowIssue
+            return null;
+        }
+        b = b.withBreak((J.Break) jBreak);
         b = b.withValue((Expression) visit(b.getValue(), p));
         return b;
     }
@@ -377,7 +382,12 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         } else {
             n = (Ruby.Next) temp;
         }
-        n = n.withNext((J.Continue) visit(n.getNext(), p));
+        J jNext = visit(n.getNext(), p);
+        if(jNext == null) {
+            //noinspection DataFlowIssue
+            return null;
+        }
+        n = n.withNext((J.Continue) jNext);
         n = n.withValue((Expression) visit(n.getValue(), p));
         return n;
     }
@@ -439,6 +449,21 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         r = r.withTry((J.Try) visitNonNull(r.getTry(), p));
         r = r.withElse((J.Block) visit(r.getElse(), p));
         return r;
+    }
+
+    public J visitRegexp(Ruby.Regexp regexp, P p) {
+        Ruby.Regexp ds = regexp;
+        ds = ds.withPrefix(visitSpace(ds.getPrefix(), RubySpace.Location.REGEXP_PREFIX, p));
+        ds = ds.withMarkers(visitMarkers(ds.getMarkers(), p));
+        Expression temp = (Expression) visitExpression(ds, p);
+        if (!(temp instanceof Ruby.Regexp)) {
+            return temp;
+        } else {
+            ds = (Ruby.Regexp) temp;
+        }
+        ds = ds.getPadding().withStrings(visitContainer(ds.getPadding().getStrings(), RubyContainer.Location.REGEXP_STRINGS, p));
+        ds = ds.withType(visitType(ds.getType(), p));
+        return ds;
     }
 
     public J visitRetry(Ruby.Retry retry, P p) {

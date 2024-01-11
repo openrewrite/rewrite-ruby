@@ -793,7 +793,7 @@ public interface Ruby extends J {
     @Getter
     @AllArgsConstructor
     @With
-    class DelimitedString implements Ruby, Statement, Expression {
+    class DelimitedString implements Ruby, Expression {
         @EqualsAndHashCode.Include
         UUID id;
 
@@ -801,7 +801,6 @@ public interface Ruby extends J {
         Markers markers;
         String delimiter;
         List<J> strings;
-        List<RegexpOptions> regexpOptions;
 
         @Nullable
         JavaType type;
@@ -813,8 +812,8 @@ public interface Ruby extends J {
 
         @Transient
         @Override
-        public CoordinateBuilder.Statement getCoordinates() {
-            return new CoordinateBuilder.Statement(this);
+        public CoordinateBuilder.Expression getCoordinates() {
+            return new CoordinateBuilder.Expression(this);
         }
 
         @lombok.Value
@@ -855,18 +854,6 @@ public interface Ruby extends J {
             public Value withType(@Nullable JavaType type) {
                 return this;
             }
-        }
-
-        public enum RegexpOptions {
-            IgnoreCase,
-            Multiline,
-            Extended,
-            Java,
-            Once,
-            None,
-            EUCJPEncoding,
-            SJISEncoding,
-            UTF8Encoding,
         }
     }
 
@@ -1581,6 +1568,108 @@ public interface Ruby extends J {
         @Override
         public String toString() {
             return withPrefix(Space.EMPTY).printTrimmed(new JavaPrinter<>());
+        }
+    }
+
+    @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
+    @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
+    @RequiredArgsConstructor
+    @AllArgsConstructor(access = AccessLevel.PRIVATE)
+    class Regexp implements Ruby, Expression {
+        @Nullable
+        @NonFinal
+        transient WeakReference<Padding> padding;
+
+        @Getter
+        @With
+        @EqualsAndHashCode.Include
+        UUID id;
+
+        @Getter
+        @With
+        Space prefix;
+
+        @Getter
+        @With
+        Markers markers;
+
+        @Getter
+        @With
+        String delimiter;
+
+        JContainer<J> strings;
+
+        public List<J> getStrings() {
+            return strings.getElements();
+        }
+
+        public Regexp withStrings(List<J> strings) {
+            return getPadding().withStrings(JContainer.withElements(this.strings, strings));
+        }
+
+        @Getter
+        @With
+        List<Options> options;
+
+        @Override
+        public <P> J acceptRuby(RubyVisitor<P> v, P p) {
+            return v.visitRegexp(this, p);
+        }
+
+        @Override
+        public CoordinateBuilder.Expression getCoordinates() {
+            return new CoordinateBuilder.Expression(this);
+        }
+
+        @Override
+        public JavaType getType() {
+            return JavaType.Primitive.String;
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public Regexp withType(@Nullable JavaType type) {
+            return this;
+        }
+
+        public enum Options {
+            IgnoreCase,
+            Multiline,
+            Extended,
+            Java,
+            Once,
+            None,
+            EUCJPEncoding,
+            SJISEncoding,
+            UTF8Encoding,
+        }
+
+        public Padding getPadding() {
+            Padding p;
+            if (this.padding == null) {
+                p = new Padding(this);
+                this.padding = new WeakReference<>(p);
+            } else {
+                p = this.padding.get();
+                if (p == null || p.t != this) {
+                    p = new Padding(this);
+                    this.padding = new WeakReference<>(p);
+                }
+            }
+            return p;
+        }
+
+        @RequiredArgsConstructor
+        public static class Padding {
+            private final Regexp t;
+
+            public JContainer<J> getStrings() {
+                return t.strings;
+            }
+
+            public Ruby.Regexp withStrings(JContainer<J> strings) {
+                return t.strings == strings ? t : new Ruby.Regexp(t.id, t.prefix, t.markers, t.delimiter, strings, t.options);
+            }
         }
     }
 

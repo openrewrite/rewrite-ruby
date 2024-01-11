@@ -106,6 +106,20 @@ public class StringTest implements RewriteTest {
     }
 
     @Test
+    void regexRDStrings() {
+        rewriteRun(
+          ruby(
+            """
+              %r(
+                ^/usr/#{folder}/.*
+                ^/usr/.*
+              )
+              """
+          )
+        );
+    }
+
+    @Test
     void regexDString() {
         rewriteRun(
           ruby(
