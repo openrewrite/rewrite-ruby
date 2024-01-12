@@ -111,9 +111,26 @@ public class StringTest implements RewriteTest {
           ruby(
             """
               %r(
-                ^/usr/#{folder}/.*
+                ^/usr/#{folder}/.*    # test
                 ^/usr/.*
-              )
+              )m
+              """
+          )
+        );
+    }
+
+    @Test
+    void multilineRegexRDString() {
+        rewriteRun(
+          // note that the literal starts with parentheses, so the parsing code
+          // needs to be careful to not interpret those as syntactic parentheses but
+          // rather as part of the literal
+          ruby(
+            """
+              regex_version_preceeds = %r{
+                (((?<!required_)version\\s=\\s*["'].*["'])
+                (\\s*source\\s*=\\s*["'](#{registry_host}/)?#{name}["']|\\s*#{name}\\s*=\\s*\\{.*))
+              }mx
               """
           )
         );
