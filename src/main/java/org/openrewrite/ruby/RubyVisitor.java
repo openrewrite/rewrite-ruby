@@ -252,26 +252,26 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         return da;
     }
 
-    public J visitDelimitedString(Ruby.DelimitedString delimitedString, P p) {
-        Ruby.DelimitedString ds = delimitedString;
-        ds = ds.withPrefix(visitSpace(ds.getPrefix(), RubySpace.Location.DELIMITED_STRING_PREFIX, p));
+    public J visitComplexString(Ruby.ComplexString complexString, P p) {
+        Ruby.ComplexString ds = complexString;
+        ds = ds.withPrefix(visitSpace(ds.getPrefix(), RubySpace.Location.COMPLEX_STRING_PREFIX, p));
         ds = ds.withMarkers(visitMarkers(ds.getMarkers(), p));
         Expression temp = (Expression) visitExpression(ds, p);
-        if (!(temp instanceof Ruby.DelimitedString)) {
+        if (!(temp instanceof Ruby.ComplexString)) {
             return temp;
         } else {
-            ds = (Ruby.DelimitedString) temp;
+            ds = (Ruby.ComplexString) temp;
         }
         ds = ds.withStrings(ListUtils.map(ds.getStrings(), s -> visit(s, p)));
         ds = ds.withType(visitType(ds.getType(), p));
         return ds;
     }
 
-    public J visitDelimitedStringValue(Ruby.DelimitedString.Value value, P p) {
-        Ruby.DelimitedString.Value v = value;
+    public J visitComplexStringValue(Ruby.ComplexString.Value value, P p) {
+        Ruby.ComplexString.Value v = value;
         v = v.withMarkers(visitMarkers(v.getMarkers(), p));
         v = v.withTree(visit(v.getTree(), p));
-        v = v.withAfter(visitSpace(v.getAfter(), RubySpace.Location.DELIMITED_STRING_VALUE_SUFFIX, p));
+        v = v.withAfter(visitSpace(v.getAfter(), RubySpace.Location.COMPLEX_STRING_VALUE_SUFFIX, p));
         return v;
     }
 
@@ -449,21 +449,6 @@ public class RubyVisitor<P> extends JavaVisitor<P> {
         r = r.withTry((J.Try) visitNonNull(r.getTry(), p));
         r = r.withElse((J.Block) visit(r.getElse(), p));
         return r;
-    }
-
-    public J visitRegexp(Ruby.Regexp regexp, P p) {
-        Ruby.Regexp ds = regexp;
-        ds = ds.withPrefix(visitSpace(ds.getPrefix(), RubySpace.Location.REGEXP_PREFIX, p));
-        ds = ds.withMarkers(visitMarkers(ds.getMarkers(), p));
-        Expression temp = (Expression) visitExpression(ds, p);
-        if (!(temp instanceof Ruby.Regexp)) {
-            return temp;
-        } else {
-            ds = (Ruby.Regexp) temp;
-        }
-        ds = ds.getPadding().withStrings(visitContainer(ds.getPadding().getStrings(), RubyContainer.Location.REGEXP_STRINGS, p));
-        ds = ds.withType(visitType(ds.getType(), p));
-        return ds;
     }
 
     public J visitRetry(Ruby.Retry retry, P p) {

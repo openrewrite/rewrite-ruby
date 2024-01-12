@@ -243,21 +243,54 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     }
 
     @Override
-    public J visitDelimitedString(Ruby.DelimitedString dString, PrintOutputCapture<P> p) {
-        beforeSyntax(dString, RubySpace.Location.DELIMITED_STRING_VALUE_PREFIX, p);
-        p.append(dString.getDelimiter());
-        visit(dString.getStrings(), p);
-        p.append(StringUtils.endDelimiter(dString.getDelimiter()));
-        afterSyntax(dString, p);
-        return dString;
+    public J visitComplexString(Ruby.ComplexString cString, PrintOutputCapture<P> p) {
+        beforeSyntax(cString, RubySpace.Location.COMPLEX_STRING_VALUE_PREFIX, p);
+        p.append(cString.getDelimiter());
+        visitContainer(cString.getPadding().getStrings(), RubyContainer.Location.COMPLEX_STRING_STRINGS, p);
+        p.append(StringUtils.endDelimiter(cString.getDelimiter()));
+        for (Ruby.ComplexString.RegexpOptions regexpOption : cString.getRegexpOptions()) {
+            switch (regexpOption) {
+                case IgnoreCase:
+                    p.append('i');
+                    break;
+                case Java:
+                    p.append('j');
+                    break;
+                case Multiline:
+                    p.append('m');
+                    break;
+                case Extended:
+                    p.append('x');
+                    break;
+                case Once:
+                    p.append('o');
+                    break;
+                case None:
+                    p.append('n');
+                    break;
+                case EUCJPEncoding:
+                    p.append('e');
+                    break;
+                case SJISEncoding:
+                    p.append('s');
+                    break;
+                case UTF8Encoding:
+                    p.append('u');
+                    break;
+                default:
+                    throw new IllegalStateException("Unexpected regexp option " + regexpOption);
+            }
+        }
+        afterSyntax(cString, p);
+        return cString;
     }
 
     @Override
-    public J visitDelimitedStringValue(Ruby.DelimitedString.Value value, PrintOutputCapture<P> p) {
-        beforeSyntax(value, RubySpace.Location.DELIMITED_STRING_VALUE_PREFIX, p);
+    public J visitComplexStringValue(Ruby.ComplexString.Value value, PrintOutputCapture<P> p) {
+        beforeSyntax(value, RubySpace.Location.COMPLEX_STRING_VALUE_PREFIX, p);
         p.append("#{");
         visit(value.getTree(), p);
-        visitSpace(value.getAfter(), RubySpace.Location.DELIMITED_STRING_VALUE_SUFFIX, p);
+        visitSpace(value.getAfter(), RubySpace.Location.COMPLEX_STRING_VALUE_SUFFIX, p);
         p.append('}');
         afterSyntax(value, p);
         return value;
@@ -384,49 +417,6 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
         p.append("redo");
         afterSyntax(redo, p);
         return redo;
-    }
-
-    @Override
-    public J visitRegexp(Ruby.Regexp regexp, PrintOutputCapture<P> p) {
-        beforeSyntax(regexp, RubySpace.Location.REGEXP_PREFIX, p);
-        p.append(regexp.getDelimiter());
-        visit(regexp.getStrings(), p);
-        p.append(StringUtils.endDelimiter(regexp.getDelimiter()));
-        for (Ruby.Regexp.Options regexpOption : regexp.getOptions()) {
-            switch (regexpOption) {
-                case IgnoreCase:
-                    p.append('i');
-                    break;
-                case Java:
-                    p.append('j');
-                    break;
-                case Multiline:
-                    p.append('m');
-                    break;
-                case Extended:
-                    p.append('x');
-                    break;
-                case Once:
-                    p.append('o');
-                    break;
-                case None:
-                    p.append('n');
-                    break;
-                case EUCJPEncoding:
-                    p.append('e');
-                    break;
-                case SJISEncoding:
-                    p.append('s');
-                    break;
-                case UTF8Encoding:
-                    p.append('u');
-                    break;
-                default:
-                    throw new IllegalStateException("Unexpected regexp option " + regexpOption);
-            }
-        }
-        afterSyntax(regexp, p);
-        return regexp;
     }
 
     @Override

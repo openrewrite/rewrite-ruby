@@ -38,13 +38,13 @@ public class RubyIsoVisitor<P> extends RubyVisitor<P> {
     }
 
     @Override
-    public Ruby.DelimitedString visitDelimitedString(Ruby.DelimitedString delimitedString, P p) {
-        return (Ruby.DelimitedString) super.visitDelimitedString(delimitedString, p);
+    public Ruby.ComplexString visitComplexString(Ruby.ComplexString complexString, P p) {
+        return (Ruby.ComplexString) super.visitComplexString(complexString, p);
     }
 
     @Override
-    public Ruby.DelimitedString.Value visitDelimitedStringValue(Ruby.DelimitedString.Value value, P p) {
-        return (Ruby.DelimitedString.Value) super.visitDelimitedStringValue(value, p);
+    public Ruby.ComplexString.Value visitComplexStringValue(Ruby.ComplexString.Value value, P p) {
+        return (Ruby.ComplexString.Value) super.visitComplexStringValue(value, p);
     }
 
     @Override

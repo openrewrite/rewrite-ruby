@@ -36,6 +36,7 @@ import org.openrewrite.ruby.internal.OpenParenthesis;
 import org.openrewrite.ruby.internal.StringUtils;
 import org.openrewrite.ruby.marker.*;
 import org.openrewrite.ruby.tree.Ruby;
+import org.openrewrite.ruby.tree.Ruby.ComplexString;
 import org.openrewrite.ruby.tree.RubySpace;
 
 import java.nio.charset.Charset;
@@ -1049,7 +1050,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     @Override
     public J visitEvStrNode(EvStrNode node) {
         skip("#{");
-        return new Ruby.DelimitedString.Value(
+        return new Ruby.ComplexString.Value(
                 randomId(),
                 Markers.EMPTY,
                 convert(node.getBody()),
@@ -2070,7 +2071,8 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     @Override
     public J visitRegexpNode(RegexpNode node) {
-        return convertStrings(new StrNode(node.getLine(), node.getValue()));
+        ComplexString j = (ComplexString) convertStrings(new StrNode(node.getLine(), node.getValue()));
+        return j.withRegexpOptions(convertRegexpOptions(node));
     }
 
     @Override
@@ -2345,7 +2347,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
 
     /**
      * @param nodes An array of either {@link StrNode} or {@link DNode}.
-     * @return A {@link Ruby.DelimitedString}, {@link J.Literal}, or {@link Ruby.DelimitedArray} node.
+     * @return A {@link Ruby.ComplexString}, {@link J.Literal}, or {@link Ruby.DelimitedArray} node.
      */
     public J convertStrings(Node... nodes) {
         Object parentValue = this.nodes.getParentOrThrow().getValue();
@@ -2381,7 +2383,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 if (node instanceof StrNode) {
                     strings.add(padRight(convertStringLiteral((StrNode) node, delimiter, true), whitespace()));
                 } else {
-                    strings.add(padRight(convertDelimitedString((DNode) nodes[0], ""), whitespace()));
+                    strings.add(padRight(convertComplexString((DNode) nodes[0], ""), whitespace()));
                 }
             }
             stringly = new Ruby.DelimitedArray(
@@ -2396,49 +2398,54 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             boolean isRegex = delimiter.startsWith("%r") || delimiter.startsWith("/");
             stringly = convertStringLiteral((StrNode) nodes[0], isRegex || inDString ? "" : delimiter, false);
             if (isRegex) {
-                stringly = new Ruby.Regexp(
+                stringly = new Ruby.ComplexString(
                         randomId(),
                         EMPTY,
                         Markers.EMPTY,
                         delimiter,
                         JContainer.build(singletonList(padRight(stringly, EMPTY))),
-                        null
-                ).withOptions(convertRegexOptions(nodes[0]));
+                        emptyList()
+                );
             }
         } else if (nodes[0] instanceof DNode) {
-            stringly = convertDelimitedString((DNode) nodes[0], delimiter);
+            stringly = convertComplexString((DNode) nodes[0], delimiter);
         } else {
             throw new UnsupportedOperationException("Unexpected string node type " + nodes[0].getClass().getSimpleName());
         }
 
         skip(StringUtils.endDelimiter(delimiter));
+
+        if (nodes[0] instanceof DRegexpNode) {
+            stringly = ((ComplexString) stringly).withRegexpOptions(convertRegexpOptions(nodes[0]));
+        }
+
         return stringly.withPrefix(prefix);
     }
 
-    private List<Ruby.Regexp.Options> convertRegexOptions(Node node) {
+    private List<ComplexString.RegexpOptions> convertRegexpOptions(Node node) {
         RegexpOptions options = node instanceof DRegexpNode ?
                 ((DRegexpNode) node).getOptions() :
                 ((RegexpNode) node).getOptions();
         return regexOptionsString(options).chars().mapToObj(opt -> {
             switch (opt) {
                 case 'x':
-                    return Ruby.Regexp.Options.Extended;
+                    return ComplexString.RegexpOptions.Extended;
                 case 'i':
-                    return Ruby.Regexp.Options.IgnoreCase;
+                    return ComplexString.RegexpOptions.IgnoreCase;
                 case 'm':
-                    return Ruby.Regexp.Options.Multiline;
+                    return ComplexString.RegexpOptions.Multiline;
                 case 'j':
-                    return Ruby.Regexp.Options.Java;
+                    return ComplexString.RegexpOptions.Java;
                 case 'o':
-                    return Ruby.Regexp.Options.Once;
+                    return ComplexString.RegexpOptions.Once;
                 case 'n':
-                    return Ruby.Regexp.Options.None;
+                    return ComplexString.RegexpOptions.None;
                 case 'e':
-                    return Ruby.Regexp.Options.EUCJPEncoding;
+                    return ComplexString.RegexpOptions.EUCJPEncoding;
                 case 's':
-                    return Ruby.Regexp.Options.SJISEncoding;
+                    return ComplexString.RegexpOptions.SJISEncoding;
                 case 'u':
-                    return Ruby.Regexp.Options.UTF8Encoding;
+                    return ComplexString.RegexpOptions.UTF8Encoding;
                 default:
                     throw new UnsupportedOperationException(String.format("Unknown regexp option %s", opt));
             }
@@ -2473,60 +2480,55 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         return optionsString;
     }
 
-    private Expression convertDelimitedString(DNode node, String delimiter) {
-        List<J> strings = new ArrayList<>(node.size());
+    private Expression convertComplexString(DNode node, String delimiter) {
+        // implicitly concatenated strings
+        List<JRightPadded<J>> strings = new ArrayList<>(node.size());
 
-        Space beforeImplicitConcat = EMPTY;
-        Expression expression = null;
+        // the parts of a single string (literal + evaluated portions)
+        List<JRightPadded<J>> parts = new ArrayList<>(node.size());
+
         for (int i = 0; i < node.size(); i++) {
             Node n = node.get(i);
-            if (skip(StringUtils.endDelimiter(delimiter))) {
-                Ruby.DelimitedString ds = new Ruby.DelimitedString(
+            if (!delimiter.isEmpty() && skip(StringUtils.endDelimiter(delimiter))) {
+                strings.add(padRight(new Ruby.ComplexString(
                         randomId(),
                         EMPTY,
                         Markers.EMPTY,
                         delimiter,
-                        strings,
-                        null
-                );
-                expression = expression == null ? ds : new Ruby.Binary(
-                        randomId(),
-                        EMPTY,
-                        Markers.EMPTY,
-                        expression,
-                        JLeftPadded.build(Ruby.Binary.Type.ImplicitStringConcatenation)
-                                .withBefore(beforeImplicitConcat),
-                        ds,
-                        null
-                );
-                beforeImplicitConcat = sourceBefore(delimiter);
+                        JContainer.build(parts),
+                        emptyList()
+                ), sourceBefore(delimiter)));
                 skip(delimiter);
-                strings = new ArrayList<>(node.size());
+                parts = new ArrayList<>(node.size());
             }
             if (!(n instanceof StrNode) || !((StrNode) n).getValue().isEmpty()) {
-                strings.add(convert(n));
+                parts.add(padRight(convert(n), EMPTY));
             }
         }
-        Ruby.DelimitedString ds = new Ruby.DelimitedString(
+
+        strings.add(padRight(new Ruby.ComplexString(
                 randomId(),
                 EMPTY,
                 Markers.EMPTY,
                 delimiter,
-                strings,
-                null
-        );
-        expression = expression == null ? ds : new Ruby.Binary(
-                randomId(),
-                EMPTY,
-                Markers.EMPTY,
-                expression,
-                JLeftPadded.build(Ruby.Binary.Type.ImplicitStringConcatenation)
-                        .withBefore(beforeImplicitConcat),
-                ds,
-                null
-        );
+                JContainer.build(parts),
+                emptyList()
+        ), EMPTY));
 
-        return requireNonNull(expression);
+        Expression expression = (Expression) strings.get(0).getElement();
+        for (int i = 1; i < strings.size(); i++) {
+            expression = new Ruby.Binary(
+                    randomId(),
+                    expression.getPrefix(),
+                    Markers.EMPTY,
+                    expression.withPrefix(EMPTY),
+                    JLeftPadded.build(Ruby.Binary.Type.ImplicitStringConcatenation)
+                            .withBefore(strings.get(i - 1).getAfter()),
+                    (Expression) strings.get(i).getElement(),
+                    null
+            );
+        }
+        return expression;
     }
 
     /**
@@ -2848,13 +2850,13 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         skip(delimiter);
         skip(value);
         skip(StringUtils.endDelimiter(delimiter));
-        return new Ruby.DelimitedString(
+        return new Ruby.ComplexString(
                 randomId(),
                 prefix,
                 Markers.EMPTY,
                 delimiter,
-                singletonList(
-                        new J.Literal(
+                JContainer.build(singletonList(
+                        padRight(new J.Literal(
                                 randomId(),
                                 EMPTY,
                                 Markers.EMPTY,
@@ -2862,9 +2864,9 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                                 value,
                                 null,
                                 JavaType.Primitive.String
-                        )
-                ),
-                null
+                        ), EMPTY)
+                )),
+                emptyList()
         );
     }
 
