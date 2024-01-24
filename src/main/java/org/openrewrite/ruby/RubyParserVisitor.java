@@ -352,8 +352,8 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
     }
 
     /**
-     * @param node A single node or a list of nodes, which in any case needs to be wrapped ina
-     *             a {@link J.Block}.
+     * @param node A single node or a list of nodes, which in any case needs to be wrapped in a
+     *             {@link J.Block}.
      * @return A {@link J.Block}.
      */
     private J.Block visitBlock(Node node) {
@@ -494,7 +494,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             if (stat instanceof J.Empty) {
                 continue;
             }
-            converted.add(padRight(stat, i == trees.size() - 1 ? suffix.apply(trees.get(i)) : EMPTY));
+            converted.add(padRight(stat, i == trees.size() - 1 && !(stat instanceof Ruby.Rescue) ? suffix.apply(trees.get(i)) : EMPTY));
         }
         return converted;
     }

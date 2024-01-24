@@ -423,18 +423,19 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
     public J visitRescue(Ruby.Rescue rescue, PrintOutputCapture<P> p) {
         beforeSyntax(rescue, RubySpace.Location.RESCUE_PREFIX, p);
 
-        boolean defRescue = false;
+        boolean noBegin = false;
         Cursor parent = getCursor().getParentTreeCursor();
         if (parent.getValue() instanceof J.Block) {
             Object parentValue = parent.getParentTreeCursor().getValue();
             if (parentValue instanceof J.MethodDeclaration ||
                 parentValue instanceof J.ClassDeclaration ||
                 parentValue instanceof Ruby.ClassMethod ||
-                parentValue instanceof Ruby.Module) {
-                defRescue = true;
+                parentValue instanceof Ruby.Module ||
+                parentValue instanceof Ruby.Block) {
+                noBegin = true;
             }
         }
-        if (!defRescue) {
+        if (!noBegin) {
             p.append("begin");
         }
 
@@ -489,7 +490,7 @@ public class RubyPrinter<P> extends RubyVisitor<PrintOutputCapture<P>> {
             visit(aTry.getFinally().withPrefix(Space.EMPTY), p);
         }
 
-        if (!defRescue) {
+        if (!noBegin) {
             // the def has its own "end", so we don't duplicate it
             p.append("end");
         }

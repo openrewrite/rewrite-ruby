@@ -32,6 +32,25 @@ public class RescueTest implements RewriteTest {
               rescue Exception
                 puts "Try again with a value >= 1"
               end
+              
+              content
+              """
+          )
+        );
+    }
+
+    @Test
+    void iterationRescue() {
+        rewriteRun(
+          ruby(
+            """
+              5.times do |i|
+                puts i
+              rescue Exception
+                puts "Try again with a value >= 1"
+              end
+              
+              content
               """
           )
         );
@@ -48,6 +67,8 @@ public class RescueTest implements RewriteTest {
                 puts "Try again with a value >= 1"
                 puts "Or try something else"
               end
+              
+              content
               """
           )
         );
@@ -63,6 +84,8 @@ public class RescueTest implements RewriteTest {
               rescue Exception => ex
                 puts "Try again with a value >= 1"
               end
+              
+              content
               """
           )
         );
@@ -78,6 +101,8 @@ public class RescueTest implements RewriteTest {
               rescue Exception
                 retry
               end
+              
+              content
               """
           )
         );
@@ -95,6 +120,8 @@ public class RescueTest implements RewriteTest {
               rescue TypeError => ex
                 puts "Try again with an integer"
               end
+              
+              content
               """
           )
         );
@@ -110,6 +137,8 @@ public class RescueTest implements RewriteTest {
               rescue ArgumentError, TypeError => ex
                 puts "Try again"
               end
+              
+              content
               """
           )
         );
@@ -127,6 +156,8 @@ public class RescueTest implements RewriteTest {
               ensure
                 puts "Ensured"
               end
+              
+              content
               """
           )
         );
@@ -144,6 +175,8 @@ public class RescueTest implements RewriteTest {
               else
                 puts "Else"
               end
+              
+              content
               """
           )
         );
@@ -159,6 +192,8 @@ public class RescueTest implements RewriteTest {
               rescue Exception
                   puts "Not reachable"
               end
+              
+              content
               """
           )
         );
@@ -175,6 +210,8 @@ public class RescueTest implements RewriteTest {
                 raw_source
                 1
               end
+              
+              content
               """
           )
         );
