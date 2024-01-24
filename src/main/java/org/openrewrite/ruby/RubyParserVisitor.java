@@ -365,6 +365,9 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 convertBlockStatements(
                         node,
                         n -> {
+                            if (nodes.getParentOrThrow().getValue() instanceof IfNode) {
+                                return EMPTY;
+                            }
                             Space eob = whitespace();
                             skip("end");
                             return eob;

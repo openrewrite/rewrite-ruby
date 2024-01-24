@@ -18,6 +18,7 @@ package org.openrewrite.ruby.tree;
 import org.junit.jupiter.api.Test;
 import org.openrewrite.test.RewriteTest;
 
+import static org.openrewrite.java.Assertions.java;
 import static org.openrewrite.ruby.Assertions.ruby;
 
 public class IfTest implements RewriteTest {
@@ -176,6 +177,30 @@ public class IfTest implements RewriteTest {
                  version_class.correct?(current_version) &&
                  version_class.new(current_version).prerelease?
                 return true
+              end
+              """
+          )
+        );
+    }
+
+    @Test
+    void multipleStatementElse() {
+        rewriteRun(
+          ruby(
+            """
+              def registry_source_details_from(source_string)
+                parts = source_string.split("//").first.split("/")
+                if parts.count == 3
+                  puts 3
+                elsif parts.count == 4
+                  puts 4
+                else
+                  msg = "Invalid registry source specified: '#{source_string}'"
+                  raise DependencyFileNotEvaluatable, msg
+                end
+              end
+                      
+              def git_dependency_name(name, source)
               end
               """
           )
