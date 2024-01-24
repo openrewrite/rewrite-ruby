@@ -27,6 +27,18 @@ import static org.openrewrite.ruby.Assertions.ruby;
 public class StringTest implements RewriteTest {
 
     @Test
+    void escapingInsideComplexString() {
+        rewriteRun(
+          ruby(
+            """
+              PATTERN_RAW = "\\\\s*(#{OPERATORS})?\\\\s*v?(#{Gem::Version::VERSION_PATTERN})\\\\s*".freeze
+              PATTERN = /\\A#{PATTERN_RAW}\\z/
+              """
+          )
+        );
+    }
+
+    @Test
     void empty() {
         rewriteRun(
           ruby(

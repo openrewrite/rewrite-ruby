@@ -2377,7 +2377,10 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                 delimiter = source.substring(cursor, cursor + 1);
             }
         }
-        skip(delimiter);
+        if (!delimiter.isEmpty()) {
+            skip(delimiter);
+            this.nodes.putMessage("delimiter", delimiter);
+        }
 
         J stringly;
         if (delimiter.startsWith("%w") || delimiter.startsWith("%W")) {
@@ -2573,13 +2576,15 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     JavaType.Primitive.String
             );
         } else if (endDelimiter.isEmpty()) {
-            skip(value);
+            String escapedValue = StringUtils.escapeRuby(nodes.getNearestMessage("delimiter", delimiter),
+                    value, source, cursor);
+            skip(escapedValue);
             return new J.Literal(
                     randomId(),
                     EMPTY,
                     Markers.EMPTY,
                     value,
-                    value,
+                    escapedValue,
                     null,
                     JavaType.Primitive.String
             );
