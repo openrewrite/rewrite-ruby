@@ -127,9 +127,23 @@ public class StringTest implements RewriteTest {
           // rather as part of the literal
           ruby(
             """
-              regex_version_preceeds = %r{
+              %r{
                 (((?<!required_)version\\s=\\s*["'].*["'])
                 (\\s*source\\s*=\\s*["'](#{registry_host}/)?#{name}["']|\\s*#{name}\\s*=\\s*\\{.*))
+              }mx
+              """
+          )
+        );
+    }
+
+    @Test
+    void multilineRegexRDString2() {
+        rewriteRun(
+          ruby(
+            """
+              %r{
+                ((a#{name}b)
+                (c))
               }mx
               """
           )

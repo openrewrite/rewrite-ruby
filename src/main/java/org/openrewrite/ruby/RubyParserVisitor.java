@@ -2503,7 +2503,9 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             }
 
             if (!(n instanceof StrNode)) {
-                parts.add(padRight(convert(n), EMPTY));
+                nodes = new Cursor(nodes, n);
+                parts.add(padRight(n.accept(this), EMPTY));
+                nodes = nodes.getParentOrThrow();
             } else if (!((StrNode) n).getValue().isEmpty()) {
                 // bypassing convert(..) because the string literal may start with parentheses
                 nodes = new Cursor(nodes, n);
