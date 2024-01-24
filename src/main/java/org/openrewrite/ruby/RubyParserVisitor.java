@@ -1576,6 +1576,7 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
         if (namedSingleSplat) {
             skip("*");
         }
+        openParensCloseLeft();
         Expression assignment = visitAsgnNode(node, node.getName());
         if (namedSingleSplat) {
             J.Identifier named = (J.Identifier) assignment;
@@ -2987,11 +2988,15 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             paren.addLeft(t);
         }
         J2 j = maybeOpenParentheses(t);
+        openParensCloseLeft();
+        j = maybeCloseParentheses(t, j);
+        return j;
+    }
+
+    private void openParensCloseLeft() {
         for (OpenParenthesis paren : openParentheses) {
             paren.closeLeft();
         }
-        j = maybeCloseParentheses(t, j);
-        return j;
     }
 
     @SuppressWarnings("unchecked")

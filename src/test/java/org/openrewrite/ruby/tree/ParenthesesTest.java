@@ -57,4 +57,15 @@ public class ParenthesesTest implements RewriteTest {
           )
         );
     }
+
+    @Test
+    void assignment() {
+        rewriteRun(
+          ruby(
+            """
+              (a = 1)
+              """
+          )
+        );
+    }
 }
