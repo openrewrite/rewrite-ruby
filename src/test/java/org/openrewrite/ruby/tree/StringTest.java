@@ -339,6 +339,24 @@ public class StringTest implements RewriteTest {
     }
 
     @Test
+    void implicitConcatenationWithNewlines() {
+        rewriteRun(
+          ruby(
+            """
+              eq("always-auth = true\\n" \\
+                 "strict-ssl = true\\n" \\
+                 "//npm.fury.io/dependabot/:_authToken=secret_token\\n" \\
+                 "registry = https://npm.fury.io/dependabot\\n" \\
+                 "//npm.fury.io/dependabot/:_authToken=my_token\\n" \\
+                 "always-auth = true\\n")
+                 
+              puts "hello"
+              """
+          )
+        );
+    }
+
+    @Test
     void implicitConcatenationOfDStrings() {
         rewriteRun(
           ruby(

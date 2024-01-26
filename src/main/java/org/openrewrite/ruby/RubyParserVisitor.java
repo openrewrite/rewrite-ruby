@@ -2577,8 +2577,14 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
                     JavaType.Primitive.String
             );
         } else if (endDelimiter.isEmpty()) {
-            String escapedValue = StringUtils.escapeRuby(nodes.getNearestMessage("delimiter", delimiter),
-                    value, source, cursor);
+            String escapedValue = value;
+            if (nodes.getNearestMessage("delimiter", delimiter).equals("\"")) {
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < value.toCharArray().length; i++) {
+                    sb.append(readMaybeEscaped("\""));
+                }
+                escapedValue = sb.toString();
+            }
             skip(escapedValue);
             return new J.Literal(
                     randomId(),
@@ -2601,56 +2607,151 @@ public class RubyParserVisitor extends AbstractNodeVisitor<J> {
             );
         }
 
+        List<String[]> strings = implicitConcatenations(delimiter, value);
+
         // deal with the possibility of implicit concatenations
-        char endDelimiterChar = endDelimiter.charAt(0);
         Expression combined = null;
         Space beforeOperator = null;
-        StringBuilder valueSrc = new StringBuilder();
-        String escapedValue = StringUtils.escapeRuby(delimiter, value, source, cursor);
-        for (int i = 0; i <= escapedValue.length(); ) {
-            char c = source.charAt(cursor);
-            char last = source.charAt(cursor - 1);
-            char nextLast = cursor >= 2 ? source.charAt(cursor - 2) : '\0';
-            cursor++;
-            if (c == endDelimiterChar && (last != '\\' || nextLast == '\\')) {
-                J.Literal literal = new J.Literal(
-                        randomId(),
-                        EMPTY,
-                        Markers.EMPTY,
-                        valueSrc,
-                        String.format("%s%s%s", delimiter, valueSrc, endDelimiter),
-                        null,
-                        JavaType.Primitive.String
-                );
-                valueSrc.setLength(0);
-                if (combined == null) {
-                    combined = literal;
-                } else {
-                    combined = new Ruby.Binary(
-                            randomId(),
-                            combined.getPrefix(),
-                            Markers.EMPTY,
-                            combined.withPrefix(EMPTY),
-                            JLeftPadded.build(Ruby.Binary.Type.ImplicitStringConcatenation)
-                                    .withBefore(beforeOperator),
-                            literal,
-                            null
-                    );
-                }
-                if (i < escapedValue.length()) {
-                    beforeOperator = sourceBefore(delimiter);
-                } else {
-                    break;
-                }
+        int i = 0;
+        for (String[] v : strings) {
+            J.Literal literal = new J.Literal(
+                    randomId(),
+                    EMPTY,
+                    Markers.EMPTY,
+                    v[1],
+                    String.format("%s%s%s", delimiter, v[0], endDelimiter),
+                    null,
+                    JavaType.Primitive.String
+            );
+            skip(v[0]);
+            skip(endDelimiter);
+            if (combined == null) {
+                combined = literal;
             } else {
-                valueSrc.append(c);
-                i++;
+                combined = new Ruby.Binary(
+                        randomId(),
+                        combined.getPrefix(),
+                        Markers.EMPTY,
+                        combined.withPrefix(EMPTY),
+                        JLeftPadded.build(Ruby.Binary.Type.ImplicitStringConcatenation)
+                                .withBefore(beforeOperator),
+                        literal,
+                        null
+                );
+            }
+            if (i++ < strings.size()) {
+                beforeOperator = sourceBefore(delimiter);
+            } else {
+                break;
             }
         }
 
         assert combined != null : String.format("unable to create a string literal for |%s| on line %d",
                 value, node.getLine() + 1);
         return requireNonNull(combined);
+    }
+
+    /**
+     * @param delimiter The delimiter of the string. Only double quote delimited strings are escapable.
+     * @param value     The value of the string, which will not contain escapes.
+     * @return The set of ESCAPED string values to their unescaped forms.
+     */
+    public List<String[]> implicitConcatenations(String delimiter, String value) {
+        // most of the time there is only one string
+        List<String[]> strings = new ArrayList<>(1);
+
+        int cursorBefore = cursor;
+        char endDelimiterChar = StringUtils.endDelimiter(delimiter).charAt(0);
+        StringBuilder valueSrc = new StringBuilder();
+        int start = 0;
+        for (int i = 0; i < value.length(); ) {
+            char c = source.charAt(cursor);
+            char last = source.charAt(cursor - 1);
+            char nextLast = cursor >= 2 ? source.charAt(cursor - 2) : '\0';
+            if (c == endDelimiterChar && (last != '\\' || nextLast == '\\')) {
+                strings.add(new String[] { valueSrc.toString(), value.substring(start, i) });
+                valueSrc.setLength(0);
+                cursor++;
+                sourceBefore(delimiter);
+                start = i;
+            } else {
+                valueSrc.append(readMaybeEscaped(delimiter));
+                i++;
+            }
+        }
+        cursor = cursorBefore;
+
+        strings.add(new String[] { valueSrc.toString(), value.substring(start) });
+        return strings;
+    }
+
+    private String readMaybeEscaped(String delimiter) {
+        StringBuilder sb = new StringBuilder();
+        char c = source.charAt(cursor);
+        if (delimiter.equals("\"") && c == '\\') {
+            cursor++;
+            char next = source.charAt(cursor);
+            switch (next) {
+                case '\\':
+                case 'a':
+                case 'b':
+                case 'f':
+                case 'e':
+                case 's':
+                case 'n':
+                case 'r':
+                case 't':
+                case 'v':
+                case '"':
+                    sb.append("\\");
+                    sb.append(next);
+                    break;
+                case '0':
+                case 'x':
+                    // differentiate between single, double, and triple digit octals
+                    int j;
+                    for (j = 1; j <= 2; j++) {
+                        if (!Character.isDigit(source.charAt(cursor + j))) {
+                            break;
+                        }
+                    }
+                    sb.append("\\");
+                    sb.append(source, cursor, cursor + j);
+                    cursor += j;
+                    break;
+                case 'u':
+                    sb.append("\\u");
+                    cursor++;
+                    if (source.charAt(cursor) == '{') {
+                        sb.append(source, cursor, cursor + 6);
+                    } else {
+                        sb.append(source, cursor, cursor + 4);
+                    }
+                    break;
+                case 'c':
+                    sb.append(source, cursor - 1, cursor + 2);
+                    cursor++;
+                    break;
+                case 'C':
+                case 'M':
+                    sb.append("\\");
+                    sb.append(next);
+                    cursor++;
+                    if (source.charAt(cursor) == '-') {
+                        sb.append(source, cursor, cursor + 2);
+                        cursor++;
+                    } else {
+                        sb.append(c);
+                    }
+                    break;
+                default:
+                    sb.append(next);
+            }
+        } else {
+            sb.append(c);
+        }
+        cursor++;
+        return sb.toString();
     }
 
     @Override
