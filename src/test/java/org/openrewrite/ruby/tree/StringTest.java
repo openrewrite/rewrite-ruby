@@ -26,6 +26,18 @@ import static org.openrewrite.ruby.Assertions.ruby;
 
 public class StringTest implements RewriteTest {
 
+    @Disabled
+    @Test
+    void emoji() {
+        rewriteRun(
+          ruby(
+            """
+              expect { described_class.new("🤷") }
+              """
+          )
+        );
+    }
+
     @Test
     void escapingInsideComplexString() {
         rewriteRun(
