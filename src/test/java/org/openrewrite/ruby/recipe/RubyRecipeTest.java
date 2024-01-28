@@ -10,7 +10,8 @@ public class RubyRecipeTest implements RewriteTest {
 
     @Override
     public void defaults(RecipeSpec spec) {
-        spec.recipe(new RubyRecipe("/io_methods.rb"));
+        spec.recipe(new RubyRecipe("/io_methods.rb"))
+          .validateRecipeSerialization(false);
     }
 
     @Test

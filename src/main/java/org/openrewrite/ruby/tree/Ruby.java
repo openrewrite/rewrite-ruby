@@ -21,6 +21,7 @@ import lombok.experimental.NonFinal;
 import org.openrewrite.*;
 import org.openrewrite.internal.lang.Nullable;
 import org.openrewrite.java.JavaPrinter;
+import org.openrewrite.java.internal.TypesInUse;
 import org.openrewrite.java.tree.*;
 import org.openrewrite.marker.Markers;
 import org.openrewrite.ruby.RubyVisitor;
@@ -33,6 +34,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
 
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
 @SuppressWarnings("unused")
@@ -62,7 +64,7 @@ public interface Ruby extends J {
     @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
     @RequiredArgsConstructor
     @AllArgsConstructor(access = AccessLevel.PRIVATE)
-    final class CompilationUnit implements Ruby, SourceFile {
+    final class CompilationUnit implements Ruby, JavaSourceFile, SourceFile {
         @Nullable
         @NonFinal
         transient WeakReference<Padding> padding;
@@ -122,6 +124,51 @@ public interface Ruby extends J {
             return new RubyPrinter<>();
         }
 
+        @Override
+        public TypesInUse getTypesInUse() {
+            return TypesInUse.build(this);
+        }
+
+        @Override
+        public @Nullable Package getPackageDeclaration() {
+            return null;
+        }
+
+        @Override
+        public JavaSourceFile withPackageDeclaration(Package pkg) {
+            return this;
+        }
+
+        @Override
+        public List<Import> getImports() {
+            return emptyList();
+        }
+
+        @Override
+        public JavaSourceFile withImports(List<Import> imports) {
+            return this;
+        }
+
+        @Override
+        public List<ClassDeclaration> getClasses() {
+            return emptyList();
+        }
+
+        @Override
+        public JavaSourceFile withClasses(List<ClassDeclaration> classes) {
+            return this;
+        }
+
+        @Override
+        public Space getEof() {
+            return Space.EMPTY;
+        }
+
+        @Override
+        public JavaSourceFile withEof(Space eof) {
+            return this;
+        }
+
         public Padding getPadding() {
             Padding p;
             if (this.padding == null) {
@@ -138,7 +185,7 @@ public interface Ruby extends J {
         }
 
         @RequiredArgsConstructor
-        public static class Padding {
+        public static class Padding implements JavaSourceFile.Padding {
             private final Ruby.CompilationUnit t;
 
             public List<JRightPadded<Statement>> getStatements() {
@@ -148,6 +195,16 @@ public interface Ruby extends J {
             public Ruby.CompilationUnit withStatements(List<JRightPadded<Statement>> statements) {
                 return t.statements == statements ? t : new Ruby.CompilationUnit(t.id, t.prefix, t.markers,
                         t.sourcePath, t.fileAttributes, t.charset, t.charsetBomMarked, t.checksum, statements);
+            }
+
+            @Override
+            public List<JRightPadded<Import>> getImports() {
+                return emptyList();
+            }
+
+            @Override
+            public JavaSourceFile withImports(List<JRightPadded<Import>> imports) {
+                return t;
             }
         }
     }
@@ -653,7 +710,7 @@ public interface Ruby extends J {
         }
     }
 
-    @FieldDefaults(makeFinal=true, level=AccessLevel.PRIVATE)
+    @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
     @AllArgsConstructor
     @ToString
     @EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
