@@ -4,7 +4,7 @@
 $LOAD_PATH << 'lib'
 
 # load our gem and its jars
-require 'rewrite-ruby'
+require 'openrewrite'
 
 # load test jar
 require_jar 'org.openrewrite', 'rewrite-ruby', '0.1.0-SNAPSHOT'

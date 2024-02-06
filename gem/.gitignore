@@ -1,4 +1,4 @@
 lib/**/*.jar
-lib/rewrite-ruby_jars.rb
+lib/openrewrite-ruby_jars.rb
 Gemfile.lock
 *.gem

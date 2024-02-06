@@ -5,7 +5,7 @@ plugins {
 group = "org.openrewrite"
 description = "Rewrite Ruby"
 
-val latest = "latest.integration"
+val latest = "latest.release"
 
 dependencies {
     implementation(platform("org.openrewrite:rewrite-bom:${latest}"))
