@@ -6,22 +6,22 @@ describe OpenRewrite do
   include OpenRewrite::RewriteTest
 
   class MyRecipe < OpenRewrite::Recipe
-    def get_display_name
+    def display_name
       "My recipe"
     end
 
-    def get_description
-      "#{get_display_name}: is a description of my recipe."
+    def description
+      "#{display_name}: is a description of my recipe."
     end
 
     # noinspection RubyInstanceMethodNamingConvention
-    def get_estimated_effort_per_occurrence_seconds
+    def effort_per_occurrence
       super # super calls get mapped to calls on the Java superclass
     end
   end
 
   context 'recipe name' do
-    recipe_instance = OpenRewrite::to_java(MyRecipe.new)
+    recipe_instance = MyRecipe.new.to_java
     puts recipe_instance.getDisplayName
     puts recipe_instance.getDescription
     puts recipe_instance.getEstimatedEffortPerOccurrence
