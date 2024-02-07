@@ -2,6 +2,13 @@
 
 require 'openrewrite-ruby_jars'
 
+require_relative 'lang/hcl'
+require_relative 'lang/json'
+require_relative 'lang/plaintext'
+require_relative 'lang/properties'
+require_relative 'lang/xml'
+require_relative 'lang/yaml'
+
 #   def java_visitor(&body)
 #     Class.new(Java::org.openrewrite.java.JavaVisitor, &body).new
 #   end
@@ -33,6 +40,8 @@ module OpenRewrite
     def method_missing(name, *args, &block)
       if name == :set_java_recipe_instance
         @recipe = args[0]
+      elsif Mapping[name] == nil
+        super
       elsif @recipe.respond_to?(Mapping[name])
         return @recipe.send("super_#{name}", *args, &block)
       else
@@ -40,16 +49,16 @@ module OpenRewrite
       end
     end
 
-    # TODO this should probably go somewhere else that is not public to recipe authors
-    # since it is only needed to convert a Ruby recipe to a Java recipe at runtime
     def to_java
       recipe_instance = Class.new(Java::org.openrewrite.Recipe).new
       # noinspection RubyResolve
       self.set_java_recipe_instance(recipe_instance)
+      ruby_recipe = self
+
       Mapping.each do |ruby, java|
-        ret = self.send(ruby)
         recipe_instance.class.alias_method("super_#{ruby}", java)
-        recipe_instance.class.define_method(java) do
+        recipe_instance.class.define_method(java) do |*args|
+          ret = ruby_recipe.send(ruby, *args)
           case ruby
           when :tags
             tags = Java::java.util.HashSet.new
@@ -72,10 +81,10 @@ module OpenRewrite
     private
 
     Mapping = {
-      display_name: 'getDisplayName',
-      description: 'getDescription',
-      effort_per_occurrence: 'getEstimatedEffortPerOccurrence',
-      tags: 'getTags'
+      display_name: :getDisplayName,
+      description: :getDescription,
+      effort_per_occurrence: :getEstimatedEffortPerOccurrence,
+      tags: :getTags
     }
   end
 
@@ -104,7 +113,7 @@ module OpenRewrite
     end
 
     def rewrite_run(recipe, *specs)
-      RewriteTestWrapper.new(recipe).rewriteRun(specs.to_java(:Java::org.openrewrite.test.SourceSpec))
+      RewriteTestWrapper.new(recipe.to_java).rewriteRun(specs.to_java(:Java::org.openrewrite.test.SourceSpec))
     end
   end
 end
